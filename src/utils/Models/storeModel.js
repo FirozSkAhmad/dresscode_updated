@@ -21,6 +21,15 @@ const productVariantsSchema = new mongoose.Schema({
     ]
 });
 
+// Define the ProductVariant reference schema
+const assignedIdsSchema = new mongoose.Schema({
+    assignedId: {
+        type: mongoose.Schema.Types.ObjectId, // Reference to Product model
+        required: true,
+        ref: 'AssignedHistory'
+    }
+});
+
 const storeSchema = new Schema({
     storeName: {
         type: String,
@@ -63,7 +72,8 @@ const storeSchema = new Schema({
         ref: 'User',
         required: true
     },
-    productVariants:[productVariantsSchema]
+    productVariants: [productVariantsSchema],
+    assignedIds: [assignedIdsSchema] //arrary of assignedIds to a particular store
 }, {
     timestamps: true,
     collection: 'stores'

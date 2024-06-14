@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const jwtHelperObj = require('../utils/Helpers/jwt_helper'); // Ensure you have a similar helper for JWT
-const StoreService = require('../services/store_service'); // Assuming you have a service for store operations
+const StoreService = require('../services/storeCreation_service'); // Assuming you have a service for store operations
 const Constants = require('../utils/Constants/response_messages'); // Assuming you have a constants file
 
 // POST request to create a new store

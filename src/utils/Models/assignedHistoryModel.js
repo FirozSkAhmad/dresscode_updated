@@ -26,6 +26,11 @@ const assignedHistorySchema = new mongoose.Schema({
         type: Date,
         default: Date.now
     },
+    recivedDate: {
+        type: String,
+        required: true,
+        default: null
+    },
     totalAmountOfAssigned: {
         type: Number,
         required: true
