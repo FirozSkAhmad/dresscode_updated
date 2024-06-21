@@ -1,4 +1,11 @@
 const ProductModel = require('../utils/Models/productModel');
+const HealCoatsModel = require('../utils/Models/healCoatsModel');
+const HealScrubsModel = require('../utils/Models/healScrubsModel');
+const ShieldModel = require('../utils/Models/shieldModel');
+const EliteModel = require('../utils/Models/eliteModel');
+const TogsModel = require('../utils/Models/togsModel');
+const SpiritsModel = require('../utils/Models/spiritsModel');
+const WorkWearModel = require('../utils/Models/workWearModel');
 const UploadedHistoryModel = require('../utils/Models/uploadedHistoryModel');
 
 class InventoryService {
@@ -30,7 +37,7 @@ class InventoryService {
                 const existingProduct = await Model.findOne({ prodId });
                 let productId;
                 let variantIds = [];
-    
+
                 const variant = {
                     size: item.size,
                     color: item.color,
@@ -38,7 +45,7 @@ class InventoryService {
                     price: parseFloat(item.price),
                     images: item.images.split(';'),
                 };
-    
+
                 if (existingProduct) {
                     productId = existingProduct._id;
                     variantIds = await this.updateOrCreateVariants(existingProduct, variant);
@@ -47,7 +54,7 @@ class InventoryService {
                     productId = newProduct._id;
                     variantIds = [newProduct.variants[0]._id];
                 }
-    
+
                 // Update UploadedHistory with new productVariant details
                 uploadedHistory.productVariants.push({
                     productId: productId,
@@ -57,7 +64,7 @@ class InventoryService {
                     }))
                 });
             }
-    
+
             await uploadedHistory.save();
             return { status: 200, message: `${data.length} products data added successfully.` };
         } catch (err) {
@@ -65,7 +72,7 @@ class InventoryService {
             throw new Error("An internal server error occurred");
         }
     }
-    
+
     async updateOrCreateVariants(product, variant) {
         let variantIds = [];
         const existingVariant = product.variants.find(v => v.size === variant.size && v.color === variant.color);
@@ -86,7 +93,7 @@ class InventoryService {
         }
         return variantIds;
     }
-    
+
     async createProduct(Model, item, variant, prodId) {
         const newProduct = new Model({
             ...item,
@@ -95,10 +102,71 @@ class InventoryService {
         });
         await newProduct.save();
         return newProduct; // Return the new product object
-    }    
+    }
 
     generateProdId(category, school_name, product_category, product_name, gender, pattern) {
         return category === "SCHOOL" ? `${category}_${school_name}_${product_category}_${product_name}_${gender}_${pattern}` : category === "CORPORATE" ? `${category}_${product_category}_${product_name}_${gender}_${pattern}` : `${category}_${product_category}_${product_name}_${gender}`;
+    }
+
+    async uploadHealProduct(data) {
+        try {
+            const { category } = data
+            const newHeal = category === "COATS" ? new HealCoatsModel(data) : new HealScrubsModel(data);
+            await newHeal.save();
+            return { status: 201, message: "New heal added successfully!", data: newHeal };
+        } catch (error) {
+            return { status: 400, message: "Error adding new coat", error: error.message };
+        }
+    }
+
+    async uploadShieldProduct(data) {
+        try {
+            const newShield = new ShieldModel(data);
+            await newShield.save();
+            return { status: 201, message: "New shield added successfully!", data: newShield };
+        } catch (error) {
+            return { status: 400, message: "Error adding new shield", error: error.message };
+        }
+    }
+
+    async uploadEliteProduct(data) {
+        try {
+            const newElite = new EliteModel(data);
+            await newElite.save();
+            return { status: 201, message: "New elite added successfully!", data: newElite };
+        } catch (error) {
+            return { status: 400, message: "Error adding new elite", error: error.message };
+        }
+    }
+
+    async uploadTogsProduct(data) {
+        try {
+            const newTogs = new TogsModel(data);
+            await newTogs.save();
+            return { status: 201, message: "New tog added successfully!", data: newTogs };
+        } catch (error) {
+            return { status: 400, message: "Error adding new tog", error: error.message };
+        }
+    }
+
+    async uploadSpiritProduct(data) {
+        try {
+            const newSpirit = new SpiritsModel(data);
+            await newSpirit.save();
+            return { status: 201, message: "New spirit added successfully!", data: newSpirit };
+        } catch (error) {
+            return { status: 400, message: "Error adding new spirit", error: error.message };
+        }
+    }
+
+    async uploadWorkWearProduct(data) {
+        try {
+            const newWorkWear = new WorkWearModel(data);
+            await newWorkWear.save();
+            return { status: 201, message: "New spirit added successfully!", data: newWorkWear };
+        } catch (error) {
+            return { status: 400, message: "Error adding new spirit", error: error.message };
+        }
     }
 
     async getAllProducts() {

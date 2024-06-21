@@ -1,21 +1,14 @@
-const csv = require('csv-parser');
+const EliteModel = require('../utils/Models/eliteModel');  // Ensure correct path
 const stream = require('stream');
-const ProductModel = require('../utils/Models/productModel');
-const AssignedHistoryModel = require('../utils/Models/assignedHistoryModel');
-const StoreModel = require('../utils/Models/storeModel')
+const csv = require('csv-parser');
 
-class BulkUpload {
-    constructor() {
-    }
+class BulkUploadService {
+    constructor() {}
 
-    async processCsvFile(buffer, category, storeType, storeId) {
-        try {
-            const results = await this.parseCsv(buffer);
-            return this.uploadDataBasedOnType(results, category, storeType, storeId);
-        } catch (err) {
-            console.error('processCsvFile error:', err.message);
-            throw new Error("An internal server error occurred");
-        }
+    async processCsvFile(buffer) {
+        const data = await this.parseCsv(buffer);
+        await this.bulkInsertOrUpdate(data);  // Processing each entry
+        return { status: 200, message: "Data processed successfully." };
     }
 
     parseCsv(buffer) {
@@ -25,126 +18,89 @@ class BulkUpload {
             bufferStream.end(buffer);
 
             bufferStream
-                .pipe(csv({
-                    mapHeaders: ({ header }) => header.trim() // Adjust header names to remove any potential whitespace
-                }))
-                .on('data', (data) => results.push(data))
+                .pipe(csv({ mapHeaders: ({ header }) => header.trim() }))
+                .on('data', (data) => {
+                    results.push({
+                        group: data.group,
+                        category: data.category,
+                        subCategory: data.subCategory,
+                        gender: data.gender,
+                        productType: data.productType,
+                        fit: data.fit,
+                        neckline: data.neckline,
+                        sleeves: data.sleeves,
+                        variant: {
+                            size: data.variantSize,
+                            color: data.variantColor,
+                            quantity: parseInt(data.variantQuantity),
+                            images: data.variantImages.split(';'),
+                        }
+                    });
+                })
                 .on('end', () => resolve(results))
                 .on('error', (error) => reject(error));
         });
     }
 
-    async uploadDataBasedOnType(data, category, storeType, storeId) {
-        try {
-            return this.bulkInsert(ProductModel, data, category, storeType, storeId);
-        } catch (err) {
-            console.error('uploadDataBasedOnType error:', err.message);
-            throw new Error("An internal server error occurred");
+    async bulkInsertOrUpdate(data) {
+        // First, update existing products to add variants if they do not exist
+        for (const item of data) {
+            await this.addVariant(item);
         }
     }
 
-    async bulkInsert(Model, data, category, storeType, storeId) {
-
-        if (storeType === "WARE_HOUSE") {
-            const warehouse = await StoreModel.findOne({ storeType: "WARE_HOUSE" }, '_id');
-            storeId = warehouse ? warehouse._id : storeId;
-        }
-
-        const assignedHistory = new AssignedHistoryModel({
-            totalAmountOfAssigned: data.reduce((sum, item) => sum + parseInt(item['quantity']) * parseFloat(item['price']), 0),
-            status: storeType === "WARE_HOUSE" ? "RECEIVED" : "ASSIGNED",
-            productVariants: []  // This will hold product and variant references
+    async addVariant(item) {
+        const existingProduct = await EliteModel.findOne({
+            group: item.group,
+            category: item.category,
+            subCategory: item.subCategory,
+            gender: item.gender,
+            productType: item.productType,
+            fit: item.fit,
+            neckline: item.neckline,
+            sleeves: item.sleeves
         });
-        await assignedHistory.save();  // Save to obtain an ID
 
-        try {
-            for (const item of data) {
-                const prodId = this.generateProdId(category, item['school_name'], item['product_category'], item['product_name'], item['gender'], item['pattern']);
-                const existingProduct = await Model.findOne({ prodId });
-                let productId;
-                let variantIds = [];
+        if (existingProduct) {
+            const variantExists = existingProduct.variants.findIndex(variant => 
+                variant.size === item.variant.size && variant.color === item.variant.color);
 
-                const variant = {
-                    size: item['variant_size'],
-                    color: item['variant_color'],
-                    quantity: parseInt(item['quantity']),
-                    price: parseFloat(item['price']),
-                    images: item['images'].split(';'),
-                };
-
-                if (existingProduct) {
-                    const existingVariant = existingProduct.variants.find(v => v.size === variant.size && v.color === variant.color);
-
-                    if (existingVariant) {
-                        const storeEntry = existingVariant.quantityByStores.find(store => store.storeId.equals(storeId));
-                        if (storeEntry) {
-                            storeEntry.presentQuantity += variant.quantity;
-                            storeEntry.assignedHistory.push({
-                                assignedHistoryId: assignedHistory._id,
-                                quantityOfAssigned: variant.quantity
-                            });
-                        } else {
-                            existingVariant.quantityByStores.push({
-                                storeId: storeId,
-                                presentQuantity: variant.quantity,
-                                assignedHistory: [{
-                                    assignedHistoryId: assignedHistory._id,
-                                    quantityOfAssigned: variant.quantity
-                                }]
-                            });
-                        }
-                        existingVariant.quantity += variant.quantity;
-                    } else {
-                        existingProduct.variants.push({
-                            ...variant,
-                            quantityByStores: [{
-                                storeId: storeId,
-                                presentQuantity: variant.quantity,
-                                assignedHistory: [{
-                                    assignedHistoryId: assignedHistory._id,
-                                    quantityOfAssigned: variant.quantity
-                                }]
-                            }]
-                        });
-                    }
-                    await existingProduct.save();
-                } else {
-                    const newProduct = new Model({
-                        ...item,
-                        prodId,
-                        variants: [{
-                            ...variant,
-                            quantityByStores: [{
-                                storeId: item['store_id'],
-                                presentQuantity: variant.quantity,
-                                assignedHistory: [{
-                                    assignedHistoryId: assignedHistory._id,
-                                    quantityOfAssigned: variant.quantity
-                                }]
-                            }]
-                        }]
-                    });
-                    await newProduct.save();
-                }
+            if (variantExists > -1) {
+                // Variant exists, update its quantity
+                const variantPath = `variants.${variantExists}.quantity`;
+                await EliteModel.updateOne(
+                    { _id: existingProduct._id },
+                    { $inc: { [variantPath]: item.variant.quantity } }
+                );
+            } else {
+                await EliteModel.updateOne(
+                    { _id: existingProduct._id },
+                    { $push: { variants: item.variant } }
+                );
             }
-
-            return { status: 200, message: `${data.length} products data added successfully.` };
-        } catch (err) {
-            console.error('Bulk insert error:', err.message);
-            throw new Error("An internal server error occurred");
+        } else {
+            // Create a new product if it does not exist
+            await EliteModel.create({
+                group: item.group,
+                category: item.category,
+                subCategory: item.subCategory,
+                gender: item.gender,
+                productType: item.productType,
+                fit: item.fit,
+                neckline: item.neckline,
+                sleeves: item.sleeves,
+                variants: [item.variant]
+            });
         }
-    }
-
-    arraysEqual(arr1, arr2) {
-        return arr1.length === arr2.length && arr1.every(element => arr2.includes(element)) && arr2.every(element => arr1.includes(element));
-    }
-
-    generateProdId(category, school_name, product_category, product_name, gender, pattern) {
-        return category === "SCHOOL" ? `${category}_${school_name}_${product_category}_${product_name}_${gender}_${pattern}` : category === "CORPORATE" ? `${category}_${product_category}_${product_name}_${gender}_${pattern}` : `${category}_${product_category}_${product_name}_${gender}`;
     }
 }
 
-module.exports = BulkUpload;
+module.exports = BulkUploadService;
+
+
+
+
+
 
 
 
