@@ -15,28 +15,104 @@ class EComService {
     }
 
     async getGroups() {
-        return { groups: ["HEAL", "SHIELD", "ELITE", "TOGS", "SPIRIT", "WORK WEAR UNIFORMS"] }
+        const models = {
+            HEAL: HealScrubsModel,
+            SHIELD: ShieldModel,
+            ELITE: EliteModel,
+            TOGS: TogsModel,
+            SPIRIT: SpiritsModel,
+            WORK_WEAR_UNIFORMS: WorkWearModel
+        };
+
+        const groups = ["HEAL", "SHIELD", "ELITE", "TOGS", "SPIRIT", "WORK WEAR UNIFORMS"];
+        const groupDetails = [];
+
+        try {
+            for (const groupName of groups) {
+                const model = models[groupName.replace(/\s+/g, '_')]; // Replace spaces for keys like "WORK WEAR UNIFORMS"
+                const result = await model.findOne({
+                    "group.name": groupName,
+                    isDeleted: false
+                }, {
+                    "group.imageUrl": 1, _id: 0
+                });
+
+                // Check if a result was found and it includes an imageUrl
+                if (result && result.group && result.group.imageUrl) {
+                    groupDetails.push({
+                        groupName: groupName,
+                        imageUrl: result.group.imageUrl
+                    });
+                } else {
+                    // Handle cases where no image is available
+                    groupDetails.push({
+                        groupName: groupName,
+                        imageUrl: "default-image-url" // Placeholder for a default image
+                    });
+                }
+            }
+
+            return groupDetails;
+        } catch (error) {
+            console.error(`Error retrieving group images: ${error}`);
+            throw new Error('Failed to fetch group images.');
+        }
     }
 
     async getCategories(groupName) {
-        switch (groupName) {
-            case "HEAL":
-                return await HealScrubsModel.distinct('category');
-            case "SHIELD":
-                return await ShieldModel.distinct('category');
-            case "ELITE":
-                return await EliteModel.distinct('category');
-            case "TOGS":
-                return await TogsModel.distinct('category');
-            case "SPIRIT":
-                return await SpiritsModel.distinct('category');
-            case "WORK WEAR UNIFORMS":
-                return await WorkWearModel.distinct('category');
-            default:
-                // Handle cases where the group name doesn't match any of the above
-                return []; // Or provide a more informative message/default behavior
+        try {
+            let model;
+            switch (groupName) {
+                case "HEAL":
+                    model = HealScrubsModel;
+                    break;
+                case "SHIELD":
+                    model = ShieldModel;
+                    break;
+                case "ELITE":
+                    model = EliteModel;
+                    break;
+                case "TOGS":
+                    model = TogsModel;
+                    break;
+                case "SPIRIT":
+                    model = SpiritsModel;
+                    break;
+                case "WORK WEAR UNIFORMS":
+                    model = WorkWearModel;
+                    break;
+                default:
+                    // Handle cases where the group name doesn't match any of the known groups
+                    throw new Error(`Unsupported group name: ${groupName}`);
+            }
+
+            // Use the aggregation pipeline to ensure unique category data
+            const result = await model.aggregate([
+                { $match: { isDeleted: false } }, // Filter out deleted items
+                {
+                    $group: { // Group by category name and imageUrl to ensure uniqueness
+                        _id: { name: "$category.name", imageUrl: "$category.imageUrl" },
+                        category: { $first: "$category.name" },
+                        imageUrl: { $first: "$category.imageUrl" }
+                    }
+                },
+                {
+                    $project: { // Project the necessary fields
+                        _id: 0,
+                        category: "$category",
+                        imageUrl: "$imageUrl"
+                    }
+                }
+            ]);
+
+            return result;
+        } catch (error) {
+            // Log error or handle it according to your application's error management policy
+            console.error(`Error retrieving categories for group ${groupName}: ${error}`);
+            return []; // Return an empty array or handle the error as appropriate
         }
     }
+
 
     //getSubCategoriesByGroupAndcategory
     async getSubCategories(groupName, category) {
@@ -62,19 +138,43 @@ class EComService {
                 modelToUse = WorkWearModel;
                 break;
             default:
-                return []; // Or provide a more informative message
+                return []; // Return an empty array if an invalid group is provided
         }
 
         // Ensure category is provided and a valid model is chosen
         if (!category || !modelToUse) {
-            return []; // Or provide an error message
+            return []; // Return an empty array if no category is provided
         }
 
-        const query = { category }; // Filter by the provided category
-        return await modelToUse.distinct('subCategory', query); // Use distinct() with filter
+        try {
+            // Use the aggregation pipeline to filter by category and group by subCategory
+            const result = await modelToUse.aggregate([
+                { $match: { 'category.name': category } }, // Match documents by category name
+                {
+                    $group: { // Group by subCategory name and imageUrl to ensure uniqueness
+                        _id: { name: "$subCategory.name", imageUrl: "$subCategory.imageUrl" },
+                        subCategory: { $first: "$subCategory.name" },
+                        imageUrl: { $first: "$subCategory.imageUrl" }
+                    }
+                },
+                {
+                    $project: { // Project the necessary fields
+                        _id: 0,
+                        subCategory: "$subCategory",
+                        imageUrl: "$imageUrl"
+                    }
+                }
+            ]);
+
+            return result;
+        } catch (error) {
+            console.error(`Error retrieving subcategories for group ${groupName} and category ${category}: ${error}`);
+            return []; // Return an empty array in case of an error
+        }
     }
 
-    async getProductsTypes(groupName, category, subCategory) {
+
+    async getProductTypes(groupName, category, subCategory) {
         let modelToUse; // Define a variable to hold the model to use
 
         switch (groupName) {
@@ -97,15 +197,15 @@ class EComService {
                 modelToUse = WorkWearModel;
                 break;
             default:
-                return []; // Or provide a more informative message
+                return []; // Return an empty array if an invalid group is provided
         }
 
         // Ensure category, subCategory, and a valid model are chosen
         if (!category || !subCategory || !modelToUse) {
-            return []; // Or provide an error message
+            return []; // Return an empty array if any essential input is missing
         }
 
-        const query = { category, subCategory }; // Filter by category and subCategory
+        const query = { 'category.name': category, 'subCategory.name': subCategory }; // Filter by category and subCategory
 
         // Use aggregation framework with a custom set operation
         const results = await modelToUse.aggregate([
@@ -115,8 +215,9 @@ class EComService {
                     _id: "$gender", // Group by gender
                     productTypes: {
                         $addToSet: {
-                            $toUpper: "$productType" // Convert productType to uppercase for case-insensitive comparison
-                        },
+                            type: "$productType.type", // Extract type from productType
+                            imageUrl: "$productType.imageUrl" // Extract imageUrl from productType
+                        }
                     },
                 },
             },
@@ -129,10 +230,11 @@ class EComService {
             },
         ]);
 
-        return results.map((result) => ({ ...result, productTypes: [...result.productTypes] })); // Ensure productTypes is a copy (optional for immutability)
+        return results;
     }
 
-    async getProducts(groupName, category, subCategory, gender, productType) {
+
+    async getProductFilters(groupName, category, subCategory, gender, productType) {
         const modelMap = {
             "HEAL": HealScrubsModel,
             "SHIELD": ShieldModel,
@@ -146,19 +248,21 @@ class EComService {
 
         if (!modelToUse || !category || !subCategory) {
             console.error("Invalid parameters provided");
-            return { filters: {}, productsList: [] };
+            return { filters: {} };
         }
 
-        const query = { category, subCategory };
+        const query = {
+            "category.name": category,
+            "subCategory.name": subCategory
+        };
         if (gender) query.gender = gender;
-        if (productType) query.productType = productType;
+        if (productType) query["productType.type"] = productType;
 
         try {
             const results = await modelToUse.aggregate([
                 { $match: query },
                 {
                     $facet: {
-                        products: [{ $group: { _id: "$_id", doc: { $first: "$$ROOT" } } }],
                         fits: [{ $group: { _id: null, fits: { $addToSet: "$fit" } } }],
                         colors: [
                             { $unwind: "$variants" },
@@ -166,7 +270,9 @@ class EComService {
                         ],
                         sizes: [
                             { $unwind: "$variants" },
-                            { $group: { _id: null, sizes: { $addToSet: "$variants.size" } } }
+                            { $unwind: "$variants.variantSizes" },
+                            { $match: { "variants.variantSizes.quantity": { $gt: 5 } } },
+                            { $group: { _id: null, sizes: { $addToSet: "$variants.variantSizes.size" } } }
                         ],
                         necklines: [{ $group: { _id: null, necklines: { $addToSet: "$neckline" } } }],
                         sleeves: [{ $group: { _id: null, sleeves: { $addToSet: "$sleeves" } } }]
@@ -174,7 +280,7 @@ class EComService {
                 }
             ]);
 
-            const { products, fits, colors, sizes, necklines, sleeves } = results[0];
+            const { fits, colors, sizes, necklines, sleeves } = results[0];
             return {
                 filters: {
                     fits: fits[0]?.fits || [],
@@ -182,12 +288,11 @@ class EComService {
                     sizes: sizes[0]?.sizes || [],
                     necklines: necklines[0]?.necklines || [],
                     sleeves: sleeves[0]?.sleeves || []
-                },
-                productsList: products.map(product => product.doc)
+                }
             };
         } catch (error) {
             console.error("Failed to fetch products:", error);
-            return { filters: {}, productsList: [] };
+            return { filters: {} };
         }
     }
 
@@ -527,13 +632,13 @@ class EComService {
 
         // Building the query dynamically based on provided parameters
         const matchQuery = {
-            category,
-            subCategory
+            "category.name": category,
+            "subCategory.name": subCategory
         };
 
         // Add parameters if they are provided and are not empty
         if (gender) matchQuery.gender = gender;
-        if (productType) matchQuery.productType = productType;
+        if (productType) matchQuery["productType.type"] = productType;
         if (fit) matchQuery.fit = fit;
         if (neckline) matchQuery.neckline = neckline;
         if (sleeves) matchQuery.sleeves = sleeves;
@@ -562,23 +667,67 @@ class EComService {
                                 cond: {
                                     $and: [
                                         color ? { $eq: ["$$variant.color", color] } : {},
-                                        size ? { $eq: ["$$variant.size", size] } : {},
+                                        size ? {
+                                            $in: [
+                                                size,
+                                                "$$variant.variantSizes.size"
+                                            ]
+                                        } : {}
                                     ]
                                 }
                             }
-                        }
+                        },
+                        allSizes: ["S", "M", "L", "XL", "XXL"],
+                        allColors: [
+                            "WHITE",
+                            "BLACK",
+                            "INDIGO",
+                            "SKY BLUE",
+                            "NAVY BLUE",
+                            "GREEN",
+                            "GREY",
+                            "MAROON",
+                            "RED",
+                        ]
                     }
                 }
             ]);
 
-            return products;
+            // Collect other colors with their sizes and quantities
+            const others = products.map(product => {
+                const colorsWithSizesAndQuantities = {};
+                product.variants.forEach(variant => {
+                    if (!variant.isDeleted) {
+                        if (!colorsWithSizesAndQuantities[variant.color]) {
+                            colorsWithSizesAndQuantities[variant.color] = [];
+                        }
+                        variant.variantSizes.forEach(sizeEntry => {
+                            colorsWithSizesAndQuantities[variant.color].push({
+                                size: sizeEntry.size,
+                                quantity: sizeEntry.quantity
+                            });
+                        });
+                    }
+                });
+
+                return Object.keys(colorsWithSizesAndQuantities).map(color => ({
+                    color,
+                    sizesAndQty: colorsWithSizesAndQuantities[color]
+                }));
+            });
+
+            // Merge products and others into the final result
+            return products.map((product, index) => ({
+                ...product,
+                others: others[index]
+            }));
         } catch (error) {
             console.error("Failed to fetch products:", error);
             return [];
         }
     }
 
-    async getProductVariantColors(groupName, productId) {
+    async getProductVariantAvaColors(groupName, productId) {
         const modelMap = {
             "HEAL": HealScrubsModel,
             "SHIELD": ShieldModel,
@@ -600,7 +749,7 @@ class EComService {
 
             if (!product) {
                 console.log("Product not found");
-                return { colors: [] };//, sizes: []
+                return { AvaColors: [] };//, sizes: []
             }
 
             // Using a Set to ensure unique values
@@ -616,7 +765,7 @@ class EComService {
 
             return {
                 // sizes: Array.from(sizes),
-                colors: Array.from(colors)
+                AvaColors: Array.from(colors)
             };
         } catch (error) {
             console.error("Failed to fetch product details:", error);
@@ -624,7 +773,7 @@ class EComService {
         }
     }
 
-    async getSizesByColor(groupName, productId, color) {
+    async getAvaSizesByColor(groupName, productId, color) {
         const modelMap = {
             "HEAL": HealScrubsModel,
             "SHIELD": ShieldModel,
@@ -642,31 +791,37 @@ class EComService {
         }
 
         try {
-            const product = await modelToUse.findOne({ productId }).lean();
+            const product = await modelToUse.findOne({ "productId": productId }).lean();
 
             if (!product) {
                 console.log("Product not found");
                 return { sizes: [], message: "Product not found." };
             }
 
-            // Using a Set to ensure unique sizes for the specified color
-            const sizes = new Set();
+            const sizesWithQuantities = {};
 
             product.variants.forEach(variant => {
-                if (variant.color === color) {
-                    sizes.add(variant.size);
+                if (variant.color === color && !variant.isDeleted) {
+                    variant.variantSizes.forEach(sizeEntry => {
+                        if (sizeEntry.quantity > 0) {  // Ensure only sizes with available quantity are added
+                            sizesWithQuantities[sizeEntry.size] = sizeEntry.quantity;
+                        }
+                    });
                 }
             });
 
+            const sizeKeys = Object.keys(sizesWithQuantities);
             return {
-                sizes: Array.from(sizes),
-                message: sizes.size > 0 ? "Sizes retrieved successfully." : "No sizes found for the specified color."
+                avaSizesAndQty: sizeKeys.length > 0 ? sizeKeys.map(size => ({ size, quantity: sizesWithQuantities[size] })) : [],
+                message: sizeKeys.length > 0 ? "Sizes retrieved successfully." : "No sizes found for the specified color."
             };
         } catch (error) {
             console.error("Failed to fetch product details:", error);
             return { sizes: [], message: "Failed to fetch product details." };
         }
     }
+
+
 
     async getProductDetailsWithSpecificVariant(groupName, productId, size, color) {
         const modelMap = {
@@ -687,36 +842,66 @@ class EComService {
 
         try {
             // Directly find the product and extract sizes and colors in one query
-            const product = await modelToUse.findOne({ productId, "variants.size": size, "variants.color": color }).lean();
+            const product = await modelToUse.findOne({
+                productId,
+                "variants.color": color,
+                "variants.variantSizes.size": size
+            }).lean();
 
             if (!product) {
                 console.log("Product not found");
                 return null;
             }
 
-            // Collect unique sizes and colors from variants
-            // const sizes = new Set();
-            const colors = new Set();
+            // Collect unique colors with their sizes and quantities
+            const colorsWithSizesAndQuantities = {};
 
             product.variants.forEach(variant => {
-                // sizes.add(variant.size);
-                colors.add(variant.color);
+                if (!variant.isDeleted) {
+                    if (!colorsWithSizesAndQuantities[variant.color]) {
+                        colorsWithSizesAndQuantities[variant.color] = [];
+                    }
+                    variant.variantSizes.forEach(sizeEntry => {
+                        colorsWithSizesAndQuantities[variant.color].push({
+                            size: sizeEntry.size,
+                            quantity: sizeEntry.quantity
+                        });
+                    });
+                }
             });
 
-            // Find the specific variant that matches the size and color
-            const specificVariant = product.variants.find(variant => variant.size === size && variant.color === color);
+            // Find the specific variant that matches the color and size
+            const specificVariant = product.variants.find(variant =>
+                variant.color === color &&
+                variant.variantSizes.some(sizeEntry => sizeEntry.size === size)
+            );
+
+            const others = Object.keys(colorsWithSizesAndQuantities).map(color => ({
+                color,
+                sizesAndQty: colorsWithSizesAndQuantities[color]
+            }));
 
             return specificVariant ? {
                 productDetails: {
                     ...product,
                     variants: specificVariant ? [specificVariant] : [] // Only include the matching variant
                 },
-                // allSizes: Array.from(sizes),
-                allColors: Array.from(colors)
+                sizes: ["S", "M", "L", "XL", "XXL"],
+                colors: [
+                    "WHITE",
+                    "BLACK",
+                    "INDIGO",
+                    "SKY BLUE",
+                    "NAVY BLUE",
+                    "GREEN",
+                    "GREY",
+                    "MAROON",
+                    "RED",
+                ],
+                others
             } : {
-                message: "This product has no variants available with given size and color combination.",
-                // allSizes: Array.from(sizes),
-                allColors: Array.from(colors)
+                message: "This product has no variants available with the given size and color combination.",
+                others
             };
         } catch (error) {
             console.error("Failed to fetch product details:", error);

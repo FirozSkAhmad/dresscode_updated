@@ -1,13 +1,27 @@
 const mongoose = require("mongoose");
 const crypto = require('crypto'); // Use crypto module for random string generation
 
-const variantSchema = new mongoose.Schema({
-    size: {
+const reviewSchema = new mongoose.Schema({
+    username: {
         type: String,
         required: true,
-        trim: true,
-        enum: ["S", "M", "L", "XL", "XXL"],
+        default: null
     },
+    rating: {
+        type: Number,
+        required: true,
+        min: 1,
+        max: 5,
+        default: null
+    },
+    comment: {
+        type: String,
+        required: true,
+        default: null
+    },
+}, { timestamps: true });
+
+const variantSchema = new mongoose.Schema({
     color: {
         type: String,
         required: true,
@@ -23,12 +37,20 @@ const variantSchema = new mongoose.Schema({
             "RED",
         ],
     },
-    quantity: {
-        type: Number,
-        required: true,
-        default: 100,
-    },
-    images: {
+    variantSizes: [{
+        size: {
+            type: String,
+            required: true,
+            trim: true,
+            enum: ["S", "M", "L", "XL", "XXL"],
+        },
+        quantity: {
+            type: Number,
+            required: true,
+            default: 100,
+        }
+    }],
+    imageUrls: {
         type: [String],
     },
     isDeleted: {
@@ -61,23 +83,41 @@ const eliteSchema = new mongoose.Schema({
         },
     },
     group: {
-        type: String,
-        required: true,
-        trim: true,
-        default: "ELITE",
+        name: {
+            type: String,
+            required: true,
+            trim: true,
+            default: "ELITE"
+        },
+        imageUrl: {
+            type: String,
+            required: true
+        }
     },
     category: {
-        type: String,
-        required: true,
-        trim: true,
-        default: "CORPORATE UNIFORMS",
-        enum: ["CORPORATE UNIFORMS"],
+        name: {
+            type: String,
+            required: true,
+            trim: true,
+            default: "CORPORATE UNIFORMS",
+            enum: ["CORPORATE UNIFORMS"]
+        },
+        imageUrl: {
+            type: String,
+            required: true
+        }
     },
     subCategory: {
-        type: String,
-        required: true,
-        trim: true,
-        enum: ["ADMIN UNIFORMS", "RECEPTIONIST UNIFORMS", "CUSTOM UNIFORMS", "CUSTOM T-SHIRTS"],
+        name: {
+            type: String,
+            required: true,
+            trim: true,
+            enum: ["ADMIN UNIFORMS", "RECEPTIONIST UNIFORMS", "CUSTOM UNIFORMS", "CUSTOM T-SHIRTS"]
+        },
+        imageUrl: {
+            type: String,
+            required: true
+        }
     },
     gender: {
         type: String,
@@ -86,10 +126,16 @@ const eliteSchema = new mongoose.Schema({
         enum: ["MEN", "WOMEN"],
     },
     productType: {
-        type: String,
-        required: true,
-        trim: true,
-        enum: ["SHIRT", "T-SHIRT", "SKIRT", "TROUSER", "WAISTCOAT", "BLAZER"],
+        type: {
+            type: String,
+            required: true,
+            trim: true,
+            enum: ["SHIRT", "T-SHIRT", "SKIRT", "TROUSER", "WAISTCOAT", "BLAZER"],
+        },
+        imageUrl: {
+            type: String,
+            required: true
+        }
     },
     fit: {
         type: String,
@@ -115,11 +161,12 @@ const eliteSchema = new mongoose.Schema({
         required: true,
         default: false,
     },
+    reviews: [reviewSchema]
 }, { timestamps: true });
 
 eliteSchema.pre('save', async function (next) {
     // Additional validation logic, e.g., custom business rules
-    if (!this.group.startsWith('ELITE')) {
+    if (!this.group.name.startsWith('ELITE')) {
         throw new Error('Group must start with "ELITE"');
     }
     next();

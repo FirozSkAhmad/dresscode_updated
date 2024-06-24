@@ -5,17 +5,6 @@ const JwtHelper = require('../utils/Helpers/jwt_helper')
 const jwtHelperObj = new JwtHelper();
 const router = express.Router()
 
-
-router.get('/getGroups', async (req, res, next) => {
-    try {
-        const EComServiceObj = new EComService();
-        const result = await EComServiceObj.getGroups(req.body);
-        res.status(200).send(result)
-    } catch (err) {
-        next(err);
-    }
-});
-
 router.get('/getGroups', async (req, res, next) => {
     try {
         const EComServiceObj = new EComService();
@@ -29,7 +18,7 @@ router.get('/getGroups', async (req, res, next) => {
 
 router.get('/getCategories', async (req, res, next) => {
     try {
-        const { groupName } = req.query
+        const { groupName } = req.body
         const EComServiceObj = new EComService();
         const result = await EComServiceObj.getCategories(groupName);
         res.status(200).send(result)
@@ -41,7 +30,7 @@ router.get('/getCategories', async (req, res, next) => {
 
 router.get('/getSubCategories', async (req, res, next) => {
     try {
-        const { groupName, category } = req.query
+        const { groupName, category } = req.body
         const EComServiceObj = new EComService();
         const result = await EComServiceObj.getSubCategories(groupName, category);
         res.status(200).send(result)
@@ -50,22 +39,22 @@ router.get('/getSubCategories', async (req, res, next) => {
     }
 });
 
-router.get('/getProductsTypes', async (req, res, next) => {
+router.get('/getProductTypes', async (req, res, next) => {
     try {
-        const { groupName, category, subCategory } = req.query
+        const { groupName, category, subCategory } = req.body
         const EComServiceObj = new EComService();
-        const result = await EComServiceObj.getProductsTypes(groupName, category, subCategory);
+        const result = await EComServiceObj.getProductTypes(groupName, category, subCategory);
         res.status(200).send(result)
     } catch (err) {
         next(err);
     }
 });
 
-router.get('/getProducts', async (req, res, next) => {
+router.get('/getProductFilters', async (req, res, next) => {
     try {
-        const { groupName, category, subCategory, gender, productType } = req.query
+        const { groupName, category, subCategory, gender, productType } = req.body
         const EComServiceObj = new EComService();
-        const result = await EComServiceObj.getProducts(groupName, category, subCategory, gender, productType);
+        const result = await EComServiceObj.getProductFilters(groupName, category, subCategory, gender, productType);
         res.status(200).send(result)
     } catch (err) {
         next(err);
@@ -138,22 +127,22 @@ router.get('/getProductsByFilters', async (req, res, next) => {
     }
 });
 
-router.get('/getProductVariantColors', async (req, res, next) => {
+router.get('/getProductVariantAvaColors', async (req, res, next) => {
     try {
         const { groupName, productId } = req.body
         const EComServiceObj = new EComService();
-        const result = await EComServiceObj.getProductVariantColors(groupName, productId);
+        const result = await EComServiceObj.getProductVariantAvaColors(groupName, productId);
         res.status(200).send(result)
     } catch (err) {
         next(err);
     }
 });
 
-router.get('/getSizesByColor', async (req, res, next) => {
+router.get('/getAvaSizesByColor', async (req, res, next) => {
     try {
         const { groupName, productId, color } = req.body
         const EComServiceObj = new EComService();
-        const result = await EComServiceObj.getSizesByColor(groupName, productId, color);
+        const result = await EComServiceObj.getAvaSizesByColor(groupName, productId, color);
         res.status(200).send(result)
     } catch (err) {
         next(err);

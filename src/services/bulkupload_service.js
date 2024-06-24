@@ -3,7 +3,7 @@ const stream = require('stream');
 const csv = require('csv-parser');
 
 class BulkUploadService {
-    constructor() {}
+    constructor() { }
 
     async processCsvFile(buffer) {
         const data = await this.parseCsv(buffer);
@@ -21,19 +21,35 @@ class BulkUploadService {
                 .pipe(csv({ mapHeaders: ({ header }) => header.trim() }))
                 .on('data', (data) => {
                     results.push({
-                        group: data.group,
-                        category: data.category,
-                        subCategory: data.subCategory,
+                        group: {
+                            name: data.groupName,
+                            imageUrl: data.groupImageUrl
+                        },
+                        category: {
+                            name: data.categoryName,
+                            imageUrl: data.categoryImageUrl
+                        },
+                        subCategory: {
+                            name: data.subCategoryName,
+                            imageUrl: data.subCategoryImageUrl
+                        },
                         gender: data.gender,
-                        productType: data.productType,
+                        productType: {
+                            type: data.productType,
+                            imageUrl: data.productTypeImageUrl
+                        },
                         fit: data.fit,
                         neckline: data.neckline,
                         sleeves: data.sleeves,
                         variant: {
-                            size: data.variantSize,
                             color: data.variantColor,
-                            quantity: parseInt(data.variantQuantity),
-                            images: data.variantImages.split(';'),
+                            variantSizes: [
+                                {
+                                    size: data.variantSize,
+                                    quantity: parseInt(data.variantQuantity),
+                                }
+                            ],
+                            imageUrls: data.variantImages ? data.variantImages.split(';') : [],
                         }
                     });
                 })
@@ -51,35 +67,34 @@ class BulkUploadService {
 
     async addVariant(item) {
         const existingProduct = await EliteModel.findOne({
-            group: item.group,
-            category: item.category,
-            subCategory: item.subCategory,
+            'group.name': item.group.name,
+            'category.name': item.category.name,
+            'subCategory.name': item.subCategory.name,
             gender: item.gender,
-            productType: item.productType,
+            'productType.type': item.productType.type,
             fit: item.fit,
             neckline: item.neckline,
             sleeves: item.sleeves
         });
 
         if (existingProduct) {
-            const variantExists = existingProduct.variants.findIndex(variant => 
-                variant.size === item.variant.size && variant.color === item.variant.color);
-
-            if (variantExists > -1) {
-                // Variant exists, update its quantity
-                const variantPath = `variants.${variantExists}.quantity`;
-                await EliteModel.updateOne(
-                    { _id: existingProduct._id },
-                    { $inc: { [variantPath]: item.variant.quantity } }
-                );
+            const variant = existingProduct.variants.find(v => v.color === item.variant.color);
+            if (variant) {
+                // Update existing variant's details or add new size details
+                const sizeDetail = variant.variantSizes.find(v => v.size === item.variant.variantSizes[0].size);
+                if (sizeDetail) {
+                    sizeDetail.quantity += item.variant.variantSizes[0].quantity;
+                } else {
+                    variant.variantSizes.push(item.variant.variantSizes[0]);
+                }
+                await existingProduct.save();  // Save updates
             } else {
-                await EliteModel.updateOne(
-                    { _id: existingProduct._id },
-                    { $push: { variants: item.variant } }
-                );
+                // Push new variant if color does not exist
+                existingProduct.variants.push(item.variant);
+                await existingProduct.save();
             }
         } else {
-            // Create a new product if it does not exist
+            // Create new product if it does not exist
             await EliteModel.create({
                 group: item.group,
                 category: item.category,
