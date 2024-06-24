@@ -14,8 +14,8 @@ class MongoDBConnection {
             // Set strictQuery before establishing the connection
             mongoose.set('strictQuery', true);  // Set to false if you prefer the non-strict behavior
 
-            // const mongoUri = `mongodb+srv://${process.env.MONGO_USERNAME}:${process.env.MONGO_PASSWORD}@${process.env.MONGO_HOST}.${process.env.MONGO_PORT}/${process.env.MONGO_DATABASE}`;
-            const mongoUri = `mongodb+srv://admin:qGCSm0JBzxaoI0lB@dresscode.fcmadnw.mongodb.net/DressCodeDB`;
+            const mongoUri = `mongodb+srv://${process.env.MONGO_USERNAME}:${process.env.MONGO_PASSWORD}@${process.env.MONGO_HOST}.${process.env.MONGO_PORT}/${process.env.MONGO_DATABASE}`;
+            // const mongoUri = `mongodb+srv://admin:qGCSm0JBzxaoI0lB@dresscode.fcmadnw.mongodb.net/DressCodeDB`;
             
             await mongoose.connect(mongoUri);
             
