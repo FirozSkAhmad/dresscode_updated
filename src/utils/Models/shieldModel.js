@@ -120,20 +120,30 @@ const shieldSchema = new mongoose.Schema(
             enum: ['MEN', 'WOMEN'],
         },
         productType: {
-            type: String,
-            required: true,
-            trim: true,
-            enum: ['SHIRT', 'BLAZER', 'TROUSER'],
+            type: {
+                type: String,
+                required: true,
+                trim: true,
+                enum: ['SHIRT', 'BLAZER', 'TROUSER'],
+            },
+            imageUrl: {
+                type: String,
+                required: true
+            }
         },
         fit: {
             type: String,
             required: true,
             trim: true,
-            default: 'CLASSIC FITS'
+            default: 'CLASSIC FITS',
+            enum: [
+                'CLASSIC FITS'
+            ]
         },
         fabric: {
             type: String,
             required: true,
+            default: "POLY COTTON",
             enum: [
                 "POLY COTTON"
             ]

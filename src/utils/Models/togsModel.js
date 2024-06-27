@@ -129,13 +129,19 @@ const togsSchema = new mongoose.Schema(
             enum: ['GIRL', 'BOY'],
         },
         productType: {
-            type: String,
-            required: true,
-            trim: true,
-            enum: [
-                'SHIRT', 'T-SHIRT', 'SKIRTS', 'TROUSER', 'WAISTCOAT', 'BLAZER', 'TRACK PANTS',
-                'HOODIES', 'SWEATSHIRTS', 'JACKETS', 'PINAFORE', 'CULOTTES', 'PANTS', 'SHORTS', 'SWEATER'
-            ],
+            type: {
+                type: String,
+                required: true,
+                trim: true,
+                enum: [
+                    'SHIRT', 'T-SHIRT', 'SKIRTS', 'TROUSER', 'WAISTCOAT', 'BLAZER', 'TRACK PANTS',
+                    'HOODIES', 'SWEATSHIRTS', 'JACKETS', 'PINAFORE', 'CULOTTES', 'PANTS', 'SHORTS', 'SWEATER'
+                ],
+            },
+            imageUrl: {
+                type: String,
+                required: true
+            }
         },
         fit: {
             type: String,

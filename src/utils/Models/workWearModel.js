@@ -109,12 +109,6 @@ const workWearSchema = new mongoose.Schema(
                 required: true
             }
         },
-        group: {
-            type: String,
-            required: true,
-            trim: true,
-            default: 'WORK WEAR UNIFORMS'
-        },
         gender: {
             type: String,
             required: true,
@@ -122,10 +116,16 @@ const workWearSchema = new mongoose.Schema(
             enum: ['MEN', 'WOMEN']
         },
         productType: {
-            type: String,
-            required: true,
-            trim: true,
-            enum: ['SHIRT', 'T-SHIRT', 'TROUSER', 'OVERALLS']
+            type: {
+                type: String,
+                required: true,
+                trim: true,
+                enum: ['SHIRT', 'T-SHIRT', 'TROUSER', 'OVERALLS']
+            },
+            imageUrl: {
+                type: String,
+                required: true
+            }
         },
         fit: {
             type: String,

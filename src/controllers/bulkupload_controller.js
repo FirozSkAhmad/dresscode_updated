@@ -59,7 +59,7 @@ function isCsvFile(file) {
     return fileExtension === 'csv' && mimeType === 'text/csv';
 }
 
-router.post("/bulkUploadElite", upload.single('file'), async (req, res, next) => {// jwtHelperObj.verifyAccessToken,
+router.post("/bulkUploadElites", upload.single('file'), async (req, res, next) => {// jwtHelperObj.verifyAccessToken,
     try {
         // const role_type = req.aud.split(":")[1]; // Ensure you have middleware to decode JWT and add it to req
         // if (role_type !== "WAREHOUSE_MANAGER") {
@@ -74,7 +74,7 @@ router.post("/bulkUploadElite", upload.single('file'), async (req, res, next) =>
         }
 
         const bulkUploadServiceObj = new BulkUploadService();
-        const result = await bulkUploadServiceObj.processCsvFile(req.file.buffer);
+        const result = await bulkUploadServiceObj.processEliteCsvFile(req.file.buffer);
         res.json(result);
     } catch (err) {
         console.error("Error while uploading the data:", err.message);
@@ -82,7 +82,119 @@ router.post("/bulkUploadElite", upload.single('file'), async (req, res, next) =>
     }
 });
 
-module.exports = router;
+router.post("/bulkUploadWorkWears", upload.single('file'), async (req, res, next) => {// jwtHelperObj.verifyAccessToken,
+    try {
+        // const role_type = req.aud.split(":")[1]; // Ensure you have middleware to decode JWT and add it to req
+        // if (role_type !== "WAREHOUSE_MANAGER") {
+        //     return res.status(401).json({
+        //         status: 401,
+        //         message: "Unauthorized access. Only Warehouse Manager can upload data."
+        //     });
+        // }
 
+        if (!req.file || !isCsvFile(req.file)) {
+            return res.status(400).json({ status: 400, message: "Invalid file format. Please upload a CSV file." });
+        }
+
+        const bulkUploadServiceObj = new BulkUploadService();
+        const result = await bulkUploadServiceObj.processWorkWearCsvFile(req.file.buffer);
+        res.json(result);
+    } catch (err) {
+        console.error("Error while uploading the data:", err.message);
+        next(err);
+    }
+});
+
+router.post("/bulkUploadSpirits", upload.single('file'), async (req, res, next) => {// jwtHelperObj.verifyAccessToken,
+    try {
+        // const role_type = req.aud.split(":")[1]; // Ensure you have middleware to decode JWT and add it to req
+        // if (role_type !== "WAREHOUSE_MANAGER") {
+        //     return res.status(401).json({
+        //         status: 401,
+        //         message: "Unauthorized access. Only Warehouse Manager can upload data."
+        //     });
+        // }
+
+        if (!req.file || !isCsvFile(req.file)) {
+            return res.status(400).json({ status: 400, message: "Invalid file format. Please upload a CSV file." });
+        }
+
+        const bulkUploadServiceObj = new BulkUploadService();
+        const result = await bulkUploadServiceObj.processSpiritsCsvFile(req.file.buffer);
+        res.json(result);
+    } catch (err) {
+        console.error("Error while uploading the data:", err.message);
+        next(err);
+    }
+});
+
+router.post("/bulkUploadTogs", upload.single('file'), async (req, res, next) => {// jwtHelperObj.verifyAccessToken,
+    try {
+        // const role_type = req.aud.split(":")[1]; // Ensure you have middleware to decode JWT and add it to req
+        // if (role_type !== "WAREHOUSE_MANAGER") {
+        //     return res.status(401).json({
+        //         status: 401,
+        //         message: "Unauthorized access. Only Warehouse Manager can upload data."
+        //     });
+        // }
+
+        if (!req.file || !isCsvFile(req.file)) {
+            return res.status(400).json({ status: 400, message: "Invalid file format. Please upload a CSV file." });
+        }
+
+        const bulkUploadServiceObj = new BulkUploadService();
+        const result = await bulkUploadServiceObj.processTogsCsvFile(req.file.buffer);
+        res.json(result);
+    } catch (err) {
+        console.error("Error while uploading the data:", err.message);
+        next(err);
+    }
+});
+
+router.post("/bulkUploadShields", upload.single('file'), async (req, res, next) => {// jwtHelperObj.verifyAccessToken,
+    try {
+        // const role_type = req.aud.split(":")[1]; // Ensure you have middleware to decode JWT and add it to req
+        // if (role_type !== "WAREHOUSE_MANAGER") {
+        //     return res.status(401).json({
+        //         status: 401,
+        //         message: "Unauthorized access. Only Warehouse Manager can upload data."
+        //     });
+        // }
+
+        if (!req.file || !isCsvFile(req.file)) {
+            return res.status(400).json({ status: 400, message: "Invalid file format. Please upload a CSV file." });
+        }
+
+        const bulkUploadServiceObj = new BulkUploadService();
+        const result = await bulkUploadServiceObj.processShieldsCsvFile(req.file.buffer);
+        res.json(result);
+    } catch (err) {
+        console.error("Error while uploading the data:", err.message);
+        next(err);
+    }
+});
+
+router.post("/bulkUploadHeals", upload.single('file'), async (req, res, next) => {// jwtHelperObj.verifyAccessToken,
+    try {
+        // const role_type = req.aud.split(":")[1]; // Ensure you have middleware to decode JWT and add it to req
+        // if (role_type !== "WAREHOUSE_MANAGER") {
+        //     return res.status(401).json({
+        //         status: 401,
+        //         message: "Unauthorized access. Only Warehouse Manager can upload data."
+        //     });
+        // }
+
+        if (!req.file || !isCsvFile(req.file)) {
+            return res.status(400).json({ status: 400, message: "Invalid file format. Please upload a CSV file." });
+        }
+
+        const bulkUploadServiceObj = new BulkUploadService();
+        const result = await bulkUploadServiceObj.processHealsCsvFile(req.file.buffer);
+        res.json(result);
+    } catch (err) {
+        console.error("Error while uploading the data:", err.message);
+        next(err);
+    }
+});
 
 module.exports = router;

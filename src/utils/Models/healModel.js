@@ -28,7 +28,7 @@ const variantSchema = new mongoose.Schema({
         enum: [
             "BLACK", "SAGE GREEN", "CHERRY LACQUER",
             "ELECTRIC INDIGO", "MAUVE", "CELESTIAL YELLOW",
-            "DUSTED GRAPE", "SEPIA MIDNIGHT", "PLUM",
+            "DUSTED GRAPE", "SEPIA MIDNIGHT PLUM",
             "TERRACOTTA", "DIGITAL MIST", "COATS COLOR"
         ],
     },
@@ -123,10 +123,16 @@ const healSchema = new mongoose.Schema(
             enum: ['UNISEX', 'MEN', 'WOMEN'],
         },
         productType: {
-            type: String,
-            required: true,
-            trim: true,
-            enum: ['SHORT COATS', 'LONG COATS', 'TOP', 'PANT'],
+            type: {
+                type: String,
+                required: true,
+                trim: true,
+                enum: ['SHORT COATS', 'LONG COATS', 'TOP', 'PANT'],
+            },
+            imageUrl: {
+                type: String,
+                required: true
+            }
         },
         fit: {
             type: String,
@@ -143,7 +149,7 @@ const healSchema = new mongoose.Schema(
             type: String,
             required: true,
             trim: true,
-            enum: ["POLY COTTON", "LAB COATS"],
+            enum: ["POLY COTTON", "LAB COATS", "SPUN POLYESTER", "100% POLYESTER", ""],
         },
         variants: [variantSchema],
         isDeleted: {
@@ -159,5 +165,11 @@ const healSchema = new mongoose.Schema(
 );
 
 healSchema.index({ productId: 1 });
+healSchema.index({
+    'group.name': 'text', 'category.name': 'text', 'subCategory.name': 'text',
+    'gender': 'text', 'productType.type': 'text', 'fit': 'text',
+    'sleeves': 'text', 'fabric': 'text', 'variants.color': 'text',
+    'variants.color': 'text', 'variants.variantSizes.size': 'text'
+});
 
 module.exports = mongoose.model("Heals", healSchema);

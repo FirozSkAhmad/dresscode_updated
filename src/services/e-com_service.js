@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
-const HealCoatsModel = require('../utils/Models/healCoatsModel');
-const HealScrubsModel = require('../utils/Models/healScrubsModel');
+const HealModel = require('../utils/Models/healModel');
 const ShieldModel = require('../utils/Models/shieldModel');
 const EliteModel = require('../utils/Models/eliteModel');
 const TogsModel = require('../utils/Models/togsModel');
@@ -16,7 +15,7 @@ class EComService {
 
     async getGroups() {
         const models = {
-            HEAL: HealScrubsModel,
+            HEAL: HealModel,
             SHIELD: ShieldModel,
             ELITE: EliteModel,
             TOGS: TogsModel,
@@ -64,7 +63,7 @@ class EComService {
             let model;
             switch (groupName) {
                 case "HEAL":
-                    model = HealScrubsModel;
+                    model = HealModel;
                     break;
                 case "SHIELD":
                     model = ShieldModel;
@@ -91,7 +90,7 @@ class EComService {
                 { $match: { isDeleted: false } }, // Filter out deleted items
                 {
                     $group: { // Group by category name and imageUrl to ensure uniqueness
-                        _id: { name: "$category.name", imageUrl: "$category.imageUrl" },
+                        _id: { name: "$category.name" },//, imageUrl: "$category.imageUrl" 
                         category: { $first: "$category.name" },
                         imageUrl: { $first: "$category.imageUrl" }
                     }
@@ -120,7 +119,7 @@ class EComService {
 
         switch (groupName) {
             case "HEAL":
-                modelToUse = HealScrubsModel;
+                modelToUse = HealModel;
                 break;
             case "SHIELD":
                 modelToUse = ShieldModel;
@@ -179,7 +178,7 @@ class EComService {
 
         switch (groupName) {
             case "HEAL":
-                modelToUse = HealScrubsModel;
+                modelToUse = HealModel;
                 break;
             case "SHIELD":
                 modelToUse = ShieldModel;
@@ -201,9 +200,9 @@ class EComService {
         }
 
         // Ensure category, subCategory, and a valid model are chosen
-        if (!category || !subCategory || !modelToUse) {
-            return []; // Return an empty array if any essential input is missing
-        }
+        // if (!category || !subCategory || !modelToUse) {
+        //     return []; // Return an empty array if any essential input is missing
+        // }
 
         const query = { 'category.name': category, 'subCategory.name': subCategory }; // Filter by category and subCategory
 
@@ -236,7 +235,7 @@ class EComService {
 
     async getProductFilters(groupName, category, subCategory, gender, productType) {
         const modelMap = {
-            "HEAL": HealScrubsModel,
+            "HEAL": HealModel,
             "SHIELD": ShieldModel,
             "ELITE": EliteModel,
             "TOGS": TogsModel,
@@ -246,10 +245,10 @@ class EComService {
 
         const modelToUse = modelMap[groupName];
 
-        if (!modelToUse || !category || !subCategory) {
-            console.error("Invalid parameters provided");
-            return { filters: {} };
-        }
+        // if (!modelToUse || !category || !subCategory) {
+        //     console.error("Invalid parameters provided");
+        //     return { filters: {} };
+        // }
 
         const query = {
             "category.name": category,
@@ -264,6 +263,7 @@ class EComService {
                 {
                     $facet: {
                         fits: [{ $group: { _id: null, fits: { $addToSet: "$fit" } } }],
+                        fabrics: [{ $group: { _id: null, fabrics: { $addToSet: "$fabric" } } }],
                         colors: [
                             { $unwind: "$variants" },
                             { $group: { _id: null, colors: { $addToSet: "$variants.color" } } }
@@ -280,14 +280,62 @@ class EComService {
                 }
             ]);
 
-            const { fits, colors, sizes, necklines, sleeves } = results[0];
-            return {
-                filters: {
-                    fits: fits[0]?.fits || [],
+            const { fits, colors, sizes, fabrics, necklines, sleeves } = results[0];
+            if (groupName === "HEAL") {
+                if (category === "COATS") {
+                    return {
+                        fabrics: fabrics[0]?.fabrics || [],
+                        sleeves: sleeves[0]?.sleeves || [],
+                        sizes: sizes[0]?.sizes || [],
+                    }
+                } else {
+                    return {
+                        fabrics: fabrics[0]?.fabrics || [],
+                        colors: colors[0]?.colors || [],
+                        sizes: sizes[0]?.sizes || [],
+                    }
+                }
+
+            }
+            else if (groupName === "WORK WEAR UNIFORMS" || groupName === "SHIELD") {
+                return {
                     colors: colors[0]?.colors || [],
                     sizes: sizes[0]?.sizes || [],
-                    necklines: necklines[0]?.necklines || [],
-                    sleeves: sleeves[0]?.sleeves || []
+                }
+            } else if (groupName === "SPIRIT") {
+                if (['JACKETS', 'JERSEY T-SHIRT'].includes(productType)) {
+                    return {
+                        filters: {
+                            colors: colors[0]?.colors || [],
+                            sizes: sizes[0]?.sizes || [],
+                            necklines: necklines[0]?.necklines || [],
+                            sleeves: sleeves[0]?.sleeves || []
+                        }
+                    }
+                } else {
+                    return {
+                        colors: colors[0]?.colors || [],
+                        sizes: sizes[0]?.sizes || [],
+                    }
+                }
+            } else if (groupName === "TOGS") {
+                return {
+                    filters: {
+                        fits: fits[0]?.fits || [],
+                        colors: colors[0]?.colors || [],
+                        sizes: sizes[0]?.sizes || [],
+                    }
+                }
+            }
+            else {
+                return {
+                    filters: {
+                        fits: fits[0]?.fits || [],
+                        colors: colors[0]?.colors || [],
+                        sizes: sizes[0]?.sizes || [],
+                        necklines: necklines[0]?.necklines || [],
+                        sleeves: sleeves[0]?.sleeves || []
+                    }
                 }
             };
         } catch (error) {
@@ -302,7 +350,7 @@ class EComService {
 
         switch (groupName) {
             case "HEAL":
-                modelToUse = HealScrubsModel;
+                modelToUse = HealModel;
                 break;
             case "SHIELD":
                 modelToUse = ShieldModel;
@@ -364,7 +412,7 @@ class EComService {
 
         switch (groupName) {
             case "HEAL":
-                modelToUse = HealScrubsModel;
+                modelToUse = HealModel;
                 break;
             case "SHIELD":
                 modelToUse = ShieldModel;
@@ -429,7 +477,7 @@ class EComService {
 
         switch (groupName) {
             case "HEAL":
-                modelToUse = HealScrubsModel;
+                modelToUse = HealModel;
                 break;
             case "SHIELD":
                 modelToUse = ShieldModel;
@@ -494,7 +542,7 @@ class EComService {
 
         switch (groupName) {
             case "HEAL":
-                modelToUse = HealScrubsModel;
+                modelToUse = HealModel;
                 break;
             case "SHIELD":
                 modelToUse = ShieldModel;
@@ -556,7 +604,7 @@ class EComService {
 
         switch (groupName) {
             case "HEAL":
-                modelToUse = HealScrubsModel;
+                modelToUse = HealModel;
                 break;
             case "SHIELD":
                 modelToUse = ShieldModel;
@@ -615,7 +663,7 @@ class EComService {
 
     async getProductsByFilters(groupName, category, subCategory, gender, productType, fit, color, size, neckline, sleeves) {
         const modelMap = {
-            "HEAL": HealScrubsModel,
+            "HEAL": HealModel,
             "SHIELD": ShieldModel,
             "ELITE": EliteModel,
             "TOGS": TogsModel,
@@ -625,10 +673,10 @@ class EComService {
 
         const modelToUse = modelMap[groupName];
 
-        if (!modelToUse || !category || !subCategory) {
-            console.error("Invalid parameters provided");
-            return [];
-        }
+        // if (!modelToUse || !category || !subCategory) {
+        //     console.error("Invalid parameters provided");
+        //     return [];
+        // }
 
         // Building the query dynamically based on provided parameters
         const matchQuery = {
@@ -660,6 +708,7 @@ class EComService {
                         fit: 1,
                         neckline: 1,
                         sleeves: 1,
+                        fabric: 1,
                         variants: {
                             $filter: {
                                 input: "$variants",
@@ -729,7 +778,7 @@ class EComService {
 
     async getProductVariantAvaColors(groupName, productId) {
         const modelMap = {
-            "HEAL": HealScrubsModel,
+            "HEAL": HealModel,
             "SHIELD": ShieldModel,
             "ELITE": EliteModel,
             "TOGS": TogsModel,
@@ -775,7 +824,7 @@ class EComService {
 
     async getAvaSizesByColor(groupName, productId, color) {
         const modelMap = {
-            "HEAL": HealScrubsModel,
+            "HEAL": HealModel,
             "SHIELD": ShieldModel,
             "ELITE": EliteModel,
             "TOGS": TogsModel,
@@ -825,7 +874,7 @@ class EComService {
 
     async getProductDetailsWithSpecificVariant(groupName, productId, size, color) {
         const modelMap = {
-            "HEAL": HealScrubsModel,
+            "HEAL": HealModel,
             "SHIELD": ShieldModel,
             "ELITE": EliteModel,
             "TOGS": TogsModel,

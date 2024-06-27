@@ -117,17 +117,26 @@ const spiritSchema = new mongoose.Schema(
             enum: ['MEN', 'WOMEN', 'UNISEX']
         },
         productType: {
-            type: String,
-            required: true,
-            trim: true,
-            enum: ['JACKETS', 'JERSEY T-SHIRT', 'TRACK PANT', 'SHORTS', 'JOGGERS']
+            type: {
+                type: String,
+                required: true,
+                trim: true,
+                enum: ['JACKETS', 'JERSEY T-SHIRT', 'TRACK PANT', 'SHORTS', 'JOGGERS']
+
+            },
+            imageUrl: {
+                type: String,
+                required: true
+            }
         },
         neckline: {
             type: String,
+            default: null,
             enum: ['POLO NECK', 'ROUND NECK'], // Only applicable to tops
         },
         sleeves: {
             type: String,
+            default: null,
             enum: ['FULL SLEEVES', 'HALF SLEEVES', 'SLEEVELESS'], // Only applicable to tops
         },
         variants: [variantSchema],
