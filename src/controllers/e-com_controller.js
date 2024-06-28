@@ -18,7 +18,7 @@ router.get('/getGroups', async (req, res, next) => {
 
 router.get('/getCategories', async (req, res, next) => {
     try {
-        const { groupName } = req.body
+        const { groupName } = req.params
         const EComServiceObj = new EComService();
         const result = await EComServiceObj.getCategories(groupName);
         res.status(200).send(result)
@@ -30,7 +30,7 @@ router.get('/getCategories', async (req, res, next) => {
 
 router.get('/getSubCategories', async (req, res, next) => {
     try {
-        const { groupName, category } = req.body
+        const { groupName, category } = req.params
         const EComServiceObj = new EComService();
         const result = await EComServiceObj.getSubCategories(groupName, category);
         res.status(200).send(result)
@@ -41,7 +41,7 @@ router.get('/getSubCategories', async (req, res, next) => {
 
 router.get('/getProductTypes', async (req, res, next) => {
     try {
-        const { groupName, category, subCategory } = req.body
+        const { groupName, category, subCategory } = req.params
         const EComServiceObj = new EComService();
         const result = await EComServiceObj.getProductTypes(groupName, category, subCategory);
         res.status(200).send(result)
