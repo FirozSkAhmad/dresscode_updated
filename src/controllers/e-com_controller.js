@@ -118,7 +118,7 @@ router.get('/getSleeves', async (req, res, next) => {
 
 router.get('/getProductsByFilters', async (req, res, next) => {
     try {
-        const { groupName, category, subCategory, gender, productType, fit, color, size, neckline, sleeves } = req.body
+        const { groupName, category, subCategory, gender, productType, fit, color, size, neckline, sleeves } = req.query
         const EComServiceObj = new EComService();
         const result = await EComServiceObj.getProductsByFilters(groupName, category, subCategory, gender, productType, fit, color, size, neckline, sleeves);
         res.status(200).send(result)
