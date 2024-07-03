@@ -661,7 +661,7 @@ class EComService {
         return results.length > 0 ? results[0].sleeves : []; // Return the sleeves array or an empty array if no results found
     }
 
-    async getProductsByFilters(groupName, category, subCategory, gender, productType, fit, color, size, neckline, sleeves) {
+    async  getProductsByFilters(groupName, category, subCategory, gender, productType, fit, color, size, neckline, sleeves) {
         const modelMap = {
             "HEAL": HealModel,
             "SHIELD": ShieldModel,

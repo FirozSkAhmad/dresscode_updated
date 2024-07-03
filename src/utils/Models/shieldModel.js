@@ -14,6 +14,7 @@ const reviewSchema = new mongoose.Schema({
         max: 5,
         default: null
     },
+    imgUrl: [String],
     comment: {
         type: String,
         required: true,
@@ -65,6 +66,7 @@ const variantSchema = new mongoose.Schema({
 
 // Indexing the variantId
 variantSchema.index({ variantId: 1 }); // Create an index on variantId
+variantSchema.index({ color: 1 }); // Create an index on color
 
 const shieldSchema = new mongoose.Schema(
     {
@@ -147,6 +149,17 @@ const shieldSchema = new mongoose.Schema(
             enum: [
                 "POLY COTTON"
             ]
+        },
+        price: {
+            type: Number,
+            required: true,
+            trim: true,
+            default: null
+        },
+        productDeatails: {
+            type: String,
+            required: true,
+            trim: true,
         },
         variants: [variantSchema],
         isDeleted: {

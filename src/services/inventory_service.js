@@ -1,6 +1,5 @@
 const ProductModel = require('../utils/Models/productModel');
-const HealCoatsModel = require('../utils/Models/healCoatsModel');
-const HealScrubsModel = require('../utils/Models/healScrubsModel');
+const HealModel = require('../utils/Models/healModel');
 const ShieldModel = require('../utils/Models/shieldModel');
 const EliteModel = require('../utils/Models/eliteModel');
 const TogsModel = require('../utils/Models/togsModel');

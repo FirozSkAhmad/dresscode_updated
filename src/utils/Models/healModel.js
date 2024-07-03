@@ -14,6 +14,7 @@ const reviewSchema = new mongoose.Schema({
         max: 5,
         default: null
     },
+    imgUrl: [String],
     comment: {
         type: String,
         required: true,
@@ -68,6 +69,7 @@ const variantSchema = new mongoose.Schema({
 
 // Indexing the variantId
 variantSchema.index({ variantId: 1 }); // Create an index on variantId
+variantSchema.index({ color: 1 }); // Create an index on variantId
 
 const healSchema = new mongoose.Schema(
     {
@@ -149,8 +151,20 @@ const healSchema = new mongoose.Schema(
             type: String,
             required: true,
             trim: true,
-            enum: ["POLY COTTON", "LAB COATS", "SPUN POLYESTER", "100% POLYESTER", ""],
+            enum: ["POLY COTTON", "LAB COATS", "SPUN POLYESTER", "100% POLYESTER"],
         },
+        // price: {
+        //     type: Number,
+        //     required: true,
+        //     trim: true,
+        //     default: null
+        // },
+        // productDeatails: {
+        //     type: String,
+        //     required: true,
+        //     trim: true,
+        //     default: null
+        // },
         variants: [variantSchema],
         isDeleted: {
             type: Boolean,
@@ -168,8 +182,8 @@ healSchema.index({ productId: 1 });
 healSchema.index({
     'group.name': 'text', 'category.name': 'text', 'subCategory.name': 'text',
     'gender': 'text', 'productType.type': 'text', 'fit': 'text',
-    'sleeves': 'text', 'fabric': 'text', 'variants.color': 'text',
-    'variants.color': 'text', 'variants.variantSizes.size': 'text'
+    'sleeves': 'text', 'fabric': 'text', 'variants.variantSizes.size': 'text'
 });
+
 
 module.exports = mongoose.model("Heals", healSchema);

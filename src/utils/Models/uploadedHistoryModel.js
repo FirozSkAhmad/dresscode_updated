@@ -6,7 +6,7 @@ const productVariantSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId, // Reference to Product model
         required: true,
         ref: 'Product'
-    },
+    },// just add color and size instead of variantIdsQunatity
     variantIdsQunatity: [{
         variantId: {
             type: mongoose.Schema.Types.ObjectId, // Reference to Variant subdocuments in Product model

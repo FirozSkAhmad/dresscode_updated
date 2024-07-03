@@ -1,6 +1,8 @@
 const InventoryController = require('../controllers/inventory_controller')
 const BulkuploadController = require('../controllers/bulkupload_controller')
 const EComController = require('../controllers/e-com_controller')
+const UserController = require('../controllers/user_controller')
+const OrderController = require('../controllers/order_controller')
 
 class IndexRoute {
   constructor(expressApp) {
@@ -11,6 +13,8 @@ class IndexRoute {
     this.app.use('/inventory', InventoryController)
     this.app.use('/bulkUpload', BulkuploadController)
     this.app.use('/e-com', EComController)
+    this.app.use('/user', UserController)
+    this.app.use('/order', OrderController)
   }
 }
 

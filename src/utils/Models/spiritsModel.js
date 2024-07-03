@@ -14,6 +14,7 @@ const reviewSchema = new mongoose.Schema({
         max: 5,
         default: null
     },
+    imgUrl: [String],
     comment: {
         type: String,
         required: true,
@@ -73,6 +74,7 @@ const variantSchema = new mongoose.Schema({
 
 // Indexing the variantId
 variantSchema.index({ variantId: 1 }); // Create an index on variantId
+variantSchema.index({ color: 1 }); // Create an index on color
 
 const spiritSchema = new mongoose.Schema(
     {
@@ -138,6 +140,17 @@ const spiritSchema = new mongoose.Schema(
             type: String,
             default: null,
             enum: ['FULL SLEEVES', 'HALF SLEEVES', 'SLEEVELESS'], // Only applicable to tops
+        },
+        price: {
+            type: Number,
+            required: true,
+            trim: true,
+            default: null
+        },
+        productDeatails: {
+            type: String,
+            required: true,
+            trim: true,
         },
         variants: [variantSchema],
         isDeleted: {
