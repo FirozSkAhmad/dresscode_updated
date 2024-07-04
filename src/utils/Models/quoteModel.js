@@ -10,13 +10,12 @@ const quoteSchema = new mongoose.Schema({
     productId: { type: String, required: true, trim: true },
     color: { type: String, required: true, trim: true },
     size: { type: String, required: true, trim: true },
-    quantityOrdered: { type: Number, required: true, min: 1 },
-    price: { type: Number, required: true },
+    quantityRequired: { type: Number, required: true, min: 100 },
     logoUrl: {
-        type: String, required: true, trim: true
+        type: String, trim: true, default: null
     },
     logoPosition: {
-        type: String, required: true, trim: true
+        type: String, trim: true, default: null
     }
 });
 

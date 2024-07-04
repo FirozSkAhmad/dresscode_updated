@@ -12,7 +12,7 @@ const cartItemSchema = new mongoose.Schema({
     productId: { type: String, required: true, trim: true },
     color: { type: String, required: true, trim: true },
     size: { type: String, required: true, trim: true },
-    quantity: { type: Number, required: true, min: 1 },
+    quantityRequired: { type: Number, required: true, min: 1 },
 });
 
 const addressSchema = new mongoose.Schema({

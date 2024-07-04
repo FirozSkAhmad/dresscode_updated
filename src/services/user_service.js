@@ -114,6 +114,19 @@ class UserService {
         }
     }
 
+    async getUserDetails(userId) {
+        try {
+            const user = await UserModel.findById(userId, 'firstName lastName email gender phoneNumber');
+            if (!user) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
+            }
+            return user;
+        } catch (err) {
+            console.error("Error retrieving user details:", err.message);
+            throw err;
+        }
+    }
+
     async updateUserDetails(userId, updates) {
         try {
             // Fetch user by ID
@@ -186,7 +199,6 @@ class UserService {
         }
     }
 
-    // In UserService.js
     async updateAddress(userId, addressId, addressUpdates) {
         try {
             // Find the user
@@ -206,16 +218,21 @@ class UserService {
                         addr.markAsDefault = true;
                     }
                 });
-            }
+            } else {
+                // Find the specific address and ensure at least one default remains
+                const addressToUpdate = user.addresses.id(addressId);
+                if (!addressToUpdate) {
+                    throw new global.DATA.PLUGINS.httperrors.BadRequest("Address not found");
+                }
 
-            // Find the specific address by ID
-            const addressToUpdate = user.addresses.id(addressId);
-            if (!addressToUpdate) {
-                throw global.DATA.PLUGINS.httperrors.BadRequest("Address not found");
-            }
+                // If trying to unset the default and it's the last one, throw error
+                if (addressToUpdate.markAsDefault && !user.addresses.some(addr => addr.markAsDefault && addr._id.toString() !== addressId)) {
+                    throw new global.DATA.PLUGINS.httperrors.BadRequest("At least one address must be marked as default");
+                }
 
-            // Update the fields provided in addressUpdates
-            Object.assign(addressToUpdate, addressUpdates);
+                // Update the fields provided in addressUpdates
+                Object.assign(addressToUpdate, addressUpdates);
+            }
 
             // Save the user object after modifications
             const updatedUser = await user.save();
@@ -227,6 +244,7 @@ class UserService {
             throw err;
         }
     }
+
 
     async setDefaultAddress(userId, addressId) {
         try {
@@ -300,51 +318,58 @@ class UserService {
         }
     }
 
-    // async getUserOrders(userId) {
-    //     try {
-    //         const modelMap = {
-    //             "HEAL": HealModel,
-    //             "SHIELD": ShieldModel,
-    //             "ELITE": EliteModel,
-    //             "TOGS": TogsModel,
-    //             "SPIRIT": SpiritsModel,
-    //             "WORK WEAR UNIFORMS": WorkWearModel
-    //         };
-
-    //         // Retrieve the appropriate model based on the group provided.
-    //         const ProductModel = modelMap[group];
-    //         if (!ProductModel) {
-    //             // Throw an error if the group is not recognized (no matching model).
-    //             throw new global.DATA.PLUGINS.httperrors("Invalid product group");
-    //         }
-
-    //         try {
-    //             // Perform a database query to find all products in the specified group that are not deleted.
-    //             // Exclude variants and reviews from the returned documents for a cleaner response.
-    //             const products = await ProductModel.find({ isDeleted: false })
-    //                                                 .select('-variants -reviews')
-    //                                                 .exec();
-
-    //             // Return the fetched products.
-    //             return products;
-    //         // Assuming that orders are stored under a user's document
-    //         const userWithOrders = await UserModel.findById(userId).populate('orders').exec();
-    //         if (!userWithOrders) {
-    //             throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
-    //         }
-    //         return userWithOrders.orders;
-    //     } catch (err) {
-    //         console.error("Error retrieving user orders:", err.message);
-    //         throw err;
-    //     }
-    // }
-
     async getUserOrdersWithProductDetails(userId) {
         try {
-            // Find the user's orders
-            const user = await UserModel.findById(userId).populate('orders');
+            const user = await UserModel.findById(userId).populate({
+                path: 'orders'
+            });
             if (!user) {
                 throw new Error('User not found');
+            }
+    
+            const modelMap = {
+                "HEAL": HealModel,
+                "SHIELD": ShieldModel,
+                "ELITE": EliteModel,
+                "TOGS": TogsModel,
+                "SPIRIT": SpiritsModel,
+                "WORK WEAR UNIFORMS": WorkWearModel
+            };
+    
+            const ordersWithDetails = await Promise.all(user.orders.map(async (order) => {
+                const ProductModel = modelMap[order.group];
+                if (!ProductModel) {
+                    throw new Error("Invalid product group");
+                }
+                const productDetails = await ProductModel.findOne({ productId: order.productId })
+                    .select('-variants -reviews -isDeleted -createdAt -updatedAt -__v');
+                const addressDetails = user.addresses.id(order.address);  // Manually find the address using its ID
+    
+                if (!addressDetails) {
+                    throw new Error("Address not found");
+                }
+    
+                return {
+                    ...order.toObject(),
+                    productDetails,
+                    addressDetails: addressDetails.toObject()  // Convert the subdocument to a plain object
+                };
+            }));
+    
+            return ordersWithDetails;
+        } catch (err) {
+            console.error("Error retrieving orders with product and address details:", err);
+            throw err;
+        }
+    }
+    
+
+    async getUserQuotesWithProductDetails(userId) {
+        try {
+            // Find the user's orders
+            const user = await UserModel.findById(userId).populate('quotes');
+            if (!user) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
             }
 
             const modelMap = {
@@ -357,24 +382,287 @@ class UserService {
             };
 
             // For each order, find the product details from the respective model
-            const ordersWithDetails = await Promise.all(user.orders.map(async (order) => {
-                const ProductModel = modelMap[order.group];
+            const quotesWithDetails = await Promise.all(user.quotes.map(async (quote) => {
+                const ProductModel = modelMap[quote.group];
                 if (!ProductModel) {
                     throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid product group");
                 }
-                const productDetails = await ProductModel.findOne({ productId: order.productId }).select('-variants -reviews -isDeleted -createdAt -updatedAt -__v');
+                const productDetails = await ProductModel.findOne({ productId: quote.productId }).select('-variants -reviews -isDeleted -createdAt -updatedAt -__v');
                 return {
-                    ...order.toObject(),
+                    ...quote.toObject(),
                     productDetails
                 };
             }));
 
-            return ordersWithDetails;
+            return quotesWithDetails;
         } catch (err) {
             console.error("Error retrieving orders with product details:", err);
             throw err;
         }
     }
 
+    async addToCart(userId, cartItem) {
+        try {
+            const user = await UserModel.findById(userId);
+            if (!user) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
+            }
+
+            // Check if the cart item already exists
+            const existingItem = user.cart.find(item =>
+                item.productId === cartItem.productId &&
+                item.group === cartItem.group &&
+                item.color === cartItem.color &&
+                item.size === cartItem.size
+            );
+
+            if (existingItem) {
+                // Item exists, update the quantity
+                existingItem.quantityRequired += cartItem.quantityRequired;
+            } else {
+                // New item, add to cart
+                user.cart.push(cartItem);
+            }
+
+            await user.save();
+
+            // Return only the item affected
+            const addedOrUpdatedCartItem = existingItem || user.cart[user.cart.length - 1];
+            return addedOrUpdatedCartItem;
+        } catch (err) {
+            console.error("Error adding to cart:", err.message);
+            throw err;
+        }
+    }
+
+    async getUserCartWithProductDetails(userId) {
+        try {
+            // Find the user's cart items
+            const user = await UserModel.findById(userId).populate('cart');
+            if (!user) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
+            }
+
+            const modelMap = {
+                "HEAL": HealModel,
+                "SHIELD": ShieldModel,
+                "ELITE": EliteModel,
+                "TOGS": TogsModel,
+                "SPIRIT": SpiritsModel,
+                "WORK WEAR UNIFORMS": WorkWearModel
+            };
+
+            // For each cart item, find the product details from the respective model
+            const cartWithDetails = await Promise.all(user.cart.map(async (cartItem) => {
+                const ProductModel = modelMap[cartItem.group];
+                if (!ProductModel) {
+                    throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid product group");
+                }
+                const productDetails = await ProductModel.findOne({ productId: cartItem.productId }).select('-variants -reviews -isDeleted -createdAt -updatedAt -__v');
+                return {
+                    ...cartItem.toObject(),
+                    productDetails
+                };
+            }));
+
+            return cartWithDetails;
+        } catch (err) {
+            console.error("Error retrieving cart items with product details:", err);
+            throw err;
+        }
+    }
+
+    async incrementCartItemQuantity(userId, cartItemId, quantityNeedToIncrease) {
+        try {
+            const user = await UserModel.findById(userId);
+            if (!user) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
+            }
+
+            // Use the `id` method to find the subdocument in the cart
+            const item = user.cart.id(cartItemId);
+
+            if (!item) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest('Cart item not found');
+            }
+
+            // Increase the quantity
+            item.quantityRequired += quantityNeedToIncrease;
+            await user.save();
+
+            return item;
+        } catch (err) {
+            console.error("Error increasing cart item quantity:", err.message);
+            throw err;
+        }
+    }
+
+    async removeCartItem(userId, cartItemId) {
+        try {
+            const user = await UserModel.findById(userId);
+            if (!user) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
+            }
+
+            // Check if the cart item exists
+            const item = user.cart.id(cartItemId);
+            if (!item) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest('Cart item not found');
+            }
+
+            // Remove the item using Mongoose array pull method
+            user.cart.pull({ _id: cartItemId });  // _id is used to match the subdocument
+            await user.save();
+
+            return { message: "Cart item removed successfully" };
+        } catch (err) {
+            console.error("Error removing cart item:", err.message);
+            throw err;
+        }
+    }
+
+    async addToWishlist(userId, wishItem) {
+        try {
+            const user = await UserModel.findById(userId);
+            if (!user) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
+            }
+
+            // Check if the wishlist item already exists
+            const existingItem = user.wishlist.find(item =>
+                item.productId === wishItem.productId &&
+                item.group === wishItem.group &&
+                item.color === wishItem.color &&
+                item.size === wishItem.size
+            );
+
+            if (existingItem) {
+                // Item exists, do not add again
+                throw new global.DATA.PLUGINS.httperrors.BadRequest('Item is already in wishlist');
+            } else {
+                // New item, add to wishlist
+                user.wishlist.push(wishItem);
+                await user.save();
+
+                // Return only the last item added to the wishlist
+                const addedWishlistItem = user.wishlist[user.wishlist.length - 1];
+                return addedWishlistItem;
+            }
+        } catch (err) {
+            console.error("Error adding to wishlist:", err.message);
+            throw err;
+        }
+    }
+
+    async getUserWishlistWithProductDetails(userId) {
+        try {
+            // Find the user's cart items
+            const user = await UserModel.findById(userId).populate('wishlist');
+            if (!user) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
+            }
+
+            const modelMap = {
+                "HEAL": HealModel,
+                "SHIELD": ShieldModel,
+                "ELITE": EliteModel,
+                "TOGS": TogsModel,
+                "SPIRIT": SpiritsModel,
+                "WORK WEAR UNIFORMS": WorkWearModel
+            };
+
+            // For each cart item, find the product details from the respective model
+            const wishlistWithDetails = await Promise.all(user.wishlist.map(async (wishlistItem) => {
+                const ProductModel = modelMap[wishlistItem.group];
+                if (!ProductModel) {
+                    throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid product group");
+                }
+                const productDetails = await ProductModel.findOne({ productId: wishlistItem.productId }).select('-variants -reviews -isDeleted -createdAt -updatedAt -__v');
+                return {
+                    ...wishlistItem.toObject(),
+                    productDetails
+                };
+            }));
+
+            return wishlistWithDetails;
+        } catch (err) {
+            console.error("Error retrieving wishlist items with product details:", err);
+            throw err;
+        }
+    }
+
+    async removeWishlistItem(userId, wishlistItemId) {
+        try {
+            const user = await UserModel.findById(userId);
+            if (!user) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
+            }
+
+            // Use the `id` method to find the subdocument in the wishlist
+            const item = user.wishlist.id(wishlistItemId);
+            if (!item) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest('Wishlist item not found');
+            }
+
+            // Remove the item
+            user.wishlist.pull({ _id: wishlistItemId });  // Mongoose method to remove the subdocument
+            await user.save();
+
+            return { message: "Wishlist item removed successfully" };
+        } catch (err) {
+            console.error("Error removing wishlist item:", err.message);
+            throw err;
+        }
+    }
+
+    async addProductReview(group, productId, reviewData) {
+        const modelMap = {
+            "HEAL": HealModel,
+            "SHIELD": ShieldModel,
+            "ELITE": EliteModel,
+            "TOGS": TogsModel,
+            "SPIRIT": SpiritsModel,
+            "WORK WEAR UNIFORMS": WorkWearModel
+        };
+
+        const ProductModel = modelMap[group];
+        if (!ProductModel) {
+            throw new global.DATA.PLUGINS.httperrors.BadRequest('Invalid product group');
+        }
+
+        const product = await ProductModel.findOne({ productId });
+        if (!product) {
+            throw new global.DATA.PLUGINS.httperrors.BadRequest('Product not found');
+        }
+
+        product.reviews.push(reviewData);
+        await product.save();
+
+        return product.reviews[product.reviews.length - 1]; // Return the newly added review
+    }
+
+    async getProductReviews(group, productId) {
+        const modelMap = {
+            "HEAL": HealModel,
+            "SHIELD": ShieldModel,
+            "ELITE": EliteModel,
+            "TOGS": TogsModel,
+            "SPIRIT": SpiritsModel,
+            "WORK WEAR UNIFORMS": WorkWearModel
+        };
+
+        const ProductModel = modelMap[group];
+        if (!ProductModel) {
+            throw new Error('Invalid product group');
+        }
+
+        const product = await ProductModel.findOne({ productId }).select('reviews');
+        if (!product) {
+            throw new Error('Product not found');
+        }
+
+        return product.reviews;
+    }
 }
+
 module.exports = UserService;

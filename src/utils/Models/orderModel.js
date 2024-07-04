@@ -6,20 +6,29 @@ const orderSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
+    address: {  // Add this to reference the address within the User's addresses
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User.addresses',
+        required: true
+    },
     group: { type: String, required: true, trim: true },
     productId: { type: String, required: true, trim: true },
     color: { type: String, required: true, trim: true },
     size: { type: String, required: true, trim: true },
     quantityOrdered: { type: Number, required: true, min: 1 },
     price: { type: Number, required: true },
+    logoUrl: {
+        type: String, trim: true, default: null
+    },
+    logoPosition: {
+        type: String, trim: true, default: null
+    },
     deliveryCharges: {
         type: Number,
-        required: true,
-        default: 50
+        default: null
     },
     discountPercentage: {
         type: Number,
-        required: true,
         default: null
     },
     TotalPriceAfterDiscount: { type: Number, required: true },

@@ -1,5 +1,6 @@
 const UserModel = require('../utils/Models/userModel');
 const OrderModel = require('../utils/Models/orderModel');
+const QuoteModel = require('../utils/Models/quoteModel');
 const HealModel = require('../utils/Models/healModel');
 const ShieldModel = require('../utils/Models/shieldModel');
 const EliteModel = require('../utils/Models/eliteModel');
@@ -16,7 +17,7 @@ class OrderService {
         this.jwtObject = new JWTHelper();
     }
 
-    async createOrder(userId, orderDetails) {
+    async createOrder(userId, addressId, orderDetails) {
         const { group, productId, color, size, quantityOrdered } = orderDetails;
         try {
             const modelMap = {
@@ -53,7 +54,7 @@ class OrderService {
             await product.save();
 
             // Create and save the order
-            const newOrder = new OrderModel({ user: userId,...orderDetails });
+            const newOrder = new OrderModel({ user: userId, address: addressId, ...orderDetails });
             const savedOrder = await newOrder.save();
 
             // Add the order ID to the user's orders list
@@ -71,8 +72,8 @@ class OrderService {
         }
     }
 
-    async createQuote(userId, orderDetails) {
-        const { group, productId, color, size, quantityOrdered } = orderDetails;
+    async createQuote(userId, quoteDetails) {
+        const { group, productId, color, size } = quoteDetails;
         try {
             const modelMap = {
                 "HEAL": HealModel,
@@ -97,31 +98,28 @@ class OrderService {
             // Find the specific variant size and update the quantity
             const variant = product.variants.find(v => v.color === color);
             const variantSize = variant.variantSizes.find(v => v.size === size);
-            if (!variantSize || variantSize.quantity < quantityOrdered) {
-                throw new global.DATA.PLUGINS.httperrors.BadRequest("Insufficient stock for the variant");
+            if (!variantSize) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("variant size not found");
             }
-
-            // Decrease the stock quantity
-            variantSize.quantity -= quantityOrdered;
 
             // Save the product with updated quantity
             await product.save();
 
-            // Create and save the order
-            const newOrder = new OrderModel({ user: userId,...orderDetails });
-            const savedOrder = await newOrder.save();
+            // Create and save the quote
+            const newQuote = new QuoteModel({ user: userId, ...quoteDetails });
+            const savedQuote = await newQuote.save();
 
-            // Add the order ID to the user's orders list
+            // Add the quote ID to the user's quotes list
             const user = await UserModel.findById(userId);
             if (!user) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
             }
-            user.orders.push(savedOrder._id);
+            user.quotes.push(savedQuote._id);
             await user.save();
 
-            return savedOrder;
+            return savedQuote;
         } catch (err) {
-            console.error("Error creating order:", err.message);
+            console.error("Error creating quote:", err.message);
             throw err;
         }
     }
