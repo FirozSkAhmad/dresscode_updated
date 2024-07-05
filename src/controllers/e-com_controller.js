@@ -18,7 +18,7 @@ router.get('/getGroups', async (req, res, next) => {
 
 router.get('/getCategories', async (req, res, next) => {
     try {
-        const { groupName } = req.body
+        const { groupName } = req.query
         const EComServiceObj = new EComService();
         const result = await EComServiceObj.getCategories(groupName);
         res.status(200).send(result)
@@ -30,7 +30,7 @@ router.get('/getCategories', async (req, res, next) => {
 
 router.get('/getSubCategories', async (req, res, next) => {
     try {
-        const { groupName, category } = req.body
+        const { groupName, category } = req.query
         const EComServiceObj = new EComService();
         const result = await EComServiceObj.getSubCategories(groupName, category);
         res.status(200).send(result)
@@ -41,7 +41,7 @@ router.get('/getSubCategories', async (req, res, next) => {
 
 router.get('/getProductTypes', async (req, res, next) => {
     try {
-        const { groupName, category, subCategory } = req.body
+        const { groupName, category, subCategory } = req.query
         const EComServiceObj = new EComService();
         const result = await EComServiceObj.getProductTypes(groupName, category, subCategory);
         res.status(200).send(result)
@@ -52,7 +52,7 @@ router.get('/getProductTypes', async (req, res, next) => {
 
 router.get('/getProductFilters', async (req, res, next) => {
     try {
-        const { groupName, category, subCategory, gender, productType } = req.body
+        const { groupName, category, subCategory, gender, productType } = req.query
         const EComServiceObj = new EComService();
         const result = await EComServiceObj.getProductFilters(groupName, category, subCategory, gender, productType);
         res.status(200).send(result)
@@ -118,7 +118,7 @@ router.get('/getSleeves', async (req, res, next) => {
 
 router.get('/getProductsByFilters', async (req, res, next) => {
     try {
-        const { groupName, category, subCategory, gender, productType, fit, color, size, neckline, sleeves } = req.body
+        const { groupName, category, subCategory, gender, productType, fit, color, size, neckline, sleeves } = req.query
         const EComServiceObj = new EComService();
         const result = await EComServiceObj.getProductsByFilters(groupName, category, subCategory, gender, productType, fit, color, size, neckline, sleeves);
         res.status(200).send(result)
