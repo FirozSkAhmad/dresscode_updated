@@ -4,12 +4,7 @@ const cors = require('cors');
 const IndexRoute = require('./routes');
 const PluginsLoader = require('./utils/Plugins');
 const http = require('http');
-const Razorpay = require('razorpay')
 
-export const instance = new Razorpay({
-    key_id: process.env.RAZORPAY_API_KEY,
-    key_secret: process.env.RAZORPAY_APT_SECRET,
-  });
 
 class App {
     constructor() {

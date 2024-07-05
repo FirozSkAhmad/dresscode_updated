@@ -1,11 +1,16 @@
 const express = require('express');
-import { instance } from "../app.js";
 const Constants = require('../utils/Constants/response_messages');
 const crypto = require('crypto');
 const JwtHelper = require('../utils/Helpers/jwt_helper');
 const PaymentModel = require('../utils/Models/paymentModel.js');
 const jwtHelperObj = new JwtHelper();
 const router = express.Router();
+const Razorpay = require('razorpay')
+
+const instance = new Razorpay({
+    key_id: process.env.RAZORPAY_API_KEY,
+    key_secret: process.env.RAZORPAY_APT_SECRET,
+});
 
 router.post('/checkout', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
