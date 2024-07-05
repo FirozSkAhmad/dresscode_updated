@@ -8,8 +8,8 @@ const router = express.Router();
 const Razorpay = require('razorpay')
 
 const instance = new Razorpay({
-    key_id: process.env.RAZORPAY_API_KEY,
-    key_secret: process.env.RAZORPAY_APT_SECRET,
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_SECRET,
 });
 
 router.post('/checkout', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
@@ -66,3 +66,5 @@ router.post('/verifyPayment', jwtHelperObj.verifyAccessToken, async (req, res) =
         });
     }
 });
+
+module.exports = router;
