@@ -5,6 +5,12 @@ const wishlistItemSchema = new mongoose.Schema({
     productId: { type: String, required: true, trim: true },
     color: { type: String, required: true, trim: true },
     size: { type: String, required: true, trim: true },
+    logoUrl: {
+        type: String, trim: true, default: null
+    },
+    logoPosition: {
+        type: String, trim: true, default: null
+    }
 });
 
 const cartItemSchema = new mongoose.Schema({
@@ -13,6 +19,12 @@ const cartItemSchema = new mongoose.Schema({
     color: { type: String, required: true, trim: true },
     size: { type: String, required: true, trim: true },
     quantityRequired: { type: Number, required: true, min: 1 },
+    logoUrl: {
+        type: String, trim: true, default: null
+    },
+    logoPosition: {
+        type: String, trim: true, default: null
+    }
 });
 
 const addressSchema = new mongoose.Schema({
