@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const orderSchema = new mongoose.Schema({
+    paymentId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Payment',
+        required: true
+    },
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
@@ -43,5 +48,5 @@ const orderSchema = new mongoose.Schema({
     estimatedDelivery: { type: Date, default: null }
 });
 
-module.exports = mongoose.model("Order", orderSchema);
+module.exports = mongoose.model("c", orderSchema);
 

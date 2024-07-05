@@ -3,8 +3,13 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const IndexRoute = require('./routes');
 const PluginsLoader = require('./utils/Plugins');
-const MongoDBConnection = require('../connections/mongoDB_connection');
 const http = require('http');
+const Razorpay = require('razorpay')
+
+export const instance = new Razorpay({
+    key_id: process.env.RAZORPAY_API_KEY,
+    key_secret: process.env.RAZORPAY_APT_SECRET,
+  });
 
 class App {
     constructor() {
@@ -14,10 +19,6 @@ class App {
 
     async StarterFunction() {
         try {
-
-            // // Initialize MongoDB Connection
-            // await new MongoDBConnection().initialize();
-            // console.log("MongoDB connected");
 
             // Load PLUGINS
             await new PluginsLoader().loadPlugins();
