@@ -4,6 +4,7 @@ const EComController = require('../controllers/e-com_controller')
 const UserController = require('../controllers/user_controller')
 const OrderController = require('../controllers/order_controller')
 const PaymentController = require('../controllers/payment_controller')
+const DashboardController = require('../controllers/dashboard_controller')
 
 class IndexRoute {
   constructor(expressApp) {
@@ -17,6 +18,7 @@ class IndexRoute {
     this.app.use('/user', UserController)
     this.app.use('/order', OrderController)
     this.app.use('/payment', PaymentController)
+    this.app.use('/dashboard', DashboardController)
   }
 }
 

@@ -102,9 +102,6 @@ class OrderService {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("variant size not found");
             }
 
-            // Save the product with updated quantity
-            await product.save();
-
             // Create and save the quote
             const newQuote = new QuoteModel({ user: userId, ...quoteDetails });
             const savedQuote = await newQuote.save();

@@ -153,18 +153,18 @@ const healSchema = new mongoose.Schema(
             trim: true,
             enum: ["POLY COTTON", "LAB COATS", "SPUN POLYESTER", "100% POLYESTER"],
         },
-        // price: {
-        //     type: Number,
-        //     required: true,
-        //     trim: true,
-        //     default: null
-        // },
-        // productDeatails: {
-        //     type: String,
-        //     required: true,
-        //     trim: true,
-        //     default: null
-        // },
+        price: {
+            type: Number,
+            required: true,
+            trim: true,
+            default: null
+        },
+        productDeatails: {
+            type: String,
+            required: true,
+            trim: true,
+            default: null
+        },
         variants: [variantSchema],
         isDeleted: {
             type: Boolean,

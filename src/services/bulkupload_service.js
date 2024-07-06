@@ -4,8 +4,18 @@ const EliteModel = require('../utils/Models/eliteModel');
 const TogsModel = require('../utils/Models/togsModel');
 const SpiritsModel = require('../utils/Models/spiritsModel');
 const WorkWearModel = require('../utils/Models/workWearModel');
+const UploadedHistoryModel = require('../utils/Models/uploadedHistoryModel');
 const stream = require('stream');
 const csv = require('csv-parser');
+
+const modelMap = {
+    "HEAL": HealModel,
+    "SHIELD": ShieldModel,
+    "ELITE": EliteModel,
+    "TOGS": TogsModel,
+    "SPIRIT": SpiritsModel,
+    "WORK WEAR UNIFORMS": WorkWearModel
+};
 
 class BulkUploadService {
     constructor() { }
@@ -180,8 +190,8 @@ class BulkUploadService {
             'subCategory.name': item.subCategory.name,
             gender: item.gender,
             'productType.type': item.productType.type,
-            fit: item.fit?item.fit:"CLASSIC FITS",
-            fabric: item.fabric?item.fabric:"POLY COTTON",
+            fit: item.fit ? item.fit : "CLASSIC FITS",
+            fabric: item.fabric ? item.fabric : "POLY COTTON",
         });
 
         if (existingProduct) {
@@ -216,8 +226,9 @@ class BulkUploadService {
     }
 
     async processEliteCsvFile(buffer) {
-        const data = await this.parseCsv(buffer);
-        await this.bulkEliteInsertOrUpdate(data);  // Processing each entry
+        const data = await this.parseEliteCsv(buffer);
+        const uploadResults = await this.bulkEliteInsertOrUpdate(data);  // Processing each entry
+        await this.recordUpload(uploadResults)
         return { status: 200, message: "Data processed successfully." };
     }
 
@@ -251,6 +262,8 @@ class BulkUploadService {
                         fit: data.fit,
                         neckline: data.neckline,
                         sleeves: data.sleeves,
+                        price: data.price,
+                        productDetails: data.productDetails,
                         variant: {
                             color: data.variantColor,
                             variantSizes: [
@@ -270,9 +283,59 @@ class BulkUploadService {
 
     async bulkEliteInsertOrUpdate(data) {
         // First, update existing products to add variants if they do not exist
+        // for (const item of data) {
+        //     await this.addEliteVariant(item);
+        // }
+
+        let uploadData = [];
+
         for (const item of data) {
-            await this.addEliteVariant(item);
+            const productData = await this.addEliteVariant(item);
+            if (productData) {
+                let uploadEntry = uploadData.find(entry =>
+                    entry.group === item.group.name &&
+                    entry.productId.toString() === productData._id.toString()
+                );
+
+                if (uploadEntry) {
+                    let variantEntry = uploadEntry.variants.find(v => v.color === item.variant.color);
+                    if (variantEntry) {
+                        let sizeEntry = variantEntry.variantSizes.find(vs => vs.size === item.variant.variantSizes[0].size);
+                        if (sizeEntry) {
+                            sizeEntry.quantityOfUpload += item.variant.variantSizes[0].quantity; // Ensure correct property is used
+                        } else {
+                            variantEntry.variantSizes.push({
+                                size: item.variant.variantSizes[0].size,
+                                quantityOfUpload: item.variant.variantSizes[0].quantity // Set quantityOfUpload when adding new size
+                            });
+                        }
+                    } else {
+                        // Push the whole variant if it's not found
+                        uploadEntry.variants.push({
+                            color: item.variant.color,
+                            variantSizes: item.variant.variantSizes.map(vs => ({
+                                size: vs.size,
+                                quantityOfUpload: vs.quantity // Set quantityOfUpload for new variants
+                            }))
+                        });
+                    }
+                } else {
+                    // Push new entry if product doesn't exist in uploadData
+                    uploadData.push({
+                        group: item.group.name,
+                        productId: productData.productId,
+                        variants: [{
+                            color: item.variant.color,
+                            variantSizes: item.variant.variantSizes.map(vs => ({
+                                size: vs.size,
+                                quantityOfUpload: vs.quantity // Set quantityOfUpload for completely new product
+                            }))
+                        }]
+                    });
+                }
+            }
         }
+        return uploadData;
     }
 
     async addEliteVariant(item) {
@@ -303,9 +366,10 @@ class BulkUploadService {
                 existingProduct.variants.push(item.variant);
                 await existingProduct.save();
             }
+            return existingProduct;
         } else {
             // Create new product if it does not exist
-            await EliteModel.create({
+            return await EliteModel.create({
                 group: item.group,
                 category: item.category,
                 subCategory: item.subCategory,
@@ -314,9 +378,31 @@ class BulkUploadService {
                 fit: item.fit,
                 neckline: item.neckline,
                 sleeves: item.sleeves,
+                price: item.price,
+                productDetails: item.productDetails,
                 variants: [item.variant]
             });
         }
+    }
+
+    async recordUpload(uploadData) {
+        let totalAmountOfUploaded = 0;
+
+        for (const product of uploadData) {
+            const ProductModel = modelMap[product.group]
+            const productDetails = await ProductModel.findOne({ productId: product.productId }); // Fetch product details including prices
+
+            for (const variant of product.variants) {
+                const variantTotal = variant.variantSizes.reduce((sizeTotal, size) => {
+                    return sizeTotal + (size.quantityOfUpload * productDetails.price);
+                }, 0);
+                totalAmountOfUploaded += variantTotal;
+            }
+        }
+        return UploadedHistoryModel.create({
+            totalAmountOfUploaded,
+            products: uploadData
+        });
     }
 
     async processTogsCsvFile(buffer) {

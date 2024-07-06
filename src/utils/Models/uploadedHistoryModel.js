@@ -1,27 +1,37 @@
 const mongoose = require("mongoose");
+const crypto = require('crypto');
 
 // Define the ProductVariant reference schema
-const productVariantSchema = new mongoose.Schema({
-    productId: {
-        type: mongoose.Schema.Types.ObjectId, // Reference to Product model
-        required: true,
-        ref: 'Product'
-    },// just add color and size instead of variantIdsQunatity
-    variantIdsQunatity: [{
-        variantId: {
-            type: mongoose.Schema.Types.ObjectId, // Reference to Variant subdocuments in Product model
-            ref: 'Variant' // Make sure you define a Variant model if it's referenced directly, or adjust according to your schema
-        },
-        quantityOfUploaded: {
-            type: Number,
-            required: true
-        }
-    }
-    ]
+const productsSchema = new mongoose.Schema({
+    group: { type: String, required: true, trim: true },
+    productId: { type: String, required: true, trim: true },
+    variants: [{
+        color: { type: String, required: true, trim: true },
+        variantSizes: [{
+            size: {
+                type: String,
+                required: true,
+                trim: true,
+            },
+            quantityOfUpload: {
+                type: Number,
+                required: true,
+                min: 1,
+            }
+        }]
+    }],
 });
 
 // Define the Assigned History Schema
 const uploadedHistorySchema = new mongoose.Schema({
+    uploadedId: {
+        type: String,
+        trim: true,
+        unique: true,
+        default: () => {
+            return crypto.randomBytes(3).toString("hex").toUpperCase().slice(0, 6);
+        },
+    },
     uploadedDate: {
         type: Date,
         default: Date.now
@@ -30,8 +40,10 @@ const uploadedHistorySchema = new mongoose.Schema({
         type: Number,
         required: true
     },
-    productVariants: [productVariantSchema] // Array of product and their variants
+    products: [productsSchema] // Array of product and their variants
 });
+
+uploadedHistorySchema.index({ uploadedId: 1 });
 
 module.exports = mongoose.model('UploadedHistory', uploadedHistorySchema);
 

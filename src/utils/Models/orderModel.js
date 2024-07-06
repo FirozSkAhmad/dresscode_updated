@@ -1,10 +1,20 @@
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 
 const orderSchema = new mongoose.Schema({
     paymentId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Payment',
-        required: true
+        default: null
+    },
+    orderId: {
+        type: String,
+        trim: true,
+        unique: true,
+        default: () => {
+            // Generate a random 6 character alphanumeric string
+            return crypto.randomBytes(3).toString('hex').toUpperCase().slice(0, 6);
+        },
     },
     user: {
         type: mongoose.Schema.Types.ObjectId,
@@ -45,8 +55,16 @@ const orderSchema = new mongoose.Schema({
         default: 'Pending'
     },
     dateOfDelivery: { type: Date, default: null },
-    estimatedDelivery: { type: Date, default: null }
+    estimatedDelivery: { type: Date, default: null },
+    status: {
+        type: String,
+        required: true,
+        enum: ['Pending', 'Assigned'],
+        default: 'Pending'
+    },
 });
 
-module.exports = mongoose.model("c", orderSchema);
+orderSchema.index({ orderId: 1 })
+
+module.exports = mongoose.model("Order", orderSchema);
 

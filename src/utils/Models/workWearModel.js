@@ -111,6 +111,10 @@ const workWearSchema = new mongoose.Schema(
                 required: true
             }
         },
+        subCategory: {
+            name: { type: String, required: false, default: null },
+            imageUrl: { type: String, required: false }
+        },
         gender: {
             type: String,
             required: true,

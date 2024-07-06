@@ -143,7 +143,7 @@ router.post('/uploadWorkWearProduct', async (req, res, next) => {//jwtHelperObj.
     }
 });
 
-// Route to get all products
+// // Route to get all products
 router.get('/getAllProducts', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
         const role_type = req.aud.split(":")[1]

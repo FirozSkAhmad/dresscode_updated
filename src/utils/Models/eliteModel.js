@@ -163,7 +163,7 @@ const eliteSchema = new mongoose.Schema({
         trim: true,
         default: null
     },
-    productDeatails: {
+    productDetails: {
         type: String,
         required: true,
         trim: true,
