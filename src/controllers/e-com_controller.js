@@ -151,7 +151,7 @@ router.get('/getAvaSizesByColor', async (req, res, next) => {
 
 router.get('/getProductDetailsWithSpecificVariant', async (req, res, next) => {
     try {
-        const { groupName, productId, size, color } = req.body
+        const { groupName, productId, size, color } = req.query
         const EComServiceObj = new EComService();
         const result = await EComServiceObj.getProductDetailsWithSpecificVariant(groupName, productId, size, color);
         res.status(200).send(result)
