@@ -20,9 +20,10 @@ const modelMap = {
 class BulkUploadService {
     constructor() { }
 
-    async processHealsCsvFile(buffer) {
+    async processHealsCsvFile(buffer, session) {
         const data = await this.parseHealCsv(buffer);
-        await this.bulkHealInsertOrUpdate(data);  // Processing each entry
+        const uploadResults = await this.bulkHealInsertOrUpdate(data, session);  // Processing each entry
+        await this.recordUpload(uploadResults, session);
         return { status: 200, message: "Data processed successfully." };
     }
 
@@ -56,6 +57,8 @@ class BulkUploadService {
                         fit: data.fit,
                         sleeves: data.sleeves,
                         fabric: data.fabric,
+                        price: data.price,
+                        productDetails: data.productDetails,
                         variant: {
                             color: data.categoryName === "COATS" ? "COATS COLOR" : data.variantColor,
                             variantSizes: [
@@ -75,12 +78,60 @@ class BulkUploadService {
 
     async bulkHealInsertOrUpdate(data) {
         // First, update existing products to add variants if they do not exist
+        // for (const item of data) {
+        //     await this.addHealVariant(item);
+        // }
+
+        let uploadData = [];
+
         for (const item of data) {
-            await this.addHealVariant(item);
+            const productData = await this.addHealVariant(item, session); // Include session in function call
+            if (productData) {
+                let uploadEntry = uploadData.find(entry =>
+                    entry.group === item.group.name &&
+                    entry.productId.toString() === productData._id.toString()
+                );
+
+                if (uploadEntry) {
+                    let variantEntry = uploadEntry.variants.find(v => v.color === item.variant.color);
+                    if (variantEntry) {
+                        let sizeEntry = variantEntry.variantSizes.find(vs => vs.size === item.variant.variantSizes[0].size);
+                        if (sizeEntry) {
+                            sizeEntry.quantityOfUpload += item.variant.variantSizes[0].quantity;
+                        } else {
+                            variantEntry.variantSizes.push({
+                                size: item.variant.variantSizes[0].size,
+                                quantityOfUpload: item.variant.variantSizes[0].quantity
+                            });
+                        }
+                    } else {
+                        uploadEntry.variants.push({
+                            color: item.variant.color,
+                            variantSizes: item.variant.variantSizes.map(vs => ({
+                                size: vs.size,
+                                quantityOfUpload: vs.quantity
+                            }))
+                        });
+                    }
+                } else {
+                    uploadData.push({
+                        group: item.group.name,
+                        productId: productData._id,
+                        variants: [{
+                            color: item.variant.color,
+                            variantSizes: item.variant.variantSizes.map(vs => ({
+                                size: vs.size,
+                                quantityOfUpload: vs.quantity
+                            }))
+                        }]
+                    });
+                }
+            }
         }
+        return uploadData;
     }
 
-    async addHealVariant(item) {
+    async addHealVariant(item, session) {
         const existingProduct = await HealModel.findOne({
             'group.name': item.group.name,
             'category.name': item.category.name,
@@ -90,7 +141,7 @@ class BulkUploadService {
             fit: item.fit,
             sleeves: item.sleeves,
             fabric: item.fabric
-        });
+        }, null, { session });
 
         if (existingProduct) {
             const variant = existingProduct.variants.find(v => v.color === item.variant.color);
@@ -102,15 +153,15 @@ class BulkUploadService {
                 } else {
                     variant.variantSizes.push(item.variant.variantSizes[0]);
                 }
-                await existingProduct.save();  // Save updates
+                await existingProduct.save({ session });  // Save updates
             } else {
                 // Push new variant if color does not exist
                 existingProduct.variants.push(item.variant);
-                await existingProduct.save();
+                await existingProduct.save({ session });
             }
         } else {
             // Create new product if it does not exist
-            await HealModel.create({
+            return await HealModel.create({
                 group: item.group,
                 category: item.category,
                 subCategory: item.subCategory,
@@ -124,9 +175,10 @@ class BulkUploadService {
         }
     }
 
-    async processShieldsCsvFile(buffer) {
+    async processShieldsCsvFile(buffer, session) {
         const data = await this.parseShieldCsv(buffer);
-        await this.bulkShieldInsertOrUpdate(data);  // Processing each entry
+        const uploadResults = await this.bulkShieldInsertOrUpdate(data, session);  // Processing each entry
+        await this.recordUpload(uploadResults, session);
         return { status: 200, message: "Data processed successfully." };
     }
 
@@ -159,6 +211,8 @@ class BulkUploadService {
                         },
                         fit: data.fit ? data.fit : "CLASSIC FITS",
                         fabric: data.fabric ? data.fabric : "POLY COTTON",
+                        price: data.price,
+                        productDetails: data.productDetails,
                         variant: {
                             color: data.variantColor,
                             variantSizes: [
@@ -178,12 +232,58 @@ class BulkUploadService {
 
     async bulkShieldInsertOrUpdate(data) {
         // First, update existing products to add variants if they do not exist
+        // for (const item of data) {
+        //     await this.addShieldVariant(item);
+        // }
+        let uploadData = [];
         for (const item of data) {
-            await this.addShieldVariant(item);
+            const productData = await this.addShieldVariant(item, session); // Include session in function call
+            if (productData) {
+                let uploadEntry = uploadData.find(entry =>
+                    entry.group === item.group.name &&
+                    entry.productId.toString() === productData._id.toString()
+                );
+
+                if (uploadEntry) {
+                    let variantEntry = uploadEntry.variants.find(v => v.color === item.variant.color);
+                    if (variantEntry) {
+                        let sizeEntry = variantEntry.variantSizes.find(vs => vs.size === item.variant.variantSizes[0].size);
+                        if (sizeEntry) {
+                            sizeEntry.quantityOfUpload += item.variant.variantSizes[0].quantity;
+                        } else {
+                            variantEntry.variantSizes.push({
+                                size: item.variant.variantSizes[0].size,
+                                quantityOfUpload: item.variant.variantSizes[0].quantity
+                            });
+                        }
+                    } else {
+                        uploadEntry.variants.push({
+                            color: item.variant.color,
+                            variantSizes: item.variant.variantSizes.map(vs => ({
+                                size: vs.size,
+                                quantityOfUpload: vs.quantity
+                            }))
+                        });
+                    }
+                } else {
+                    uploadData.push({
+                        group: item.group.name,
+                        productId: productData._id,
+                        variants: [{
+                            color: item.variant.color,
+                            variantSizes: item.variant.variantSizes.map(vs => ({
+                                size: vs.size,
+                                quantityOfUpload: vs.quantity
+                            }))
+                        }]
+                    });
+                }
+            }
         }
+        return uploadData;
     }
 
-    async addShieldVariant(item) {
+    async addShieldVariant(item, session) {
         const existingProduct = await ShieldModel.findOne({
             'group.name': item.group.name,
             'category.name': item.category.name,
@@ -192,7 +292,7 @@ class BulkUploadService {
             'productType.type': item.productType.type,
             fit: item.fit ? item.fit : "CLASSIC FITS",
             fabric: item.fabric ? item.fabric : "POLY COTTON",
-        });
+        }, null, { session });
 
         if (existingProduct) {
             const variant = existingProduct.variants.find(v => v.color === item.variant.color);
@@ -204,15 +304,16 @@ class BulkUploadService {
                 } else {
                     variant.variantSizes.push(item.variant.variantSizes[0]);
                 }
-                await existingProduct.save();  // Save updates
+                await existingProduct.save({ session });  // Save updates
             } else {
                 // Push new variant if color does not exist
                 existingProduct.variants.push(item.variant);
-                await existingProduct.save();
+                await existingProduct.save({ session });
             }
+            return existingProduct;
         } else {
             // Create new product if it does not exist
-            await ShieldModel.create({
+            return await ShieldModel.create({
                 group: item.group,
                 category: item.category,
                 subCategory: item.subCategory,
@@ -221,14 +322,14 @@ class BulkUploadService {
                 fit: item.fit,
                 fabric: item.fabric,
                 variants: [item.variant]
-            });
+            }, { session });
         }
     }
 
-    async processEliteCsvFile(buffer) {
+    async processEliteCsvFile(buffer, session) {
         const data = await this.parseEliteCsv(buffer);
-        const uploadResults = await this.bulkEliteInsertOrUpdate(data);  // Processing each entry
-        await this.recordUpload(uploadResults)
+        const uploadResults = await this.bulkEliteInsertOrUpdate(data, session);  // Processing each entry within the transaction
+        await this.recordUpload(uploadResults, session);
         return { status: 200, message: "Data processed successfully." };
     }
 
@@ -281,16 +382,11 @@ class BulkUploadService {
         });
     }
 
-    async bulkEliteInsertOrUpdate(data) {
-        // First, update existing products to add variants if they do not exist
-        // for (const item of data) {
-        //     await this.addEliteVariant(item);
-        // }
-
+    async bulkEliteInsertOrUpdate(data, session) {
         let uploadData = [];
 
         for (const item of data) {
-            const productData = await this.addEliteVariant(item);
+            const productData = await this.addEliteVariant(item, session); // Include session in function call
             if (productData) {
                 let uploadEntry = uploadData.find(entry =>
                     entry.group === item.group.name &&
@@ -302,33 +398,31 @@ class BulkUploadService {
                     if (variantEntry) {
                         let sizeEntry = variantEntry.variantSizes.find(vs => vs.size === item.variant.variantSizes[0].size);
                         if (sizeEntry) {
-                            sizeEntry.quantityOfUpload += item.variant.variantSizes[0].quantity; // Ensure correct property is used
+                            sizeEntry.quantityOfUpload += item.variant.variantSizes[0].quantity;
                         } else {
                             variantEntry.variantSizes.push({
                                 size: item.variant.variantSizes[0].size,
-                                quantityOfUpload: item.variant.variantSizes[0].quantity // Set quantityOfUpload when adding new size
+                                quantityOfUpload: item.variant.variantSizes[0].quantity
                             });
                         }
                     } else {
-                        // Push the whole variant if it's not found
                         uploadEntry.variants.push({
                             color: item.variant.color,
                             variantSizes: item.variant.variantSizes.map(vs => ({
                                 size: vs.size,
-                                quantityOfUpload: vs.quantity // Set quantityOfUpload for new variants
+                                quantityOfUpload: vs.quantity
                             }))
                         });
                     }
                 } else {
-                    // Push new entry if product doesn't exist in uploadData
                     uploadData.push({
                         group: item.group.name,
-                        productId: productData.productId,
+                        productId: productData._id,
                         variants: [{
                             color: item.variant.color,
                             variantSizes: item.variant.variantSizes.map(vs => ({
                                 size: vs.size,
-                                quantityOfUpload: vs.quantity // Set quantityOfUpload for completely new product
+                                quantityOfUpload: vs.quantity
                             }))
                         }]
                     });
@@ -338,7 +432,8 @@ class BulkUploadService {
         return uploadData;
     }
 
-    async addEliteVariant(item) {
+
+    async addEliteVariant(item, session) {
         const existingProduct = await EliteModel.findOne({
             'group.name': item.group.name,
             'category.name': item.category.name,
@@ -348,23 +443,21 @@ class BulkUploadService {
             fit: item.fit,
             neckline: item.neckline,
             sleeves: item.sleeves
-        });
+        }, null, { session });
 
         if (existingProduct) {
             const variant = existingProduct.variants.find(v => v.color === item.variant.color);
             if (variant) {
-                // Update existing variant's details or add new size details
                 const sizeDetail = variant.variantSizes.find(v => v.size === item.variant.variantSizes[0].size);
                 if (sizeDetail) {
                     sizeDetail.quantity += item.variant.variantSizes[0].quantity;
                 } else {
                     variant.variantSizes.push(item.variant.variantSizes[0]);
                 }
-                await existingProduct.save();  // Save updates
+                await existingProduct.save({ session });
             } else {
-                // Push new variant if color does not exist
                 existingProduct.variants.push(item.variant);
-                await existingProduct.save();
+                await existingProduct.save({ session });
             }
             return existingProduct;
         } else {
@@ -381,33 +474,14 @@ class BulkUploadService {
                 price: item.price,
                 productDetails: item.productDetails,
                 variants: [item.variant]
-            });
+            }, { session });
         }
     }
 
-    async recordUpload(uploadData) {
-        let totalAmountOfUploaded = 0;
-
-        for (const product of uploadData) {
-            const ProductModel = modelMap[product.group]
-            const productDetails = await ProductModel.findOne({ productId: product.productId }); // Fetch product details including prices
-
-            for (const variant of product.variants) {
-                const variantTotal = variant.variantSizes.reduce((sizeTotal, size) => {
-                    return sizeTotal + (size.quantityOfUpload * productDetails.price);
-                }, 0);
-                totalAmountOfUploaded += variantTotal;
-            }
-        }
-        return UploadedHistoryModel.create({
-            totalAmountOfUploaded,
-            products: uploadData
-        });
-    }
-
-    async processTogsCsvFile(buffer) {
+    async processTogsCsvFile(buffer, session) {
         const data = await this.parseTogsCsv(buffer);
-        await this.bulkTogsInsertOrUpdate(data);  // Processing each entry
+        const uploadResults = await this.bulkTogsInsertOrUpdate(data, session);
+        await this.recordUpload(uploadResults, session);
         return { status: 200, message: "Data processed successfully." };
     }
 
@@ -439,8 +513,10 @@ class BulkUploadService {
                             imageUrl: data.productTypeImageUrl
                         },
                         fit: data.fit,
+                        price: data.price,
+                        productDetails: data.productDetails,
                         variant: {
-                            color: data.variantColor,
+                            color: data.variantColor ? data.variantColor : "TOGS COLOR",
                             variantSizes: [
                                 {
                                     size: data.variantSize,
@@ -456,14 +532,62 @@ class BulkUploadService {
         });
     }
 
-    async bulkTogsInsertOrUpdate(data) {
+    async bulkTogsInsertOrUpdate(data, session) {
         // First, update existing products to add variants if they do not exist
+        // for (const item of data) {
+        //     await this.addTogsVariant(item);
+        // }
+
+        let uploadData = [];
+
         for (const item of data) {
-            await this.addTogsVariant(item);
+            const productData = await this.addTogsVariant(item, session); // Include session in function call
+            if (productData) {
+                let uploadEntry = uploadData.find(entry =>
+                    entry.group === item.group.name &&
+                    entry.productId.toString() === productData._id.toString()
+                );
+
+                if (uploadEntry) {
+                    let variantEntry = uploadEntry.variants.find(v => v.color === item.variant.color);
+                    if (variantEntry) {
+                        let sizeEntry = variantEntry.variantSizes.find(vs => vs.size === item.variant.variantSizes[0].size);
+                        if (sizeEntry) {
+                            sizeEntry.quantityOfUpload += item.variant.variantSizes[0].quantity;
+                        } else {
+                            variantEntry.variantSizes.push({
+                                size: item.variant.variantSizes[0].size,
+                                quantityOfUpload: item.variant.variantSizes[0].quantity
+                            });
+                        }
+                    } else {
+                        uploadEntry.variants.push({
+                            color: item.variant.color,
+                            variantSizes: item.variant.variantSizes.map(vs => ({
+                                size: vs.size,
+                                quantityOfUpload: vs.quantity
+                            }))
+                        });
+                    }
+                } else {
+                    uploadData.push({
+                        group: item.group.name,
+                        productId: productData._id,
+                        variants: [{
+                            color: item.variant.color,
+                            variantSizes: item.variant.variantSizes.map(vs => ({
+                                size: vs.size,
+                                quantityOfUpload: vs.quantity
+                            }))
+                        }]
+                    });
+                }
+            }
         }
+        return uploadData;
     }
 
-    async addTogsVariant(item) {
+    async addTogsVariant(item, session) {
         const existingProduct = await TogsModel.findOne({
             'group.name': item.group.name,
             'category.name': item.category.name,
@@ -471,7 +595,7 @@ class BulkUploadService {
             gender: item.gender,
             'productType.type': item.productType.type,
             fit: item.fit
-        });
+        }, null, { session });
 
         if (existingProduct) {
             const variant = existingProduct.variants.find(v => v.color === item.variant.color);
@@ -483,15 +607,16 @@ class BulkUploadService {
                 } else {
                     variant.variantSizes.push(item.variant.variantSizes[0]);
                 }
-                await existingProduct.save();  // Save updates
+                await existingProduct.save({ session });  // Save updates
             } else {
                 // Push new variant if color does not exist
                 existingProduct.variants.push(item.variant);
-                await existingProduct.save();
+                await existingProduct.save({ session });
             }
+            return existingProduct;
         } else {
             // Create new product if it does not exist
-            await TogsModel.create({
+            return await TogsModel.create({
                 group: item.group,
                 category: item.category,
                 subCategory: item.subCategory,
@@ -499,13 +624,14 @@ class BulkUploadService {
                 productType: item.productType,
                 fit: item.fit,
                 variants: [item.variant]
-            });
+            }, { session });
         }
     }
 
-    async processSpiritsCsvFile(buffer) {
+    async processSpiritsCsvFile(buffer, session) {
         const data = await this.parseSpiritsCsv(buffer);
-        await this.bulkSpiritsInsertOrUpdate(data);  // Processing each entry
+        const uploadResults = await this.bulkSpiritsInsertOrUpdate(data, session);  // Processing each entry
+        await this.recordUpload(uploadResults, session);
         return { status: 200, message: "Data processed successfully." };
     }
 
@@ -535,7 +661,7 @@ class BulkUploadService {
                         neckline: data.neckline ? data.neckline : null,
                         sleeves: data.sleeves ? data.sleeves : null,
                         variant: {
-                            color: data.variantColor,
+                            color: data.variantColor ? data.variantColor : 'SPIRITS COLOR',
                             variantSizes: [
                                 {
                                     size: data.variantSize,
@@ -553,9 +679,55 @@ class BulkUploadService {
 
     async bulkSpiritsInsertOrUpdate(data) {
         // First, update existing products to add variants if they do not exist
+        // for (const item of data) {
+        //     await this.addSpiritsVariant(item);
+        // }
+        let uploadData = [];
         for (const item of data) {
-            await this.addSpiritsVariant(item);
+            const productData = await this.addEliteVariant(item, session); // Include session in function call
+            if (productData) {
+                let uploadEntry = uploadData.find(entry =>
+                    entry.group === item.group.name &&
+                    entry.productId.toString() === productData._id.toString()
+                );
+
+                if (uploadEntry) {
+                    let variantEntry = uploadEntry.variants.find(v => v.color === item.variant.color);
+                    if (variantEntry) {
+                        let sizeEntry = variantEntry.variantSizes.find(vs => vs.size === item.variant.variantSizes[0].size);
+                        if (sizeEntry) {
+                            sizeEntry.quantityOfUpload += item.variant.variantSizes[0].quantity;
+                        } else {
+                            variantEntry.variantSizes.push({
+                                size: item.variant.variantSizes[0].size,
+                                quantityOfUpload: item.variant.variantSizes[0].quantity
+                            });
+                        }
+                    } else {
+                        uploadEntry.variants.push({
+                            color: item.variant.color,
+                            variantSizes: item.variant.variantSizes.map(vs => ({
+                                size: vs.size,
+                                quantityOfUpload: vs.quantity
+                            }))
+                        });
+                    }
+                } else {
+                    uploadData.push({
+                        group: item.group.name,
+                        productId: productData._id,
+                        variants: [{
+                            color: item.variant.color,
+                            variantSizes: item.variant.variantSizes.map(vs => ({
+                                size: vs.size,
+                                quantityOfUpload: vs.quantity
+                            }))
+                        }]
+                    });
+                }
+            }
         }
+        return uploadData;
     }
 
     async addSpiritsVariant(item) {
@@ -566,27 +738,26 @@ class BulkUploadService {
             'productType.type': item.productType.type,
             neckline: item.neckline ? item.neckline : null,
             sleeves: item.sleeves ? item.sleeves : null,
-        });
+        }, null, { session });
 
         if (existingProduct) {
             const variant = existingProduct.variants.find(v => v.color === item.variant.color);
             if (variant) {
-                // Update existing variant's details or add new size details
                 const sizeDetail = variant.variantSizes.find(v => v.size === item.variant.variantSizes[0].size);
                 if (sizeDetail) {
                     sizeDetail.quantity += item.variant.variantSizes[0].quantity;
                 } else {
                     variant.variantSizes.push(item.variant.variantSizes[0]);
                 }
-                await existingProduct.save();  // Save updates
+                await existingProduct.save({ session });
             } else {
-                // Push new variant if color does not exist
                 existingProduct.variants.push(item.variant);
-                await existingProduct.save();
+                await existingProduct.save({ session });
             }
+            return existingProduct;
         } else {
             // Create new product if it does not exist
-            await SpiritsModel.create({
+            return await SpiritsModel.create({
                 group: item.group,
                 category: item.category,
                 gender: item.gender,
@@ -594,13 +765,14 @@ class BulkUploadService {
                 neckline: item.neckline ? item.neckline : null,
                 sleeves: item.sleeves ? item.sleeves : null,
                 variants: [item.variant]
-            });
+            }, { session });
         }
     }
 
-    async processWorkWearCsvFile(buffer) {
+    async processWorkWearCsvFile(buffer, session) {
         const data = await this.parseWorkWearCsv(buffer);
-        await this.bulkWorkWearInsertOrUpdate(data);  // Processing each entry
+        const uploadResults = await this.bulkWorkWearInsertOrUpdate(data, session);  // Processing each entry
+        await this.recordUpload(uploadResults, session);
         return { status: 200, message: "Data processed successfully." };
     }
 
@@ -628,8 +800,10 @@ class BulkUploadService {
                             imageUrl: data.productTypeImageUrl
                         },
                         fit: data.fit,
+                        price: data.price,
+                        productDetails: data.productDetails,
                         variant: {
-                            color: "WORK WEAR COLOR",
+                            color: data.variantColor ? data.variantColor : "WORK WEAR COLOR",
                             variantSizes: [
                                 {
                                     size: data.variantSize,
@@ -645,24 +819,71 @@ class BulkUploadService {
         });
     }
 
-    async bulkWorkWearInsertOrUpdate(data) {
+    async bulkWorkWearInsertOrUpdate(data, session) {
         // First, update existing products to add variants if they do not exist
+        // for (const item of data) {
+        //     await this.addWorkWearVariant(item);
+        // }
+
+        let uploadData = [];
         for (const item of data) {
-            await this.addWorkWearVariant(item);
+            const productData = await this.addWorkWearVariant(item, session); // Include session in function call
+            if (productData) {
+                let uploadEntry = uploadData.find(entry =>
+                    entry.group === item.group.name &&
+                    entry.productId.toString() === productData._id.toString()
+                );
+
+                if (uploadEntry) {
+                    let variantEntry = uploadEntry.variants.find(v => v.color === item.variant.color);
+                    if (variantEntry) {
+                        let sizeEntry = variantEntry.variantSizes.find(vs => vs.size === item.variant.variantSizes[0].size);
+                        if (sizeEntry) {
+                            sizeEntry.quantityOfUpload += item.variant.variantSizes[0].quantity;
+                        } else {
+                            variantEntry.variantSizes.push({
+                                size: item.variant.variantSizes[0].size,
+                                quantityOfUpload: item.variant.variantSizes[0].quantity
+                            });
+                        }
+                    } else {
+                        uploadEntry.variants.push({
+                            color: item.variant.color,
+                            variantSizes: item.variant.variantSizes.map(vs => ({
+                                size: vs.size,
+                                quantityOfUpload: vs.quantity
+                            }))
+                        });
+                    }
+                } else {
+                    uploadData.push({
+                        group: item.group.name,
+                        productId: productData._id,
+                        variants: [{
+                            color: item.variant.color,
+                            variantSizes: item.variant.variantSizes.map(vs => ({
+                                size: vs.size,
+                                quantityOfUpload: vs.quantity
+                            }))
+                        }]
+                    });
+                }
+            }
         }
+        return uploadData;
     }
 
-    async addWorkWearVariant(item) {
+    async addWorkWearVariant(item, session) {
         const existingProduct = await WorkWearModel.findOne({
             'group.name': item.group.name,
             'category.name': item.category.name,
             gender: item.gender,
             'productType.type': item.productType.type,
             fit: item.fit
-        });
+        }, null, { session });
 
         if (existingProduct) {
-            const variant = existingProduct.variants[0];
+            const variant = existingProduct.variants.find(v => v.color === item.variant.color);
             if (variant) {
                 // Update existing variant's details or add new size details
                 const sizeDetail = variant.variantSizes.find(v => v.size === item.variant.variantSizes[0].size);
@@ -671,23 +892,45 @@ class BulkUploadService {
                 } else {
                     variant.variantSizes.push(item.variant.variantSizes[0]);
                 }
-                await existingProduct.save();  // Save updates
+                await existingProduct.save({ session });  // Save updates
             } else {
                 // Push new variant if color does not exist
                 existingProduct.variants.push(item.variant);
-                await existingProduct.save();
+                await existingProduct.save({ session });
             }
+            return existingProduct;
         } else {
             // Create new product if it does not exist
-            await WorkWearModel.create({
+            return await WorkWearModel.create({
                 group: item.group,
                 category: item.category,
                 gender: item.gender,
                 productType: item.productType,
                 fit: item.fit,
                 variants: [item.variant]
-            });
+            }, { session });
         }
+    }
+
+    async recordUpload(uploadData, session) {
+        let totalAmountOfUploaded = 0;
+
+        for (const product of uploadData) {
+            const ProductModel = modelMap[product.group]
+            const productDetails = await ProductModel.findOne({ productId: product.productId }, null, { session });
+
+            for (const variant of product.variants) {
+                const variantTotal = variant.variantSizes.reduce((sizeTotal, size) => {
+                    return sizeTotal + (size.quantityOfUpload * productDetails.price);
+                }, 0);
+                totalAmountOfUploaded += variantTotal;
+            }
+        }
+
+        return UploadedHistoryModel.create({
+            totalAmountOfUploaded,
+            products: uploadData
+        }, { session });
     }
 }
 

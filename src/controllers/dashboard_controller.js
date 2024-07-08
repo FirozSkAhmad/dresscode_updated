@@ -1,8 +1,9 @@
 const express = require('express');
-const UserService = require('../services/user_service');
 const Constants = require('../utils/Constants/response_messages')
 const JwtHelper = require('../utils/Helpers/jwt_helper')
 const jwtHelperObj = new JwtHelper();
+const bcrypt = require('bcrypt');
+const mongoose = require('mongoose');
 const router = express.Router()
 const UploadedHistoryModel = require('../utils/Models/uploadedHistoryModel');
 const HealModel = require('../utils/Models/healModel');
@@ -13,6 +14,7 @@ const SpiritsModel = require('../utils/Models/spiritsModel');
 const WorkWearModel = require('../utils/Models/workWearModel');
 const OrderModel = require('../utils/Models/orderModel');
 const QuoteModel = require('../utils/Models/quoteModel');
+const DashboardUserModel = require('../utils/Models/dashboardUserModel');
 
 const modelMap = {
     "HEAL": HealModel,
@@ -23,8 +25,72 @@ const modelMap = {
     "WORK WEAR UNIFORMS": WorkWearModel
 };
 
+router.post('/createDashboardUser', async (req, res) => {
+    const session = await mongoose.startSession(); // Start a new session for the transaction
+    session.startTransaction(); // Start the transaction
+    try {
+        const { name, email, phoneNumber, password, roleType } = req.body;
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        const userPayload = {
+            name,
+            email: email.toLowerCase(), // Ensure the email is stored in lowercase
+            phoneNumber,
+            password: hashedPassword,
+            roleType
+        };
+
+        const newUser = await DashboardUserModel.create([userPayload], { session: session }); // Include the session in the create operation
+        await session.commitTransaction(); // Commit the transaction if all operations are successful
+        session.endSession(); // End the session
+        res.status(201).send({ message: 'User created successfully', user: newUser });
+    } catch (error) {
+        await session.abortTransaction(); // Abort the transaction on error
+        session.endSession(); // End the session
+        res.status(500).send({ message: 'Error creating user', error: error.message });
+    }
+});
+
+router.post('/dashboardLogin', async (req, res, next) => {
+    try {
+        const { email, password } = req.body;
+
+        // Validate the input
+        if (!email || !password) {
+            return res.status(400).send({ status: 400, message: "Email and password must be provided" });
+        }
+
+        const userData = await DashboardUserModel.findOne({ email: email.toLowerCase() });
+
+        if (!userData) {
+            return res.status(400).send({ status: 400, message: "No user exists with given email" });
+        }
+
+        const isValid = await bcrypt.compare(password, userData.password);
+        if (!isValid) {
+            return res.status(400).send({ status: 400, message: "Incorrect Password" });
+        }
+
+        const tokenPayload = `${userData._id}:${userData.roleType}:${userData.name}`;
+        const accessToken = await jwtHelperObj.generateAccessToken(tokenPayload);
+
+        const data = {
+            accessToken: accessToken,
+            userId: userData._id,
+            name: userData.name,
+            roleType: userData.roleType
+        };
+
+        res.send({ status: 200, message: "Success", data: data });
+    } catch (err) {
+        console.error("Error in loginUser: ", err.message);
+        next(err); // Pass to the default error handler
+    }
+});
+
 // GET endpoint to retrieve upload history summaries
-router.get('/uploadHistories', async (req, res) => {
+router.get('/uploadHistories', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
         const histories = await UploadedHistoryModel.find({}, 'uploadedId uploadedDate totalAmountOfUploaded -_id').exec();
         res.status(200).send({
@@ -37,7 +103,7 @@ router.get('/uploadHistories', async (req, res) => {
     }
 });
 
-router.get('/uploadedHistory/:uploadedId/products', async (req, res) => {
+router.get('/uploadedHistory/:uploadedId/products', jwtHelperObj.verifyAccessToken, async (req, res) => {
     const { uploadedId } = req.params;
 
     try {
@@ -74,48 +140,69 @@ router.get('/uploadedHistory/:uploadedId/products', async (req, res) => {
 });
 
 // DELETE endpoint to logically delete a product
-router.patch('/deleteProduct', async (req, res) => {
+router.patch('/deleteProduct', jwtHelperObj.verifyAccessToken, async (req, res) => {
     const { group, productId } = req.body;
 
+    // Start a MongoDB session for the transaction
+    const session = await mongoose.startSession();
     try {
+        session.startTransaction();  // Start the transaction
+
         const ProductModel = modelMap[group];
         if (!ProductModel) {
+            await session.abortTransaction();
+            session.endSession();
             return res.status(404).send({ message: "Invalid product group" });
         }
 
-        // Update the product's isDeleted status
+        // Update the product's isDeleted status within the transaction
         const updatedProduct = await ProductModel.findOneAndUpdate(
             { productId: productId },
             { $set: { isDeleted: true } },
-            { new: true }  // Returns the modified document
+            { new: true, session }  // Include the session to ensure this operation is part of the transaction
         );
 
         if (!updatedProduct) {
+            await session.abortTransaction();
+            session.endSession();
             return res.status(404).send({ message: "Product not found" });
         }
 
+        // Commit the transaction after the update is successful
+        await session.commitTransaction();
+        session.endSession();  // Always end the session
         res.status(200).send({
             message: "Product deleted successfully",
-            // product: updatedProduct
+            product: updatedProduct
         });
     } catch (error) {
+        // Handle any errors that occur during the transaction
+        await session.abortTransaction();
+        session.endSession();
         console.error("Failed to delete product:", error);
         res.status(500).send({ message: "Failed to delete product", error: error.message });
     }
 });
 
-router.patch('/updateProductDetails', async (req, res) => {
+router.patch('/updateProductDetails', jwtHelperObj.verifyAccessToken, async (req, res) => {
     const { group, productId, color, size, newPrice, newQuantity } = req.body;
+
+    const session = await mongoose.startSession(); // Start a new session for the transaction
+    session.startTransaction(); // Begin the transaction
 
     try {
         const ProductModel = modelMap[group];
         if (!ProductModel) {
+            await session.abortTransaction();
+            session.endSession();
             return res.status(404).send({ message: "Invalid product group" });
         }
 
-        // Find the product and update its price
-        const product = await ProductModel.findOne({ productId: productId });
+        // Find the product within the transaction
+        const product = await ProductModel.findOne({ productId: productId }).session(session);
         if (!product) {
+            await session.abortTransaction();
+            session.endSession();
             return res.status(404).send({ message: "Product not found" });
         }
 
@@ -125,32 +212,42 @@ router.patch('/updateProductDetails', async (req, res) => {
         // Find and update the specific variant's quantity
         const variant = product.variants.find(v => v.color === color);
         if (!variant) {
+            await session.abortTransaction();
+            session.endSession();
             return res.status(404).send({ message: "Variant not found" });
         }
 
         const variantSize = variant.variantSizes.find(v => v.size === size);
         if (!variantSize) {
+            await session.abortTransaction();
+            session.endSession();
             return res.status(404).send({ message: "Variant size not found" });
         }
 
         // Update the quantity
         variantSize.quantity = newQuantity;
 
-        // Save the updated product
-        await product.save();
+        // Save the updated product within the transaction
+        await product.save({ session: session });
+
+        // Commit the transaction
+        await session.commitTransaction();
+        session.endSession();
 
         res.status(200).send({
             message: "Product details updated successfully",
-            // product: product
+            product: product  // Optionally return the updated product
         });
     } catch (error) {
+        await session.abortTransaction();
+        session.endSession();
         console.error("Failed to update product details:", error);
         res.status(500).send({ message: "Failed to update product details", error: error.message });
     }
 });
 
 // Route to get all products
-router.get('/:groupName/getAllActiveProducts', async (req, res) => {
+router.get('/:groupName/getAllActiveProducts', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
         const { groupName } = req.params
         const allProducts = [];
@@ -193,7 +290,7 @@ router.get('/:groupName/getAllActiveProducts', async (req, res) => {
     }
 });
 
-router.get('/getOders', async (req, res) => {
+router.get('/getOders', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
         const orders = await OrderModel.find({}, 'orderId dateOfOrder status -_id').exec();
         res.status(200).send({
@@ -206,7 +303,7 @@ router.get('/getOders', async (req, res) => {
     }
 });
 
-router.get('/getOrderDetails/:orderId', async (req, res) => {
+router.get('/getOrderDetails/:orderId', jwtHelperObj.verifyAccessToken, async (req, res) => {
     const { orderId } = req.params;
 
     try {
@@ -272,7 +369,7 @@ router.get('/getOrderDetails/:orderId', async (req, res) => {
     }
 });
 
-router.get('/getOders', async (req, res) => {
+router.get('/getOders', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
         const orders = await OrderModel.find({}, 'orderId dateOfOrder status -_id').exec();
         res.status(200).send({
@@ -285,7 +382,7 @@ router.get('/getOders', async (req, res) => {
     }
 });
 
-router.get('/getQuotes', async (req, res) => {
+router.get('/getQuotes', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
         const quotesWithUserDetails = await QuoteModel.find()
             .populate({
@@ -307,7 +404,7 @@ router.get('/getQuotes', async (req, res) => {
     }
 });
 
-router.get('/getQuoteDetails/:quoteId', async (req, res) => {
+router.get('/getQuoteDetails/:quoteId', jwtHelperObj.verifyAccessToken, async (req, res) => {
     const { quoteId } = req.params;
 
 
