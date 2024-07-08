@@ -661,7 +661,7 @@ class EComService {
         return results.length > 0 ? results[0].sleeves : []; // Return the sleeves array or an empty array if no results found
     }
 
-    async  getProductsByFilters(groupName, category, subCategory, gender, productType, fit, color, size, neckline, sleeves) {
+    async getProductsByFilters(groupName, category, subCategory, gender, productType, fit, color, size, neckline, sleeves) {
         const modelMap = {
             "HEAL": HealModel,
             "SHIELD": ShieldModel,
@@ -894,7 +894,7 @@ class EComService {
             const product = await modelToUse.findOne({
                 productId,
                 "variants.color": color,
-                "variants.variantSizes.size": size
+                // "variants.variantSizes.size": size
             }).lean();
 
             if (!product) {
@@ -921,8 +921,8 @@ class EComService {
 
             // Find the specific variant that matches the color and size
             const specificVariant = product.variants.find(variant =>
-                variant.color === color &&
-                variant.variantSizes.some(sizeEntry => sizeEntry.size === size)
+                variant.color === color
+                //  && variant.variantSizes.some(sizeEntry => sizeEntry.size === size)
             );
 
             const others = Object.keys(colorsWithSizesAndQuantities).map(color => ({
