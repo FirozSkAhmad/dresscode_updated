@@ -1,8 +1,8 @@
 const BulkUploadService = require('../services/bulkupload_service');
 const multer = require('multer');
 const router = require('express').Router();  // Ensure router is properly defined
-const jwtHelperObj = require('../utils/Helpers/jwt_helper'); // Make sure JWT helper is correctly imported
-
+const JwtHelper = require('../utils/Helpers/jwt_helper')
+const jwtHelperObj = new JwtHelper();
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
