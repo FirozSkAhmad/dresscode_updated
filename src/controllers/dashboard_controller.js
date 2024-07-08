@@ -310,10 +310,23 @@ router.get('/getQuotes', async (req, res) => {
 router.get('/getQuoteDetails/:quoteId', async (req, res) => {
     const { quoteId } = req.params;
 
+
     try {
         const quote = await QuoteModel.findOne({ quoteId }).populate('user');
         if (!quote) {
             return res.status(404).send({ message: "Quote not found" });
+        }
+
+        const ProductModel = modelMap[quote.group];
+        if (!ProductModel) {
+            return res.status(400).send({ message: "Invalid product group" });
+        }
+
+        const product = await ProductModel.findOne({ productId: quote.productId })
+            .select('-variants -reviews');  // Exclude variants and reviews from the output
+
+        if (!product) {
+            return res.status(404).send({ message: "Product not found" });
         }
 
         // Preparing the detailed response
@@ -326,8 +339,9 @@ router.get('/getQuoteDetails/:quoteId', async (req, res) => {
                 phoneNumber: quote.user.phoneNumber
             },
             productDetails: {
-                group: quote.group,
-                productId: quote.productId,
+                // group: quote.group,
+                // productId: quote.productId,
+                product,
                 color: quote.color,
                 size: quote.size,
                 quantityRequired: quote.quantityRequired,
