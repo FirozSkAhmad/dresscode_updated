@@ -12,6 +12,10 @@ const instance = new Razorpay({
     key_secret: process.env.RAZORPAY_SECRET,
 });
 
+router.get("/getkey", (req, res) =>
+    res.status(200).json({ key: process.env.RAZORPAY_KEY_ID })
+);
+
 router.post('/checkout', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
         const options = {

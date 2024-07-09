@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/Lexodd-Hypernova/DressCode-BCK#readme",
   "dependencies": {
+    "aws-sdk": "^2.1656.0",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
     "crypto": "^1.0.1",
