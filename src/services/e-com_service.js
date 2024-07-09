@@ -709,6 +709,8 @@ class EComService {
                         neckline: 1,
                         sleeves: 1,
                         fabric: 1,
+                        price: 1,
+                        productDetails: 1,
                         variants: {
                             $filter: {
                                 input: "$variants",
