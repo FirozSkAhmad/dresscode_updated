@@ -768,7 +768,7 @@ class EComService {
             // Merge products and others into the final result
             return products.map((product, index) => ({
                 ...product,
-                others: others[index]
+                available: others[index]
             }));
         } catch (error) {
             console.error("Failed to fetch products:", error);
@@ -925,7 +925,7 @@ class EComService {
                 //  && variant.variantSizes.some(sizeEntry => sizeEntry.size === size)
             );
 
-            const others = Object.keys(colorsWithSizesAndQuantities).map(color => ({
+            const available = Object.keys(colorsWithSizesAndQuantities).map(color => ({
                 color,
                 sizesAndQty: colorsWithSizesAndQuantities[color]
             }));
@@ -947,10 +947,10 @@ class EComService {
                     "MAROON",
                     "RED",
                 ],
-                others
+                available
             } : {
                 message: "This product has no variants available with the given size and color combination.",
-                others
+                available
             };
         } catch (error) {
             console.error("Failed to fetch product details:", error);
