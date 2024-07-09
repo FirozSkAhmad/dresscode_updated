@@ -226,15 +226,15 @@ router.get('/:userId/getCart', jwtHelperObj.verifyAccessToken, async (req, res) 
     }
 });
 
-router.patch('/:userId/incrementCartItemQuantity/:cartItemId', jwtHelperObj.verifyAccessToken, async (req, res) => {
+router.patch('/:userId/updateCartItemQuantity/:cartItemId', jwtHelperObj.verifyAccessToken, async (req, res) => {
     const { userId, cartItemId } = req.params;
-    const { quantityNeedToIncrease } = req.body;
+    const { quantityNeedToChange } = req.body;
 
     try {
-        const updatedCartItem = await userServiceObj.incrementCartItemQuantity(userId, cartItemId, quantityNeedToIncrease);
+        const updatedCartItem = await userServiceObj.updateCartItemQuantity(userId, cartItemId, quantityNeedToChange);
 
         res.status(200).send({
-            message: "Cart item quantity increased successfully",
+            message: "Cart item quantity updated successfully",
             cartItem: updatedCartItem
         });
     } catch (error) {

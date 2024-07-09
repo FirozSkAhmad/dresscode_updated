@@ -472,7 +472,7 @@ class UserService {
         }
     }
 
-    async incrementCartItemQuantity(userId, cartItemId, quantityNeedToIncrease) {
+    async updateCartItemQuantity(userId, cartItemId, quantityNeedToChange) {
         try {
             const user = await UserModel.findById(userId);
             if (!user) {
@@ -487,12 +487,12 @@ class UserService {
             }
 
             // Increase the quantity
-            item.quantityRequired += quantityNeedToIncrease;
+            item.quantityRequired = quantityNeedToChange;
             await user.save();
 
             return item;
         } catch (err) {
-            console.error("Error increasing cart item quantity:", err.message);
+            console.error("Error updating cart item quantity:", err.message);
             throw err;
         }
     }
