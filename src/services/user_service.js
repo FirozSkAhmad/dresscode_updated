@@ -16,18 +16,17 @@ class UserService {
         this.jwtObject = new JWTHelper();
     }
 
-    async createUser(userDetails) {
-        // const session = await mongoose.startSession();
-        // session.startTransaction();
+    async createUser(userDetails, session) {
         try {
             const { firstName, lastName, email, gender, phoneNumber, password } = userDetails;
             let errors = [];
 
-            // Validate availability of email and phone number simultaneously
+            // In createUser function
             const [existingUserEmail, existingUserPhone] = await Promise.all([
-                UserModel.findOne({ email: email.toLowerCase() }),//.session(session)
-                UserModel.findOne({ phoneNumber })//.session(session)
+                UserModel.findOne({ email: email.toLowerCase() }).session(session),
+                UserModel.findOne({ phoneNumber }).session(session)
             ]);
+
 
             if (existingUserEmail) {
                 errors.push("Email address already in use");
@@ -36,7 +35,6 @@ class UserService {
                 errors.push("Phone number already in use");
             }
 
-            // If any errors, throw them all at once
             if (errors.length > 0) {
                 throw new Error(errors.join(", "));
             }
@@ -49,49 +47,46 @@ class UserService {
             const userPayload = {
                 firstName,
                 lastName,
-                email: email.toLowerCase(),  // Ensure the email is stored in lowercase
+                email: email.toLowerCase(),
                 gender: gender.toUpperCase(),
                 phoneNumber,
                 password: hashedPassword
             };
 
-            // Create the new user
-            const newUser = await UserModel.create(userPayload)//, { session: session };
+            // Create the new user within the transaction
+            const newUser = await UserModel.create([userPayload], { session: session });
 
-            // await session.commitTransaction();
-            // session.endSession();
             return newUser;
         } catch (err) {
-            // await session.abortTransaction();
-            // session.endSession();
             console.error("Error in createUser: ", err);
             throw new Error(err.message || "An internal server error occurred");
         }
     }
 
-    async loginUser(userDetails) {
-        try {
 
-            // Find user by email using findOne() with async/await
-            const userData = await UserModel.findOne({
-                email_id: userDetails.email_id
-            });
+    async loginUser(userDetails, session) {
+        try {
+            const userData = await UserModel.findOne({ email: userDetails.email }).session(session);
 
             if (!userData) {
-                throw new global.DATA.PLUGINS.httperrors.BadRequest("No user exists with given emailId");
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("No user exists with given email");
             }
 
-            // Validate password using bcrypt.compare()
             const isValid = await bcrypt.compare(userDetails.password, userData.password);
             if (!isValid) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("Incorrect Password");
             }
 
-            // Valid email and password - generate access token
+            // If you need to update last login time or log the login attempt
+            await UserModel.updateOne(
+                { _id: userData._id },
+                { $set: { lastLogin: new Date() } },
+                { session: session }
+            );
+
             const tokenPayload = userData._id + ":" + userData.firstName;
             const accessToken = await this.jwtObject.generateAccessToken(tokenPayload);
 
-            // Prepare response data (excluding sensitive fields)
             const data = {
                 accessToken: accessToken,
                 userId: userData._id,
@@ -100,17 +95,8 @@ class UserService {
 
             return data;
         } catch (err) {
-            console.error("Error in loginUser: ", err.message);
-
-            // Handle different error types based on specific messages
-            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
-                // Return specific HTTP status and message set by your custom error class
-                return { status: err.statusCode, message: err.message };
-            } else {
-                // Internal server error (generic)
-                console.error("Internal server error:", err);
-                return { status: 500, message: "Internal server error" };
-            }
+            console.error("Error in loginUser with transaction: ", err.message);
+            throw err;
         }
     }
 
@@ -127,10 +113,9 @@ class UserService {
         }
     }
 
-    async updateUserDetails(userId, updates) {
+    async updateUserDetails(userId, updates, session) {
         try {
-            // Fetch user by ID
-            const user = await UserModel.findById(userId);
+            const user = await UserModel.findById(userId).session(session);
             if (!user) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("User not found");
             }
@@ -142,8 +127,8 @@ class UserService {
             user.phoneNumber = updates.phoneNumber || user.phoneNumber;
             user.gender = updates.gender || user.gender;
 
-            // Save the updated user info
-            await user.save();
+            // Use the session to save the updated user info
+            await user.save({ session: session });
 
             return {
                 status: 200,
@@ -158,37 +143,28 @@ class UserService {
             };
         } catch (err) {
             console.error("Error updating user details:", err.message);
-
-            // Handle specific known errors
-            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
-                return { status: err.statusCode, message: err.message };
-            } else {
-                // Internal server error (generic)
-                return { status: 500, message: "Internal server error" };
-            }
+            throw err; // Propagate error to be handled by middleware
         }
     }
 
 
-    async addAddress(userId, newAddress) {
+    async addAddress(userId, newAddress, session) {
         try {
-            // Fetch the user by ID
-            const user = await this.UserModel.findById(userId);
+            const user = await this.UserModel.findById(userId).session(session);
             if (!user) {
                 throw new Error("User not found");
             }
 
             if (newAddress.markAsDefault) {
-                if (newAddress.markAsDefault === true) {
-                    user.addresses.forEach(addr => addr.markAsDefault = false);
-                }
+                // Reset the default setting on all other addresses
+                user.addresses.forEach(addr => addr.markAsDefault = false);
             }
 
             // Add the new address which may or may not be marked as default
             user.addresses.push(newAddress);
 
-            // Save the user with the updated address list
-            const updatedUser = await user.save();
+            // Save the user with the updated address list within the transaction
+            const updatedUser = await user.save({ session: session });
 
             // Return only the newly added address (it will be the last one in the array)
             const addedAddress = updatedUser.addresses[updatedUser.addresses.length - 1];
@@ -199,10 +175,9 @@ class UserService {
         }
     }
 
-    async updateAddress(userId, addressId, addressUpdates) {
+    async updateAddress(userId, addressId, addressUpdates, session) {
         try {
-            // Find the user
-            const user = await this.UserModel.findById(userId);
+            const user = await this.UserModel.findById(userId).session(session);
             if (!user) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("User not found");
             }
@@ -234,30 +209,32 @@ class UserService {
                 Object.assign(addressToUpdate, addressUpdates);
             }
 
-            // Save the user object after modifications
-            const updatedUser = await user.save();
+            // Save the user object with the modifications within the transaction
+            const updatedUser = await user.save({ session: session });
 
             // Return only the updated address
             return updatedUser.addresses.id(addressId);
         } catch (err) {
             console.error("Error updating address:", err.message);
-            throw err;
+            throw err;  // Propagate error to be handled by the caller
         }
     }
 
 
-    async setDefaultAddress(userId, addressId) {
+    async setDefaultAddress(userId, addressId, session) {
         try {
-            // First, set all addresses' markAsDefault to false
+            // First, unset all addresses' markAsDefault
             await this.UserModel.updateOne(
                 { _id: userId },
-                { $set: { "addresses.$[].markAsDefault": false } }
+                { $set: { "addresses.$[].markAsDefault": false } },
+                { session }
             );
 
             // Then, set the specified address's markAsDefault to true
             const result = await this.UserModel.updateOne(
                 { _id: userId, "addresses._id": addressId },
-                { $set: { "addresses.$.markAsDefault": true } }
+                { $set: { "addresses.$.markAsDefault": true } },
+                { session }
             );
 
             if (result.nModified === 0) {
@@ -271,13 +248,13 @@ class UserService {
         }
     }
 
-    async deleteAddress(userId, addressId) {
+    async deleteAddress(userId, addressId, session) {
         try {
-            // Fetch the user and update the isDeleted flag for the specific address
+            // Use the session in findOneAndUpdate to ensure the operation is part of the transaction
             const user = await this.UserModel.findOneAndUpdate(
                 { "_id": userId, "addresses._id": addressId },
                 { "$set": { "addresses.$.isDeleted": true } },
-                { new: true }
+                { new: true, session: session }
             );
 
             if (!user) {
@@ -326,7 +303,7 @@ class UserService {
             if (!user) {
                 throw new Error('User not found');
             }
-    
+
             const modelMap = {
                 "HEAL": HealModel,
                 "SHIELD": ShieldModel,
@@ -335,7 +312,7 @@ class UserService {
                 "SPIRIT": SpiritsModel,
                 "WORK WEAR UNIFORMS": WorkWearModel
             };
-    
+
             const ordersWithDetails = await Promise.all(user.orders.map(async (order) => {
                 const ProductModel = modelMap[order.group];
                 if (!ProductModel) {
@@ -344,25 +321,25 @@ class UserService {
                 const productDetails = await ProductModel.findOne({ productId: order.productId })
                     .select('-variants -reviews -isDeleted -createdAt -updatedAt -__v');
                 const addressDetails = user.addresses.id(order.address);  // Manually find the address using its ID
-    
+
                 if (!addressDetails) {
                     throw new Error("Address not found");
                 }
-    
+
                 return {
                     ...order.toObject(),
                     productDetails,
                     addressDetails: addressDetails.toObject()  // Convert the subdocument to a plain object
                 };
             }));
-    
+
             return ordersWithDetails;
         } catch (err) {
             console.error("Error retrieving orders with product and address details:", err);
             throw err;
         }
     }
-    
+
 
     async getUserQuotesWithProductDetails(userId) {
         try {
@@ -401,9 +378,9 @@ class UserService {
         }
     }
 
-    async addToCart(userId, cartItem) {
+    async addToCart(userId, cartItem, session) {
         try {
-            const user = await UserModel.findById(userId);
+            const user = await UserModel.findById(userId).session(session);
             if (!user) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
             }
@@ -424,7 +401,7 @@ class UserService {
                 user.cart.push(cartItem);
             }
 
-            await user.save();
+            await user.save({ session });
 
             // Return only the item affected
             const addedOrUpdatedCartItem = existingItem || user.cart[user.cart.length - 1];
@@ -472,23 +449,22 @@ class UserService {
         }
     }
 
-    async updateCartItemQuantity(userId, cartItemId, quantityNeedToChange) {
+    async updateCartItemQuantity(userId, cartItemId, quantityNeedToChange, session) {
         try {
-            const user = await UserModel.findById(userId);
+            const user = await UserModel.findById(userId).session(session);
             if (!user) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
             }
 
             // Use the `id` method to find the subdocument in the cart
             const item = user.cart.id(cartItemId);
-
             if (!item) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest('Cart item not found');
             }
 
-            // Increase the quantity
+            // Update the quantity directly
             item.quantityRequired = quantityNeedToChange;
-            await user.save();
+            await user.save({ session });
 
             return item;
         } catch (err) {
@@ -497,9 +473,9 @@ class UserService {
         }
     }
 
-    async removeCartItem(userId, cartItemId) {
+    async removeCartItem(userId, cartItemId, session) {
         try {
-            const user = await UserModel.findById(userId);
+            const user = await UserModel.findById(userId).session(session);
             if (!user) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
             }
@@ -512,7 +488,7 @@ class UserService {
 
             // Remove the item using Mongoose array pull method
             user.cart.pull({ _id: cartItemId });  // _id is used to match the subdocument
-            await user.save();
+            await user.save({ session });
 
             return { message: "Cart item removed successfully" };
         } catch (err) {
@@ -521,9 +497,9 @@ class UserService {
         }
     }
 
-    async addToWishlist(userId, wishItem) {
+    async addToWishlist(userId, wishItem, session) {
         try {
-            const user = await UserModel.findById(userId);
+            const user = await UserModel.findById(userId).session(session);
             if (!user) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
             }
@@ -542,7 +518,7 @@ class UserService {
             } else {
                 // New item, add to wishlist
                 user.wishlist.push(wishItem);
-                await user.save();
+                await user.save({ session });
 
                 // Return only the last item added to the wishlist
                 const addedWishlistItem = user.wishlist[user.wishlist.length - 1];
@@ -591,9 +567,9 @@ class UserService {
         }
     }
 
-    async removeWishlistItem(userId, wishlistItemId) {
+    async removeWishlistItem(userId, wishlistItemId, session) {
         try {
-            const user = await UserModel.findById(userId);
+            const user = await UserModel.findById(userId).session(session);
             if (!user) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
             }
@@ -604,9 +580,9 @@ class UserService {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest('Wishlist item not found');
             }
 
-            // Remove the item
-            user.wishlist.pull({ _id: wishlistItemId });  // Mongoose method to remove the subdocument
-            await user.save();
+            // Remove the item using Mongoose's pull method
+            user.wishlist.pull({ _id: wishlistItemId });
+            await user.save({ session });
 
             return { message: "Wishlist item removed successfully" };
         } catch (err) {
@@ -615,7 +591,7 @@ class UserService {
         }
     }
 
-    async addProductReview(group, productId, reviewData) {
+    async addProductReview(group, productId, reviewData, session) {
         const modelMap = {
             "HEAL": HealModel,
             "SHIELD": ShieldModel,
@@ -630,13 +606,13 @@ class UserService {
             throw new global.DATA.PLUGINS.httperrors.BadRequest('Invalid product group');
         }
 
-        const product = await ProductModel.findOne({ productId });
+        const product = await ProductModel.findOne({ productId }).session(session);
         if (!product) {
             throw new global.DATA.PLUGINS.httperrors.BadRequest('Product not found');
         }
 
         product.reviews.push(reviewData);
-        await product.save();
+        await product.save({ session });
 
         return product.reviews[product.reviews.length - 1]; // Return the newly added review
     }

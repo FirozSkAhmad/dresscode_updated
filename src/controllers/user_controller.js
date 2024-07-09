@@ -5,33 +5,49 @@ const JwtHelper = require('../utils/Helpers/jwt_helper')
 const jwtHelperObj = new JwtHelper();
 const router = express.Router()
 const userServiceObj = new UserService();
+const mongoose = require('mongoose');
 
 
 router.post('/createUser', async (req, res, next) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-        await userServiceObj.createUser(req.body);
+        const newUser = await userServiceObj.createUser(req.body, session);
+        await session.commitTransaction();
         res.send({
             "status": 200,
             "message": Constants.SUCCESS,
+            "user": newUser // Optionally send user details back
         });
     } catch (err) {
-        next(err);
+        await session.abortTransaction();
+        console.error("Error during transaction:", err.message);
+        throw err;  // Maintain error information
+    } finally {
+        session.endSession();
     }
+
 });
 
 router.post('/login', async (req, res, next) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-        const data = await userServiceObj.loginUser(req.body);
+        const data = await userServiceObj.loginUser(req.body, session);
+        await session.commitTransaction();
         res.send({
             "status": 200,
             "message": Constants.SUCCESS,
             "data": data
-        })
-    }
-    catch (err) {
+        });
+    } catch (err) {
+        await session.abortTransaction();
+        console.error("Transaction aborted due to an error:", err.message);
         next(err);
+    } finally {
+        session.endSession();
     }
-})
+});
 
 // GET endpoint to retrieve specific details for a user
 router.get('/:userId/getUserDetails', jwtHelperObj.verifyAccessToken, async (req, res) => {
@@ -51,37 +67,46 @@ router.get('/:userId/getUserDetails', jwtHelperObj.verifyAccessToken, async (req
 });
 
 router.patch('/:userId/updateUserDetails', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-
-        const { userId } = req.params
-
-
+        const { userId } = req.params;
         const updates = req.body;
 
-        // Call the updateUserDetails method from the UserService
-        const updatedUserData = await userServiceObj.updateUserDetails(userId, updates);
+        // Pass the session to updateUserDetails method
+        const updatedUserData = await userServiceObj.updateUserDetails(userId, updates, session);
 
+        await session.commitTransaction();
         res.status(200).send({
             status: 200,
             message: Constants.SUCCESS,
             data: updatedUserData
         });
     } catch (err) {
-        // Forward error handling to your error-handling middleware
+        await session.abortTransaction();
+        console.error("Transaction aborted due to an error:", err.message);
         next(err);
+    } finally {
+        session.endSession();
     }
 });
 
 router.post('/:userId/addAddress', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
         const { userId } = req.params;
         const newAddress = req.body;
 
-        const addresses = await userServiceObj.addAddress(userId, newAddress);
-        res.status(200).send({ message: "Address added successfully", data: addresses });
+        const addedAddress = await userServiceObj.addAddress(userId, newAddress, session);
+        await session.commitTransaction();
+        res.status(200).send({ message: "Address added successfully", data: addedAddress });
     } catch (error) {
+        await session.abortTransaction();
         console.error("Failed to add address:", error.message);
         res.status(500).send({ message: error.message });
+    } finally {
+        session.endSession();
     }
 });
 
@@ -103,52 +128,64 @@ router.get('/:userId/addresses/active', jwtHelperObj.verifyAccessToken, async (r
 });
 
 router.patch('/:userId/address/:addressId/updateAddress', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
         const { userId, addressId } = req.params;
         const addressUpdates = req.body;
 
-
-        const updatedAddress = await userServiceObj.updateAddress(userId, addressId, addressUpdates);
-
+        const updatedAddress = await userServiceObj.updateAddress(userId, addressId, addressUpdates, session);
+        await session.commitTransaction();
         res.status(200).send({
             message: "Address updated successfully",
             data: updatedAddress
         });
     } catch (error) {
+        await session.abortTransaction();
         console.error("Failed to update address:", error.message);
         res.status(500).send({ message: error.message });
+    } finally {
+        session.endSession();
     }
 });
 
 router.patch('/:userId/address/:addressId/setToDefault', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
         const { userId, addressId } = req.params;
 
-
-        const result = await userServiceObj.setDefaultAddress(userId, addressId);
-
+        const result = await userServiceObj.setDefaultAddress(userId, addressId, session);
+        await session.commitTransaction();
         res.status(200).send({
             message: result.message
         });
     } catch (error) {
+        await session.abortTransaction();
         console.error("Failed to set default address:", error.message);
         res.status(500).send({ message: error.message });
+    } finally {
+        session.endSession();
     }
 });
 
 router.patch('/:userId/address/:addressId/removeAddress', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
         const { userId, addressId } = req.params;
 
-
-        const result = await userServiceObj.deleteAddress(userId, addressId);
-
+        const result = await userServiceObj.deleteAddress(userId, addressId, session);
+        await session.commitTransaction();
         res.status(200).send({
             message: result.message
         });
     } catch (error) {
+        await session.abortTransaction();
         console.error("Failed to mark address as deleted:", error.message);
         res.status(500).send({ message: error.message });
+    } finally {
+        session.endSession();
     }
 });
 
@@ -193,20 +230,24 @@ router.get('/:userId/getQuotes', jwtHelperObj.verifyAccessToken, async (req, res
 });
 
 router.post('/:userId/addToCart', jwtHelperObj.verifyAccessToken, async (req, res) => {
-    const { userId } = req.params;
-    const cartItem = req.body;
-
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
+        const { userId } = req.params;
+        const cartItem = req.body;
 
-        const addedCartItem = await userServiceObj.addToCart(userId, cartItem);
-
+        const addedCartItem = await userServiceObj.addToCart(userId, cartItem, session);
+        await session.commitTransaction();
         res.status(201).send({
             message: "Product added to cart successfully",
             cartItem: addedCartItem
         });
     } catch (error) {
+        await session.abortTransaction();
         console.error("Failed to add product to cart:", error.message);
         res.status(500).send({ message: error.message });
+    } finally {
+        session.endSession();
     }
 });
 
@@ -227,50 +268,65 @@ router.get('/:userId/getCart', jwtHelperObj.verifyAccessToken, async (req, res) 
 });
 
 router.patch('/:userId/updateCartItemQuantity/:cartItemId', jwtHelperObj.verifyAccessToken, async (req, res) => {
-    const { userId, cartItemId } = req.params;
-    const { quantityNeedToChange } = req.body;
-
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-        const updatedCartItem = await userServiceObj.updateCartItemQuantity(userId, cartItemId, quantityNeedToChange);
+        const { userId, cartItemId } = req.params;
+        const { quantityNeedToChange } = req.body;
 
+        const updatedCartItem = await userServiceObj.updateCartItemQuantity(userId, cartItemId, quantityNeedToChange, session);
+        await session.commitTransaction();
         res.status(200).send({
             message: "Cart item quantity updated successfully",
             cartItem: updatedCartItem
         });
     } catch (error) {
+        await session.abortTransaction();
         console.error("Failed to increase cart item quantity:", error.message);
         res.status(400).send({ message: error.message });
+    } finally {
+        session.endSession();
     }
 });
 
 // DELETE endpoint to remove a product from a user's cart
 router.delete('/:userId/removeCartItem/:cartItemId', jwtHelperObj.verifyAccessToken, async (req, res) => {
-    const { userId, cartItemId } = req.params;
-
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-        const result = await userServiceObj.removeCartItem(userId, cartItemId);
+        const { userId, cartItemId } = req.params;
+
+        const result = await userServiceObj.removeCartItem(userId, cartItemId, session);
+        await session.commitTransaction();
         res.status(200).send(result);
     } catch (error) {
+        await session.abortTransaction();
         console.error("Failed to remove product from cart:", error.message);
         res.status(400).send({ message: error.message });
+    } finally {
+        session.endSession();
     }
 });
 
 router.post('/:userId/addToWishlist', jwtHelperObj.verifyAccessToken, async (req, res) => {
-    const { userId } = req.params;
-    const wishItem = req.body;
-
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
+        const { userId } = req.params;
+        const wishItem = req.body;
 
-        const addedWishlistItem = await userServiceObj.addToWishlist(userId, wishItem);
-
+        const addedWishlistItem = await userServiceObj.addToWishlist(userId, wishItem, session);
+        await session.commitTransaction();
         res.status(201).send({
             message: "Product added to wishlist successfully",
             wishlistItem: addedWishlistItem
         });
     } catch (error) {
+        await session.abortTransaction();
         console.error("Failed to add product to wishlist:", error.message);
-        res.status(400).send({ message: error.message }); // Assuming BadRequest for duplicates
+        res.status(400).send({ message: error.message });
+    } finally {
+        session.endSession();
     }
 });
 
@@ -292,32 +348,42 @@ router.get('/:userId/getWishlist', jwtHelperObj.verifyAccessToken, async (req, r
 
 // DELETE endpoint to remove a product from a user's wishlist
 router.delete('/:userId/removeWishlistItem/:wishlistItemId', jwtHelperObj.verifyAccessToken, async (req, res) => {
-    const { userId, wishlistItemId } = req.params;
-
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-        const result = await userServiceObj.removeWishlistItem(userId, wishlistItemId);
+        const { userId, wishlistItemId } = req.params;
 
+        const result = await userServiceObj.removeWishlistItem(userId, wishlistItemId, session);
+        await session.commitTransaction();
         res.status(200).send(result);
     } catch (error) {
+        await session.abortTransaction();
         console.error("Failed to remove wishlist item:", error.message);
         res.status(400).send({ message: error.message });
+    } finally {
+        session.endSession();
     }
 });
 
 router.post('/:group/:productId/writeReview', jwtHelperObj.verifyAccessToken, async (req, res) => {
-    const { group, productId } = req.params;
-    const reviewData = req.body;
-
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-        const newReview = await userServiceObj.addProductReview(group, productId, reviewData);
+        const { group, productId } = req.params;
+        const reviewData = req.body;
 
+        const newReview = await userServiceObj.addProductReview(group, productId, reviewData, session);
+        await session.commitTransaction();
         res.status(201).send({
             message: "Review added successfully",
             review: newReview
         });
     } catch (error) {
+        await session.abortTransaction();
         console.error("Failed to add review:", error.message);
         res.status(500).send({ message: error.message });
+    } finally {
+        session.endSession();
     }
 });
 
