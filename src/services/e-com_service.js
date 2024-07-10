@@ -670,22 +670,73 @@ class EComService {
             "SPIRIT": SpiritsModel,
             "WORK WEAR UNIFORMS": WorkWearModel
         };
-
+    
+        const colorMap = {
+            "BLACK": "#000000",
+            "SAGE GREEN": "#B2AC88",
+            "CHERRY LACQUER": "#532D3A",
+            "ELECTRIC INDIGO": "#6f00ff",
+            "MAUVE": "#E0B0FF",
+            "CELESTIAL YELLOW": "#FFE6A2",
+            "DUSTED GRAPE": "#ab92b3",
+            "SEPIA MIDNIGHT PLUM": "#553842",
+            "TERRACOTTA": "#E2725B",
+            "DIGITAL MIST": "#646D7E",
+            "OLIVE GREEN": "#BAB86C",
+            "CAMOUFLAGE": "#78866b",
+            "NAVY BLUE": "#000080",
+            "SKY BLUE": "#87CEEB",
+            "WHITE": "#ffffff",
+            "INDIGO": "#4B0082",
+            "GREEN": "#00FF00",
+            "GRAY": "#808080",
+            "GREY": "#808080",
+            "RED": "#ff0000",
+            "MAROON": "#800000"
+        };
+    
+        const sizeAndColorConfig = {
+            "ELITE": {
+                allColors: ["WHITE", "BLACK", "INDIGO", "SKY BLUE", "NAVY BLUE", "GREEN", "GREY", "MAROON", "RED"],
+                allSizes: ["S", "M", "L", "XL", "XXL"]
+            },
+            "HEAL": {
+                allColors: ["BLACK", "SAGE GREEN", "CHERRY LACQUER", "ELECTRIC INDIGO", "MAUVE", "CELESTIAL YELLOW", "DUSTED GRAPE", "SEPIA MIDNIGHT PLUM", "TERRACOTTA", "DIGITAL MIST", "COATS COLOR"],
+                allSizes: ["XS", "S", "M", "L", "XL", "XXL"]
+            },
+            "SHIELD": {
+                allColors: ["OLIVE GREEN", "CAMOUFLAGE", "NAVY BLUE", "SKY BLUE", "BLACK", "WHITE"],
+                allSizes: ["S", "M", "L", "XL", "XXL"]
+            },
+            "TOGS": {
+                allColors: [],
+                allSizes: ["22", "24", "26", "28", "30", "32", "34", "36", "38", "40", "42", "44"]
+            },
+            "SPIRIT": {
+                allColors: [],
+                allSizes: ["XS", "S", "M", "L", "XL", "XXL"]
+            },
+            "WORK WEAR UNIFORMS": {
+                allColors: [],
+                allSizes: ["S", "M", "L", "XL", "XXL"]
+            }
+        };
+    
         const modelToUse = modelMap[groupName];
-
+    
         // Building the query dynamically based on provided parameters
         const matchQuery = {
             "category.name": category,
             "subCategory.name": subCategory
         };
-
+    
         // Add parameters if they are provided and are not empty
         if (gender) matchQuery.gender = gender;
         if (productType) matchQuery["productType.type"] = productType;
         if (fit) matchQuery.fit = fit;
         if (neckline) matchQuery.neckline = neckline;
         if (sleeves) matchQuery.sleeves = sleeves;
-
+    
         try {
             const products = await modelToUse.aggregate([
                 { $match: matchQuery },
@@ -719,22 +770,15 @@ class EComService {
                             }
                         },
                         allVariants: "$variants",
-                        allSizes: ["S", "M", "L", "XL", "XXL"],
-                        allColors: [
-                            "WHITE",
-                            "BLACK",
-                            "INDIGO",
-                            "SKY BLUE",
-                            "NAVY BLUE",
-                            "GREEN",
-                            "GREY",
-                            "MAROON",
-                            "RED",
-                        ]
+                        allSizes: sizeAndColorConfig[groupName].allSizes,
+                        allColors: sizeAndColorConfig[groupName].allColors.map(colorName => ({
+                            name: colorName,
+                            hexcode: colorMap[colorName.toUpperCase()]
+                        }))
                     }
                 }
             ]);
-
+    
             // Collect all other colors with their sizes and quantities
             const others = products.map(product => {
                 const colorsWithSizesAndQuantities = {};
@@ -755,10 +799,10 @@ class EComService {
                         });
                     }
                 });
-
+    
                 return Object.values(colorsWithSizesAndQuantities); // Return the structured color objects with sizes and quantities
             });
-
+    
             return products.map((product, index) => {
                 // Remove the 'allVariants' key from each product
                 delete product.allVariants;
@@ -775,6 +819,7 @@ class EComService {
             return [];
         }
     }
+    
 
 
 
@@ -884,15 +929,65 @@ class EComService {
             "WORK WEAR UNIFORMS": WorkWearModel
         };
     
-        const modelToUse = modelMap[groupName];
+        const colorMap = {
+            "BLACK": "#000000",
+            "SAGE GREEN": "#B2AC88",
+            "CHERRY LACQUER": "#532D3A",
+            "ELECTRIC INDIGO": "#6f00ff",
+            "MAUVE": "#E0B0FF",
+            "CELESTIAL YELLOW": "#FFE6A2",
+            "DUSTED GRAPE": "#ab92b3",
+            "SEPIA MIDNIGHT PLUM": "#553842",
+            "TERRACOTTA": "#E2725B",
+            "DIGITAL MIST": "#646D7E",
+            "OLIVE GREEN": "#BAB86C",
+            "CAMOUFLAGE": "#78866b",
+            "NAVY BLUE": "#000080",
+            "SKY BLUE": "#87CEEB",
+            "WHITE": "#ffffff",
+            "INDIGO": "#4B0082",
+            "GREEN": "#00FF00",
+            "GRAY": "#808080",
+            "GREY": "#808080",
+            "RED": "#ff0000",
+            "MAROON": "#800000"
+        };
     
+        const sizeAndColorConfig = {
+            "ELITE": {
+                allColors: ["WHITE", "BLACK", "INDIGO", "SKY BLUE", "NAVY BLUE", "GREEN", "GREY", "MAROON", "RED"],
+                allSizes: ["S", "M", "L", "XL", "XXL"]
+            },
+            "HEAL": {
+                allColors: ["BLACK", "SAGE GREEN", "CHERRY LACQUER", "ELECTRIC INDIGO", "MAUVE", "CELESTIAL YELLOW", "DUSTED GRAPE", "SEPIA MIDNIGHT PLUM", "TERRACOTTA", "DIGITAL MIST", "COATS COLOR"],
+                allSizes: ["XS", "S", "M", "L", "XL", "XXL"]
+            },
+            "SHIELD": {
+                allColors: ["OLIVE GREEN", "CAMOUFLAGE", "NAVY BLUE", "SKY BLUE", "BLACK", "WHITE"],
+                allSizes: ["S", "M", "L", "XL", "XXL"]
+            },
+            "TOGS": {
+                allColors: [],
+                allSizes: ["22", "24", "26", "28", "30", "32", "34", "36", "38", "40", "42", "44"]
+            },
+            "SPIRIT": {
+                allColors: [],
+                allSizes: ["XS", "S", "M", "L", "XL", "XXL"]
+            },
+            "WORK WEAR UNIFORMS": {
+                allColors: [],
+                allSizes: ["S", "M", "L", "XL", "XXL"]
+            }
+        };
+    
+        const modelToUse = modelMap[groupName];
+        
         if (!modelToUse) {
             console.error("Invalid groupName provided");
             return null;
         }
     
         try {
-            // Find the product with specific color and size in one query
             const product = await modelToUse.findOne({
                 productId,
                 "variants.color.name": color,
@@ -904,15 +999,14 @@ class EComService {
                 return null;
             }
     
-            // Collect unique colors with their sizes and quantities
             const colorsWithSizesAndQuantities = {};
     
             product.variants.forEach(variant => {
                 if (!variant.isDeleted) {
-                    const colorName = variant.color.name; // Correcting to use color name
+                    const colorName = variant.color.name;
                     if (!colorsWithSizesAndQuantities[colorName]) {
                         colorsWithSizesAndQuantities[colorName] = {
-                            color: variant.color,
+                            color: { name: colorName, hexcode: colorMap[colorName.toUpperCase()] },
                             sizesAndQty: []
                         };
                     }
@@ -925,30 +1019,19 @@ class EComService {
                 }
             });
     
-            // Find the specific variant that matches the color and size
-            const specificVariant = product.variants.find(variant =>
-                variant.color.name === color
-            );
+            const specificVariant = product.variants.find(variant => variant.color.name === color);
     
             const available = Object.values(colorsWithSizesAndQuantities);
+    
+            const currentConfig = sizeAndColorConfig[groupName];
     
             return specificVariant ? {
                 productDetails: {
                     ...product,
-                    variants: [specificVariant] // Only include the matching variant
+                    variants: [specificVariant]
                 },
-                allSizes: ["S", "M", "L", "XL", "XXL"],
-                allColors: [
-                    "WHITE",
-                    "BLACK",
-                    "INDIGO",
-                    "SKY BLUE",
-                    "NAVY BLUE",
-                    "GREEN",
-                    "GREY",
-                    "MAROON",
-                    "RED",
-                ],
+                allSizes: currentConfig.allSizes,
+                allColors: currentConfig.allColors.map(color => ({ name: color, hexcode: colorMap[color.toUpperCase()] })),
                 available
             } : {
                 message: "This product has no variants available with the given size and color combination.",
@@ -959,6 +1042,7 @@ class EComService {
             return null;
         }
     }
+    
     
 
 }
