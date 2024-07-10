@@ -6,7 +6,17 @@ const productsSchema = new mongoose.Schema({
     group: { type: String, required: true, trim: true },
     productId: { type: String, required: true, trim: true },
     variants: [{
-        color: { type: String, required: true, trim: true },
+        color: {
+            name: {
+                type: String,
+                required: true,
+                trim: true
+            },
+            hexcode: {
+                type: String,
+                trim: true
+            }
+        },
         variantSizes: [{
             size: {
                 type: String,

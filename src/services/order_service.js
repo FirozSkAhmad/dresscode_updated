@@ -10,6 +10,7 @@ const WorkWearModel = require('../utils/Models/workWearModel');
 const mongoose = require('mongoose');
 const JWTHelper = require('../utils/Helpers/jwt_helper')
 const bcrypt = require('bcrypt');
+const colorCodes = require('../utils/Helpers/data');
 
 class OrderService {
     constructor() {
@@ -35,13 +36,13 @@ class OrderService {
             }
 
             // Find the product and the specific variant and size
-            const product = await ProductModel.findOne({ "productId": productId, "variants.color": color });
+            const product = await ProductModel.findOne({ "productId": productId, "variants.color.name": color });
             if (!product) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("Product or variant not found");
             }
 
             // Find the specific variant size and update the quantity
-            const variant = product.variants.find(v => v.color === color);
+            const variant = product.variants.find(v => v.color.name === color);
             const variantSize = variant.variantSizes.find(v => v.size === size);
             if (!variantSize || variantSize.quantity < quantityOrdered) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("Insufficient stock for the variant");
@@ -53,6 +54,10 @@ class OrderService {
             // Save the product with updated quantity
             await product.save();
 
+            orderDetails.color = {
+                name: color,
+                hexcode: colorCodes[color] ? colorCodes[color] : null
+            }
             // Create and save the order
             const newOrder = new OrderModel({ user: userId, address: addressId, ...orderDetails });
             const savedOrder = await newOrder.save();
@@ -90,16 +95,21 @@ class OrderService {
             }
 
             // Find the product and the specific variant and size
-            const product = await ProductModel.findOne({ "productId": productId, "variants.color": color });
+            const product = await ProductModel.findOne({ "productId": productId, "variants.color.name": color });
             if (!product) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("Product or variant not found");
             }
 
             // Find the specific variant size and update the quantity
-            const variant = product.variants.find(v => v.color === color);
+            const variant = product.variants.find(v => v.color.name === color);
             const variantSize = variant.variantSizes.find(v => v.size === size);
             if (!variantSize) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("variant size not found");
+            }
+
+            quoteDetails.color = {
+                name: color,
+                hexcode: colorCodes[color] ? colorCodes[color] : null
             }
 
             // Create and save the quote

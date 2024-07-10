@@ -3,7 +3,17 @@ const mongoose = require('mongoose');
 const wishlistItemSchema = new mongoose.Schema({
     group: { type: String, required: true, trim: true },
     productId: { type: String, required: true, trim: true },
-    color: { type: String, required: true, trim: true },
+    color: {
+        name: {
+            type: String,
+            required: true,
+            trim: true
+        },
+        hexcode: {
+            type: String,
+            trim: true
+        }
+    },
     size: { type: String, required: true, trim: true },
     logoUrl: {
         type: String, trim: true, default: null
@@ -16,7 +26,17 @@ const wishlistItemSchema = new mongoose.Schema({
 const cartItemSchema = new mongoose.Schema({
     group: { type: String, required: true, trim: true },
     productId: { type: String, required: true, trim: true },
-    color: { type: String, required: true, trim: true },
+    color: {
+        name: {
+            type: String,
+            required: true,
+            trim: true
+        },
+        hexcode: {
+            type: String,
+            trim: true
+        }
+    },
     size: { type: String, required: true, trim: true },
     quantityRequired: { type: Number, required: true, min: 1 },
     logoUrl: {

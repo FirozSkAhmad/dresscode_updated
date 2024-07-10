@@ -24,19 +24,26 @@ const reviewSchema = new mongoose.Schema({
 
 const variantSchema = new mongoose.Schema({
     color: {
-        type: String,
-        required: true,
-        enum: [
-            "WHITE",
-            "BLACK",
-            "INDIGO",
-            "SKY BLUE",
-            "NAVY BLUE",
-            "GREEN",
-            "GREY",
-            "MAROON",
-            "RED",
-        ],
+        name: {
+            type: String,
+            required: true,
+            enum: [
+                "WHITE",
+                "BLACK",
+                "INDIGO",
+                "SKY BLUE",
+                "NAVY BLUE",
+                "GREEN",
+                "GREY",
+                "MAROON",
+                "RED",
+            ],
+        },
+        hexcode: {
+            type: String,
+            default: null
+        }
+
     },
     variantSizes: [{
         size: {

@@ -5,6 +5,7 @@ const JwtHelper = require('../utils/Helpers/jwt_helper')
 const jwtHelperObj = new JwtHelper();
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
+const mongoose = require('mongoose');
 
 // Function to verify if the uploaded file is a CSV
 function isCsvFile(file) {

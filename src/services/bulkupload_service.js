@@ -5,6 +5,7 @@ const TogsModel = require('../utils/Models/togsModel');
 const SpiritsModel = require('../utils/Models/spiritsModel');
 const WorkWearModel = require('../utils/Models/workWearModel');
 const UploadedHistoryModel = require('../utils/Models/uploadedHistoryModel');
+const colorCodes = require('../utils/Helpers/data');
 const stream = require('stream');
 const csv = require('csv-parser');
 
@@ -366,7 +367,7 @@ class BulkUploadService {
                         price: data.price,
                         productDetails: data.productDetails,
                         variant: {
-                            color: data.variantColor,
+                            color: { name: data.variantColor, hexcode: colorCodes[data.variantColor] ? colorCodes[data.variantColor] : null },
                             variantSizes: [
                                 {
                                     size: data.variantSize,
@@ -386,15 +387,16 @@ class BulkUploadService {
         let uploadData = [];
 
         for (const item of data) {
-            const productData = await this.addEliteVariant(item, session); // Include session in function call
+            let productData = await this.addEliteVariant(item, session); // Include session in function call
+            productData = Array.isArray(productData) ? productData[0] : productData
             if (productData) {
                 let uploadEntry = uploadData.find(entry =>
                     entry.group === item.group.name &&
-                    entry.productId.toString() === productData._id.toString()
+                    entry.productId?.toString() === productData.productId?.toString()
                 );
 
                 if (uploadEntry) {
-                    let variantEntry = uploadEntry.variants.find(v => v.color === item.variant.color);
+                    let variantEntry = uploadEntry.variants.find(v => v.color.name === item.variant.color.name);
                     if (variantEntry) {
                         let sizeEntry = variantEntry.variantSizes.find(vs => vs.size === item.variant.variantSizes[0].size);
                         if (sizeEntry) {
@@ -417,7 +419,7 @@ class BulkUploadService {
                 } else {
                     uploadData.push({
                         group: item.group.name,
-                        productId: productData._id,
+                        productId: productData.productId,
                         variants: [{
                             color: item.variant.color,
                             variantSizes: item.variant.variantSizes.map(vs => ({
@@ -446,7 +448,7 @@ class BulkUploadService {
         }, null, { session });
 
         if (existingProduct) {
-            const variant = existingProduct.variants.find(v => v.color === item.variant.color);
+            const variant = existingProduct.variants.find(v => v.color.name === item.variant.color.name);
             if (variant) {
                 const sizeDetail = variant.variantSizes.find(v => v.size === item.variant.variantSizes[0].size);
                 if (sizeDetail) {
@@ -462,7 +464,7 @@ class BulkUploadService {
             return existingProduct;
         } else {
             // Create new product if it does not exist
-            return await EliteModel.create({
+            return await EliteModel.create([{
                 group: item.group,
                 category: item.category,
                 subCategory: item.subCategory,
@@ -474,7 +476,7 @@ class BulkUploadService {
                 price: item.price,
                 productDetails: item.productDetails,
                 variants: [item.variant]
-            }, { session });
+            }], { session });
         }
     }
 
@@ -914,7 +916,7 @@ class BulkUploadService {
 
     async recordUpload(uploadData, session) {
         let totalAmountOfUploaded = 0;
-
+        console.log(uploadData[0].variants)
         for (const product of uploadData) {
             const ProductModel = modelMap[product.group]
             const productDetails = await ProductModel.findOne({ productId: product.productId }, null, { session });
@@ -927,10 +929,10 @@ class BulkUploadService {
             }
         }
 
-        return UploadedHistoryModel.create({
+        return UploadedHistoryModel.create([{
             totalAmountOfUploaded,
             products: uploadData
-        }, { session });
+        }], { session });
     }
 }
 

@@ -76,7 +76,17 @@ const quoteSchema = new mongoose.Schema({
     },
     group: { type: String, required: true, trim: true },
     productId: { type: String, required: true, trim: true },
-    color: { type: String, required: true, trim: true },
+    color: {
+        name: {
+            type: String,
+            required: true,
+            trim: true
+        },
+        hexcode: {
+            type: String,
+            trim: true
+        }
+    },
     size: { type: String, required: true, trim: true },
     quantityRequired: { type: Number, required: true, min: 100 },
     logoUrl: {

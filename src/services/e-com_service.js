@@ -673,11 +673,6 @@ class EComService {
 
         const modelToUse = modelMap[groupName];
 
-        // if (!modelToUse || !category || !subCategory) {
-        //     console.error("Invalid parameters provided");
-        //     return [];
-        // }
-
         // Building the query dynamically based on provided parameters
         const matchQuery = {
             "category.name": category,
@@ -717,17 +712,13 @@ class EComService {
                                 as: "variant",
                                 cond: {
                                     $and: [
-                                        color ? { $eq: ["$$variant.color", color] } : {},
-                                        size ? {
-                                            $in: [
-                                                size,
-                                                "$$variant.variantSizes.size"
-                                            ]
-                                        } : {}
+                                        color ? { $eq: ["$$variant.color.name", color] } : {},
+                                        size ? { $in: [size, "$$variant.variantSizes.size"] } : {}
                                     ]
                                 }
                             }
                         },
+                        allVariants: "$variants",
                         allSizes: ["S", "M", "L", "XL", "XXL"],
                         allColors: [
                             "WHITE",
@@ -744,16 +735,20 @@ class EComService {
                 }
             ]);
 
-            // Collect other colors with their sizes and quantities
+            // Collect all other colors with their sizes and quantities
             const others = products.map(product => {
                 const colorsWithSizesAndQuantities = {};
-                product.variants.forEach(variant => {
+                product.allVariants.forEach(variant => {
                     if (!variant.isDeleted) {
-                        if (!colorsWithSizesAndQuantities[variant.color]) {
-                            colorsWithSizesAndQuantities[variant.color] = [];
+                        const colorName = variant.color.name;
+                        if (!colorsWithSizesAndQuantities[colorName]) {
+                            colorsWithSizesAndQuantities[colorName] = {
+                                color: variant.color,
+                                sizesAndQty: []
+                            };
                         }
                         variant.variantSizes.forEach(sizeEntry => {
-                            colorsWithSizesAndQuantities[variant.color].push({
+                            colorsWithSizesAndQuantities[colorName].sizesAndQty.push({
                                 size: sizeEntry.size,
                                 quantity: sizeEntry.quantity
                             });
@@ -761,22 +756,27 @@ class EComService {
                     }
                 });
 
-                return Object.keys(colorsWithSizesAndQuantities).map(color => ({
-                    color,
-                    sizesAndQty: colorsWithSizesAndQuantities[color]
-                }));
+                return Object.values(colorsWithSizesAndQuantities); // Return the structured color objects with sizes and quantities
             });
 
-            // Merge products and others into the final result
-            return products.map((product, index) => ({
-                ...product,
-                available: others[index]
-            }));
+            return products.map((product, index) => {
+                // Remove the 'allVariants' key from each product
+                delete product.allVariants;
+            
+                // Add 'available' data for the product from the 'others' array using the same index
+                product.available = others[index];
+            
+                // Return the modified product
+                return product;
+            });
+            
         } catch (error) {
             console.error("Failed to fetch products:", error);
             return [];
         }
     }
+
+
 
     async getProductVariantAvaColors(groupName, productId) {
         const modelMap = {
@@ -883,62 +883,62 @@ class EComService {
             "SPIRIT": SpiritsModel,
             "WORK WEAR UNIFORMS": WorkWearModel
         };
-
+    
         const modelToUse = modelMap[groupName];
-
+    
         if (!modelToUse) {
             console.error("Invalid groupName provided");
             return null;
         }
-
+    
         try {
-            // Directly find the product and extract sizes and colors in one query
+            // Find the product with specific color and size in one query
             const product = await modelToUse.findOne({
                 productId,
-                "variants.color": color,
+                "variants.color.name": color,
                 // "variants.variantSizes.size": size
             }).lean();
-
+    
             if (!product) {
                 console.log("Product not found");
                 return null;
             }
-
+    
             // Collect unique colors with their sizes and quantities
             const colorsWithSizesAndQuantities = {};
-
+    
             product.variants.forEach(variant => {
                 if (!variant.isDeleted) {
-                    if (!colorsWithSizesAndQuantities[variant.color]) {
-                        colorsWithSizesAndQuantities[variant.color] = [];
+                    const colorName = variant.color.name; // Correcting to use color name
+                    if (!colorsWithSizesAndQuantities[colorName]) {
+                        colorsWithSizesAndQuantities[colorName] = {
+                            color: variant.color,
+                            sizesAndQty: []
+                        };
                     }
                     variant.variantSizes.forEach(sizeEntry => {
-                        colorsWithSizesAndQuantities[variant.color].push({
+                        colorsWithSizesAndQuantities[colorName].sizesAndQty.push({
                             size: sizeEntry.size,
                             quantity: sizeEntry.quantity
                         });
                     });
                 }
             });
-
+    
             // Find the specific variant that matches the color and size
             const specificVariant = product.variants.find(variant =>
-                variant.color === color
-                //  && variant.variantSizes.some(sizeEntry => sizeEntry.size === size)
+                variant.color.name === color
             );
-
-            const available = Object.keys(colorsWithSizesAndQuantities).map(color => ({
-                color,
-                sizesAndQty: colorsWithSizesAndQuantities[color]
-            }));
-
+    
+            const available = Object.values(colorsWithSizesAndQuantities);
+    
             return specificVariant ? {
                 productDetails: {
                     ...product,
-                    variants: specificVariant ? [specificVariant] : [] // Only include the matching variant
+                    variants: [specificVariant] // Only include the matching variant
                 },
-                sizes: ["S", "M", "L", "XL", "XXL"],
-                colors: [
+                allSizes: ["S", "M", "L", "XL", "XXL"],
+                allColors: [
                     "WHITE",
                     "BLACK",
                     "INDIGO",
@@ -959,6 +959,7 @@ class EComService {
             return null;
         }
     }
+    
 
 }
 module.exports = EComService;

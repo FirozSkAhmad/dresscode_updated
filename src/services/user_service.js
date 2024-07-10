@@ -9,6 +9,7 @@ const WorkWearModel = require('../utils/Models/workWearModel');
 const mongoose = require('mongoose');
 const JWTHelper = require('../utils/Helpers/jwt_helper')
 const bcrypt = require('bcrypt');
+const colorCodes = require('../utils/Helpers/data');
 
 class UserService {
     constructor() {
@@ -380,6 +381,11 @@ class UserService {
 
     async addToCart(userId, cartItem, session) {
         try {
+            cartItem.color = {
+                name: cartItem.color,
+                hexcode: colorCodes[cartItem.color] ? colorCodes[cartItem.color] : null
+            }
+
             const user = await UserModel.findById(userId).session(session);
             if (!user) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
@@ -389,7 +395,7 @@ class UserService {
             const existingItem = user.cart.find(item =>
                 item.productId === cartItem.productId &&
                 item.group === cartItem.group &&
-                item.color === cartItem.color &&
+                item.color.name === cartItem.color.name &&
                 item.size === cartItem.size
             );
 
@@ -499,6 +505,11 @@ class UserService {
 
     async addToWishlist(userId, wishItem, session) {
         try {
+            wishItem.color = {
+                name: wishItem.color,
+                hexcode: colorCodes[wishItem.color] ? colorCodes[wishItem.color] : null
+            }
+
             const user = await UserModel.findById(userId).session(session);
             if (!user) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
@@ -508,7 +519,7 @@ class UserService {
             const existingItem = user.wishlist.find(item =>
                 item.productId === wishItem.productId &&
                 item.group === wishItem.group &&
-                item.color === wishItem.color &&
+                item.color.name === wishItem.color.name &&
                 item.size === wishItem.size
             );
 
