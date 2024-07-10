@@ -61,7 +61,7 @@ class BulkUploadService {
                         price: data.price,
                         productDetails: data.productDetails,
                         variant: {
-                            color: data.categoryName === "COATS" ? "COATS COLOR" : data.variantColor,
+                            color: { name: data.categoryName === "COATS" ? "COATS COLOR" : data.variantColor, hexcode: colorCodes[data.variantColor] ? colorCodes[data.variantColor] : null },
                             variantSizes: [
                                 {
                                     size: data.variantSize,
@@ -87,14 +87,15 @@ class BulkUploadService {
 
         for (const item of data) {
             const productData = await this.addHealVariant(item, session); // Include session in function call
+            productData = Array.isArray(productData) ? productData[0] : productData
             if (productData) {
                 let uploadEntry = uploadData.find(entry =>
                     entry.group === item.group.name &&
-                    entry.productId.toString() === productData._id.toString()
+                    entry.productId?.toString() === productData.productId?.toString()
                 );
 
                 if (uploadEntry) {
-                    let variantEntry = uploadEntry.variants.find(v => v.color === item.variant.color);
+                    let variantEntry = uploadEntry.variants.find(v => v.color.name === item.variant.color.name);
                     if (variantEntry) {
                         let sizeEntry = variantEntry.variantSizes.find(vs => vs.size === item.variant.variantSizes[0].size);
                         if (sizeEntry) {
@@ -117,7 +118,7 @@ class BulkUploadService {
                 } else {
                     uploadData.push({
                         group: item.group.name,
-                        productId: productData._id,
+                        productId: productData.productId,
                         variants: [{
                             color: item.variant.color,
                             variantSizes: item.variant.variantSizes.map(vs => ({
@@ -145,7 +146,7 @@ class BulkUploadService {
         }, null, { session });
 
         if (existingProduct) {
-            const variant = existingProduct.variants.find(v => v.color === item.variant.color);
+            const variant = existingProduct.variants.find(v => v.color.name === item.variant.color.name);
             if (variant) {
                 // Update existing variant's details or add new size details
                 const sizeDetail = variant.variantSizes.find(v => v.size === item.variant.variantSizes[0].size);
@@ -160,9 +161,10 @@ class BulkUploadService {
                 existingProduct.variants.push(item.variant);
                 await existingProduct.save({ session });
             }
+            return existingProduct;
         } else {
             // Create new product if it does not exist
-            return await HealModel.create({
+            return await HealModel.create([{
                 group: item.group,
                 category: item.category,
                 subCategory: item.subCategory,
@@ -172,7 +174,7 @@ class BulkUploadService {
                 sleeves: item.sleeves,
                 fabric: item.fabric,
                 variants: [item.variant]
-            });
+            }], { session });
         }
     }
 
@@ -215,7 +217,7 @@ class BulkUploadService {
                         price: data.price,
                         productDetails: data.productDetails,
                         variant: {
-                            color: data.variantColor,
+                            color: { name: data.variantColor, hexcode: colorCodes[data.variantColor] ? colorCodes[data.variantColor] : null },
                             variantSizes: [
                                 {
                                     size: data.variantSize,
@@ -239,14 +241,15 @@ class BulkUploadService {
         let uploadData = [];
         for (const item of data) {
             const productData = await this.addShieldVariant(item, session); // Include session in function call
+            productData = Array.isArray(productData) ? productData[0] : productData
             if (productData) {
                 let uploadEntry = uploadData.find(entry =>
                     entry.group === item.group.name &&
-                    entry.productId.toString() === productData._id.toString()
+                    entry.productId?.toString() === productData.productId?.toString()
                 );
 
                 if (uploadEntry) {
-                    let variantEntry = uploadEntry.variants.find(v => v.color === item.variant.color);
+                    let variantEntry = uploadEntry.variants.find(v => v.color.name === item.variant.color.name);
                     if (variantEntry) {
                         let sizeEntry = variantEntry.variantSizes.find(vs => vs.size === item.variant.variantSizes[0].size);
                         if (sizeEntry) {
@@ -269,7 +272,7 @@ class BulkUploadService {
                 } else {
                     uploadData.push({
                         group: item.group.name,
-                        productId: productData._id,
+                        productId: productData.productId,
                         variants: [{
                             color: item.variant.color,
                             variantSizes: item.variant.variantSizes.map(vs => ({
@@ -296,7 +299,7 @@ class BulkUploadService {
         }, null, { session });
 
         if (existingProduct) {
-            const variant = existingProduct.variants.find(v => v.color === item.variant.color);
+            const variant = existingProduct.variants.find(v => v.color.name === item.variant.color.name);
             if (variant) {
                 // Update existing variant's details or add new size details
                 const sizeDetail = variant.variantSizes.find(v => v.size === item.variant.variantSizes[0].size);
@@ -314,7 +317,7 @@ class BulkUploadService {
             return existingProduct;
         } else {
             // Create new product if it does not exist
-            return await ShieldModel.create({
+            return await ShieldModel.create([{
                 group: item.group,
                 category: item.category,
                 subCategory: item.subCategory,
@@ -323,7 +326,7 @@ class BulkUploadService {
                 fit: item.fit,
                 fabric: item.fabric,
                 variants: [item.variant]
-            }, { session });
+            }], { session });
         }
     }
 
@@ -518,7 +521,7 @@ class BulkUploadService {
                         price: data.price,
                         productDetails: data.productDetails,
                         variant: {
-                            color: data.variantColor ? data.variantColor : "TOGS COLOR",
+                            color: { name: data.variantColor ? data.variantColor : "TOGS COLOR", hexcode: colorCodes[data.variantColor] ? colorCodes[data.variantColor] : null },
                             variantSizes: [
                                 {
                                     size: data.variantSize,
@@ -544,14 +547,15 @@ class BulkUploadService {
 
         for (const item of data) {
             const productData = await this.addTogsVariant(item, session); // Include session in function call
+            productData = Array.isArray(productData) ? productData[0] : productData
             if (productData) {
                 let uploadEntry = uploadData.find(entry =>
                     entry.group === item.group.name &&
-                    entry.productId.toString() === productData._id.toString()
+                    entry.productId?.toString() === productData.productId?.toString()
                 );
 
                 if (uploadEntry) {
-                    let variantEntry = uploadEntry.variants.find(v => v.color === item.variant.color);
+                    let variantEntry = uploadEntry.variants.find(v => v.color.name === item.variant.color.name);
                     if (variantEntry) {
                         let sizeEntry = variantEntry.variantSizes.find(vs => vs.size === item.variant.variantSizes[0].size);
                         if (sizeEntry) {
@@ -574,7 +578,7 @@ class BulkUploadService {
                 } else {
                     uploadData.push({
                         group: item.group.name,
-                        productId: productData._id,
+                        productId: productData.productId,
                         variants: [{
                             color: item.variant.color,
                             variantSizes: item.variant.variantSizes.map(vs => ({
@@ -600,7 +604,7 @@ class BulkUploadService {
         }, null, { session });
 
         if (existingProduct) {
-            const variant = existingProduct.variants.find(v => v.color === item.variant.color);
+            const variant = existingProduct.variants.find(v => v.color.name === item.variant.color.name);
             if (variant) {
                 // Update existing variant's details or add new size details
                 const sizeDetail = variant.variantSizes.find(v => v.size === item.variant.variantSizes[0].size);
@@ -618,7 +622,7 @@ class BulkUploadService {
             return existingProduct;
         } else {
             // Create new product if it does not exist
-            return await TogsModel.create({
+            return await TogsModel.create([{
                 group: item.group,
                 category: item.category,
                 subCategory: item.subCategory,
@@ -626,7 +630,7 @@ class BulkUploadService {
                 productType: item.productType,
                 fit: item.fit,
                 variants: [item.variant]
-            }, { session });
+            }], { session });
         }
     }
 
@@ -663,7 +667,7 @@ class BulkUploadService {
                         neckline: data.neckline ? data.neckline : null,
                         sleeves: data.sleeves ? data.sleeves : null,
                         variant: {
-                            color: data.variantColor ? data.variantColor : 'SPIRITS COLOR',
+                            color: { name: data.variantColor ? data.variantColor : 'SPIRITS COLOR', hexcode: colorCodes[data.variantColor] ? colorCodes[data.variantColor] : null },
                             variantSizes: [
                                 {
                                     size: data.variantSize,
@@ -687,14 +691,15 @@ class BulkUploadService {
         let uploadData = [];
         for (const item of data) {
             const productData = await this.addEliteVariant(item, session); // Include session in function call
+            productData = Array.isArray(productData) ? productData[0] : productData
             if (productData) {
                 let uploadEntry = uploadData.find(entry =>
                     entry.group === item.group.name &&
-                    entry.productId.toString() === productData._id.toString()
+                    entry.productId.toString() === productData.productId.toString()
                 );
 
                 if (uploadEntry) {
-                    let variantEntry = uploadEntry.variants.find(v => v.color === item.variant.color);
+                    let variantEntry = uploadEntry.variants.find(v => v.color.name === item.variant.color.name);
                     if (variantEntry) {
                         let sizeEntry = variantEntry.variantSizes.find(vs => vs.size === item.variant.variantSizes[0].size);
                         if (sizeEntry) {
@@ -743,7 +748,7 @@ class BulkUploadService {
         }, null, { session });
 
         if (existingProduct) {
-            const variant = existingProduct.variants.find(v => v.color === item.variant.color);
+            const variant = existingProduct.variants.find(v => v.color.name === item.variant.color.name);
             if (variant) {
                 const sizeDetail = variant.variantSizes.find(v => v.size === item.variant.variantSizes[0].size);
                 if (sizeDetail) {
@@ -759,7 +764,7 @@ class BulkUploadService {
             return existingProduct;
         } else {
             // Create new product if it does not exist
-            return await SpiritsModel.create({
+            return await SpiritsModel.create([{
                 group: item.group,
                 category: item.category,
                 gender: item.gender,
@@ -767,7 +772,7 @@ class BulkUploadService {
                 neckline: item.neckline ? item.neckline : null,
                 sleeves: item.sleeves ? item.sleeves : null,
                 variants: [item.variant]
-            }, { session });
+            }], { session });
         }
     }
 
@@ -805,7 +810,7 @@ class BulkUploadService {
                         price: data.price,
                         productDetails: data.productDetails,
                         variant: {
-                            color: data.variantColor ? data.variantColor : "WORK WEAR COLOR",
+                            color: { name: data.data.variantColor ? data.variantColor : "WORK WEAR COLOR", hexcode: colorCodes[data.variantColor] ? colorCodes[data.variantColor] : null },
                             variantSizes: [
                                 {
                                     size: data.variantSize,
@@ -830,14 +835,15 @@ class BulkUploadService {
         let uploadData = [];
         for (const item of data) {
             const productData = await this.addWorkWearVariant(item, session); // Include session in function call
+            productData = Array.isArray(productData) ? productData[0] : productData
             if (productData) {
                 let uploadEntry = uploadData.find(entry =>
                     entry.group === item.group.name &&
-                    entry.productId.toString() === productData._id.toString()
+                    entry.productId?.toString() === productData.productId?.toString()
                 );
 
                 if (uploadEntry) {
-                    let variantEntry = uploadEntry.variants.find(v => v.color === item.variant.color);
+                    let variantEntry = uploadEntry.variants.find(v => v.color.name === item.variant.color.name);
                     if (variantEntry) {
                         let sizeEntry = variantEntry.variantSizes.find(vs => vs.size === item.variant.variantSizes[0].size);
                         if (sizeEntry) {
@@ -860,7 +866,7 @@ class BulkUploadService {
                 } else {
                     uploadData.push({
                         group: item.group.name,
-                        productId: productData._id,
+                        productId: productData.productId,
                         variants: [{
                             color: item.variant.color,
                             variantSizes: item.variant.variantSizes.map(vs => ({
@@ -885,7 +891,7 @@ class BulkUploadService {
         }, null, { session });
 
         if (existingProduct) {
-            const variant = existingProduct.variants.find(v => v.color === item.variant.color);
+            const variant = existingProduct.variants.find(v => v.color.name === item.variant.color.name);
             if (variant) {
                 // Update existing variant's details or add new size details
                 const sizeDetail = variant.variantSizes.find(v => v.size === item.variant.variantSizes[0].size);
@@ -903,14 +909,14 @@ class BulkUploadService {
             return existingProduct;
         } else {
             // Create new product if it does not exist
-            return await WorkWearModel.create({
+            return await WorkWearModel.create([{
                 group: item.group,
                 category: item.category,
                 gender: item.gender,
                 productType: item.productType,
                 fit: item.fit,
                 variants: [item.variant]
-            }, { session });
+            }], { session });
         }
     }
 
