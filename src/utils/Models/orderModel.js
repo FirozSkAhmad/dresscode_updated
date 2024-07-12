@@ -3,9 +3,9 @@ const crypto = require('crypto');
 
 const orderSchema = new mongoose.Schema({
     paymentId: {
-        type: String,
-        trim: true,
-        required: true
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Payment',
+        default: null
     },
     orderId: {
         type: String,
