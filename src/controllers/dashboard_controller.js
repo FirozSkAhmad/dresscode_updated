@@ -359,8 +359,12 @@ router.get('/getOrderDetails/:orderId', jwtHelperObj.verifyAccessToken, async (r
                 },
                 addressDetails: addressDetails,
                 deliveryStatus: order.deliveryStatus,
-                dateOfOrder: order.dateOfOrder,
-                estimatedDelivery: order.estimatedDelivery
+                deliveryCharges: order.dateOfOrder,
+                discountPercentage: order.discountPercentage,
+                TotalPriceAfterDiscount: order.TotalPriceAfterDiscount,
+                estimatedDelivery: order.estimatedDelivery,
+                shiprocket_order_id: order.shiprocket_order_id,
+                shiprocket_shipment_id: order.shiprocket_shipment_id
             }
         });
     } catch (error) {

@@ -72,6 +72,14 @@ const orderSchema = new mongoose.Schema({
         enum: ['Pending', 'Assigned'],
         default: 'Pending'
     },
+    shiprocket_order_id:{
+        type: Number,
+        default:null
+    },
+    shiprocket_shipment_id:{
+        type: Number,
+        default:null
+    }
 });
 
 orderSchema.index({ orderId: 1 })
