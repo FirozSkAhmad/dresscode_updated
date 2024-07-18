@@ -15,6 +15,9 @@ const WorkWearModel = require('../utils/Models/workWearModel');
 const OrderModel = require('../utils/Models/orderModel');
 const QuoteModel = require('../utils/Models/quoteModel');
 const DashboardUserModel = require('../utils/Models/dashboardUserModel');
+const { startSession } = require('mongoose');
+const axios = require('axios');
+require('dotenv').config();  // Make sure to require dotenv if you need access to your .env variables
 
 const modelMap = {
     "HEAL": HealModel,
@@ -316,15 +319,16 @@ router.get('/getOrderDetails/:orderId', jwtHelperObj.verifyAccessToken, async (r
         const address = user.addresses.id(order.address);  // Access subdocument by ID directly from user document
         // Extract only the desired fields from the address
         const addressDetails = {
-            name: address.name,
-            mobile: address.mobile,
-            flatNumber: address.flatNumber,
-            locality: address.locality,
+            firstName: address.firstName,
+            lastName: address.lastName,
+            address: address.address,
+            city: address.city,
             pinCode: address.pinCode,
-            landmark: address.landmark,
-            districtCity: address.districtCity,
             state: address.state,
-            addressType: address.addressType
+            country: address.country,
+            state: address.state,
+            email: address.email,
+            phone: address.phone
         };
 
         const ProductModel = modelMap[order.group];
@@ -359,7 +363,8 @@ router.get('/getOrderDetails/:orderId', jwtHelperObj.verifyAccessToken, async (r
                 },
                 addressDetails: addressDetails,
                 deliveryStatus: order.deliveryStatus,
-                deliveryCharges: order.dateOfOrder,
+                dateOfOrder: order.dateOfOrder,
+                deliveryCharges: order.deliveryCharges,
                 discountPercentage: order.discountPercentage,
                 TotalPriceAfterDiscount: order.TotalPriceAfterDiscount,
                 estimatedDelivery: order.estimatedDelivery,
@@ -458,5 +463,132 @@ router.get('/getQuoteDetails/:quoteId', jwtHelperObj.verifyAccessToken, async (r
         res.status(500).send({ message: "Failed to retrieve quote details", error: error.message });
     }
 });
+
+router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    const session = await startSession();
+    try {
+        session.startTransaction();
+        const { orderId } = req.params;
+        const data = req.body;
+        const addressDetails = data.addressDetails;
+
+        const requiredData = {
+            order_id: orderId,
+            order_date: formatDate(data.dateOfOrder),
+            pickup_location: "Primary",
+            billing_customer_name: addressDetails.firstName,
+            billing_last_name: addressDetails.lastName,
+            billing_address: addressDetails.address,
+            billing_city: addressDetails.city,
+            billing_pincode: addressDetails.pinCode,
+            billing_state: addressDetails.state,
+            billing_country: addressDetails.country,
+            billing_email: addressDetails.email,
+            billing_phone: addressDetails.phone,
+            shipping_is_billing: true,
+            order_items: [
+                {
+                    name: data.groupName,
+                    sku: data.productId,
+                    units: data.quantityOrdered,
+                    selling_price: data.price.toString()
+                }
+            ],
+            payment_method: "Prepaid",
+            shipping_charges: data.deliveryCharges,
+            total_discount: calculateDiscount(data.quantityOrdered, data.price, data.discountPercentage),
+            sub_total: data.TotalPriceAfterDiscount,
+            length: data.boxLength,
+            breadth: data.boxBreadth,
+            height: data.boxHeight,
+            weight: data.boxWeight
+        };
+
+        // Configure Axios for the API request to Shiprocket
+        const createOrderResponse = await axios.post(process.env.SHIPROCKET_API_URL + '/v1/external/orders/create/adhoc', requiredData, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.SHIPROCKET_API_TOKEN}`
+            }
+        });
+
+        // Data for courier assignment
+        const assignCourierData = {
+            shipment_id: createOrderResponse.data.shipment_id,
+            courier_id: data.courierId
+        };
+
+        // Second API call to assign a courier
+        const assignCourierResponse = await axios.post(process.env.SHIPROCKET_API_URL + '/v1/external/courier/assign/awb', assignCourierData, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.SHIPROCKET_API_TOKEN}`
+            }
+        });
+
+        // Prepare data for generating a pickup
+        const pickupData = {
+            shipment_id: [createOrderResponse.data.shipment_id]
+        };
+
+        // Third API call to generate a pickup
+        const generatePickupResponse  = await axios.post(process.env.SHIPROCKET_API_URL + '/v1/external/courier/generate/pickup', pickupData, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.SHIPROCKET_API_TOKEN}`
+            }
+        });
+
+        // Update the Order in MongoDB with details from all Shiprocket responses
+        const updateData = {
+            status: 'Assigned',
+            shiprocket_order_id: createOrderResponse.data.order_id,
+            shiprocket_shipment_id: createOrderResponse.data.shipment_id,
+            shiprocket_courier_id: assignCourierResponse.data.response.data.courier_company_id,
+            shiprocket_awb_code: assignCourierResponse.data.response.data.awb_code,
+            pickup_scheduled_date: generatePickupResponse.data.response.pickup_scheduled_date,
+            pickup_token_number: generatePickupResponse.data.response.pickup_token_number
+        };
+
+        const updatedOrder = await OrderModel.findOneAndUpdate(
+            { orderId: orderId },
+            updateData,
+            { new: true, session }
+        );
+
+        await session.commitTransaction();
+        session.endSession();
+
+        // Respond with all the Shiprocket API responses and the updated order details
+        res.status(200).json({
+            shiprocketOrderResponse: createOrderResponse.data,
+            shiprocketCourierResponse: assignCourierResponse.data,
+            shiprocketPickupResponse: generatePickupResponse.data,
+            updatedOrderDetails: updatedOrder
+        });
+    } catch (error) {
+        await session.abortTransaction();
+        session.endSession();
+        console.error("Failed to send order to Shiprocket or update database:", error);
+        res.status(500).send({ message: "Failed to process request", error: error.message });
+    }
+});
+
+function formatDate(isoDateString) {
+    const date = new Date(isoDateString);
+    return date.toISOString().split('T')[0];
+}
+
+function calculateDiscount(quantity, price, discountPercentage) {
+    const totalAmount = quantity * price;
+    return totalAmount * (discountPercentage / 100);
+}
+
+function calculateSubTotal(quantity, price, discountPercentage, deliveryCharges) {
+    const totalAmount = quantity * price;
+    const discountAmount = calculateDiscount(quantity, price, discountPercentage);
+    return (totalAmount - discountAmount) + deliveryCharges;
+}
+
 
 module.exports = router;

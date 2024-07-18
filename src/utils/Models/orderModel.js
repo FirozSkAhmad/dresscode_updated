@@ -50,11 +50,11 @@ const orderSchema = new mongoose.Schema({
     },
     deliveryCharges: {
         type: Number,
-        default: null
+        default: 0
     },
     discountPercentage: {
         type: Number,
-        default: null
+        default: 0
     },
     TotalPriceAfterDiscount: { type: Number, required: true },
     dateOfOrder: { type: Date, default: Date.now },
@@ -77,6 +77,22 @@ const orderSchema = new mongoose.Schema({
         default:null
     },
     shiprocket_shipment_id:{
+        type: Number,
+        default:null
+    },
+    shiprocket_courier_id:{
+        type: Number,
+        default:null
+    },
+    shiprocket_awb_code:{
+        type: Number,
+        default:null
+    },
+    pickup_scheduled_date:{
+        type: Number,
+        default:null
+    },
+    pickup_token_number:{
         type: Number,
         default:null
     }

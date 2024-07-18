@@ -48,54 +48,55 @@ const cartItemSchema = new mongoose.Schema({
 });
 
 const addressSchema = new mongoose.Schema({
-    name: {
+    firstName: {
         type: String,
-        required: [true, 'Name is required'],
+        required: [true, 'First name is required'],
         trim: true
     },
-    mobile: {
+    lastName: {
         type: String,
-        required: [true, 'Mobile number is required'],
+        required: [true, 'Last name is required'],
+        trim: true
+    },
+    address: {
+        type: String,
+        required: [true, 'address name is required'],
+        trim: true
+    },
+    city: {
+        type: String,
+        required: [true, 'city is required'],
+        trim: true
+    },
+    pinCode: {
+        type: String,
+        required: [true, 'Pincode is required'],
+        trim: true
+    },
+    state: {
+        type: String,
+        trim: true,
+        required: [true, 'state is required'],
+    },
+    country: {
+        type: String,
+        required: [true, 'country is required'],
+        trim: true
+    },
+    email: {
+        type: String,
+        required: [true, 'email is required'],
+        trim: true
+    },
+    phone: {
+        type: String,
+        required: [true, 'Phone number is required'],
         validate: {
             validator: function (v) {
                 return /\d{10}/.test(v);
             },
             message: props => `${props.value} is not a valid phone number!`
         }
-    },
-    flatNumber: {
-        type: String,
-        required: [true, 'Flat number/Building name is required'],
-        trim: true
-    },
-    locality: {
-        type: String,
-        required: [true, 'Locality/Area/Street is required'],
-        trim: true
-    },
-    pinCode: {
-        type: String,
-        required: [true, 'Pin code is required'],
-        trim: true
-    },
-    landmark: {
-        type: String,
-        trim: true
-    },
-    districtCity: {
-        type: String,
-        required: [true, 'District/City is required'],
-        trim: true
-    },
-    state: {
-        type: String,
-        required: [true, 'State is required'],
-        trim: true
-    },
-    addressType: {
-        type: String,
-        enum: ['Home', 'Work', 'Others'],
-        required: [true, 'Address type is required']
     },
     markAsDefault: {
         type: Boolean,
