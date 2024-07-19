@@ -251,6 +251,28 @@ router.post('/:userId/addToCart', jwtHelperObj.verifyAccessToken, async (req, re
     }
 });
 
+router.post('/:userId/addProductToCart', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        const { userId } = req.params;
+        const cartItem = req.body;
+
+        const addedCartItem = await userServiceObj.addProductToCart(userId, cartItem, session);
+        await session.commitTransaction();
+        res.status(201).send({
+            message: "Product added to cart successfully",
+            cartItem: addedCartItem
+        });
+    } catch (error) {
+        console.error("Failed to add product to cart:", error.message);
+        await session.abortTransaction();
+        res.status(500).send({ message: error.message });
+    } finally {
+        session.endSession();
+    }
+});
+
 router.get('/:userId/getCart', jwtHelperObj.verifyAccessToken, async (req, res) => {
     const { userId } = req.params;
 
