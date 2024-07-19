@@ -418,7 +418,7 @@ class UserService {
         }
     }
 
-    async  (userId, cartItem, session) {
+    async addProductToCart(userId, cartItem, session) {
         try {
             cartItem.color = {
                 name: cartItem.color,
