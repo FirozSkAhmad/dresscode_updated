@@ -595,9 +595,21 @@ class UserService {
                 user.wishlist.push(wishItem);
                 await user.save({ session });
 
+                const modelMap = {
+                    "HEAL": HealModel,
+                    "SHIELD": ShieldModel,
+                    "ELITE": EliteModel,
+                    "TOGS": TogsModel,
+                    "SPIRIT": SpiritsModel,
+                    "WORK WEAR UNIFORMS": WorkWearModel
+                };
+
+                const ProductModel = modelMap[wishItem.group];
+                const productDetails = await ProductModel.findOne({ productId: wishItem.productId }).select('-variants -reviews -isDeleted -createdAt -updatedAt -__v');
+
                 // Return only the last item added to the wishlist
                 const addedWishlistItem = user.wishlist[user.wishlist.length - 1];
-                return addedWishlistItem;
+                return {...addedWishlistItem.toObject(),productDetails};
             }
         } catch (err) {
             console.error("Error adding to wishlist:", err.message);
