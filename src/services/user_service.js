@@ -418,6 +418,70 @@ class UserService {
         }
     }
 
+    async addProductToCart(userId, cartItem, session) {
+        try {
+            cartItem.color = {
+                name: cartItem.color,
+                hexcode: colorCodes[cartItem.color] ? colorCodes[cartItem.color] : null
+            }
+
+            const user = await UserModel.findById(userId).session(session);
+            if (!user) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
+            }
+
+            // Check if the cart item already exists
+            const existingItem = user.cart.find(item =>
+                item.productId === cartItem.productId &&
+                item.group === cartItem.group &&
+                item.color.name === cartItem.color.name &&
+                item.size === cartItem.size
+            );
+
+            if (existingItem) {
+                // Item exists, update the quantity
+                existingItem.quantityRequired += cartItem.quantityRequired;
+            } else {
+                // New item, add to cart
+                user.cart.push(cartItem);
+            }
+
+            await user.save({ session });
+
+            // Return only the item affected
+            const addedOrUpdatedCartItem = existingItem || user.cart[user.cart.length - 1];
+
+            const modelMap = {
+                "HEAL": HealModel,
+                "SHIELD": ShieldModel,
+                "ELITE": EliteModel,
+                "TOGS": TogsModel,
+                "SPIRIT": SpiritsModel,
+                "WORK WEAR UNIFORMS": WorkWearModel
+            };
+
+            const ProductModel = modelMap[cartItem.group];
+            if (!ProductModel) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid product group");
+            }
+            const productDetails = await ProductModel.findOne({ productId: cartItem.productId }).select('-variants -reviews -isDeleted -createdAt -updatedAt -__v');
+            return {
+                color: addedOrUpdatedCartItem.color,
+                group: addedOrUpdatedCartItem.group,
+                productId: addedOrUpdatedCartItem.productId,
+                size: addedOrUpdatedCartItem.size,
+                quantityRequired: addedOrUpdatedCartItem.quantityRequired,
+                logoUrl: addedOrUpdatedCartItem.logoUrl,
+                logoPosition: addedOrUpdatedCartItem.logoPosition,
+                _id: addedOrUpdatedCartItem._id,
+                productDetails: productDetails
+            }
+        } catch (err) {
+            console.error("Error adding to cart:", err.message);
+            throw err;
+        }
+    }
+
     async getUserCartWithProductDetails(userId) {
         try {
             // Find the user's cart items
