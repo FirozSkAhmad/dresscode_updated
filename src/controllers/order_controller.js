@@ -5,22 +5,29 @@ const JwtHelper = require('../utils/Helpers/jwt_helper')
 const jwtHelperObj = new JwtHelper();
 const router = express.Router()
 const OrderServiceObj = new OrderService();
+const mongoose = require('mongoose');
+
 
 // POST endpoint to create an order
 router.post('/createOrder/user/:userId/address/:addressId', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
         const orderDetails = req.body;
         const { userId, addressId } = req.params
 
-        const newOrder = await OrderServiceObj.createOrder(userId, addressId, orderDetails);
-
+        const newOrder = await OrderServiceObj.createOrder(userId, addressId, orderDetails, session);
+        await session.commitTransaction();
         res.status(201).send({
             message: "Order created successfully",
             order: newOrder
         });
     } catch (error) {
+        await session.abortTransaction();
         console.error("Failed to create order:", error.message);
         res.status(500).send({ message: error.message });
+    } finally {
+        session.endSession();
     }
 });
 
@@ -30,10 +37,10 @@ router.post('/createMultipleOrders/user/:userId/address/:addressId', jwtHelperOb
     const orders = req.body; // Expecting an array of order details
 
     try {
-        const results = await Promise.all(orders.map(orderDetails => 
+        const results = await Promise.all(orders.map(orderDetails =>
             OrderServiceObj.createOrder(userId, addressId, orderDetails)
         ));
-        
+
         res.status(201).send({
             message: "All orders created successfully",
             orders: results

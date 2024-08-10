@@ -331,29 +331,41 @@ router.get('/getOrderDetails/:orderId', jwtHelperObj.verifyAccessToken, async (r
             phone: address.phone
         };
 
-        const ProductModel = modelMap[order.group];
-        if (!ProductModel) {
-            return res.status(404).send({ message: "Product group not recognized" });
-        }
+        const productsPromises = order.products.map(async (product) => {
 
-        const product = await ProductModel.findOne({ productId: order.productId })
-            .select('-variants -reviews');
+            const ProductModel = modelMap[product.group];
+            if (!ProductModel) {
+                return res.status(404).send({ message: "Product group not recognized" });
+            }
 
-        if (!product) {
-            return res.status(404).send({ message: "Product not found" });
-        }
+            const productDetails = await ProductModel.findOne({ productId: product.productId })
+                .select('-variants -reviews');
+
+            if (!productDetails) {
+                return res.status(404).send({ message: "Product not found" });
+            }
+
+            return {
+                group: product.group,
+                productId: product.productId,
+                color: product.color,
+                size: product.size,
+                quantityOrdered: product.quantityOrdered,
+                price: product.price,
+                logoUrl: product.logoUrl,
+                logoPosition: product.logoPosition,
+                productDetails: productDetails,
+            };
+        });
+
+        // Resolve all promises
+        const products = await Promise.all(productsPromises);
 
         res.status(200).json({
             message: "Order and product details retrieved successfully",
             orderDetails: {
                 orderId: order.orderId,
-                productDetails: product,
-                color: order.color,
-                size: order.size,
-                price: order.price,
-                logoUrl: order.logoUrl,
-                logoPosition: order.logoPosition,
-                quantityOrdered: order.quantityOrdered,
+                products: products,
                 userDetails: {
                     firstName: user.firstName,
                     lastName: user.lastName,
@@ -532,7 +544,7 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
         };
 
         // Third API call to generate a pickup
-        const generatePickupResponse  = await axios.post(process.env.SHIPROCKET_API_URL + '/v1/external/courier/generate/pickup', pickupData, {
+        const generatePickupResponse = await axios.post(process.env.SHIPROCKET_API_URL + '/v1/external/courier/generate/pickup', pickupData, {
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${process.env.SHIPROCKET_API_TOKEN}`

@@ -18,9 +18,11 @@ class OrderService {
         this.jwtObject = new JWTHelper();
     }
 
-    async createOrder(userId, addressId, orderDetails) {
-        const { group, productId, color, size, quantityOrdered } = orderDetails;
+    async createOrder(userId, addressId, orderDetails, session) {
         try {
+            const { paymentId, products: orderProducts, deliveryCharges, discountPercentage, TotalPriceAfterDiscount } = orderDetails;
+
+            // Mapping from group to Product Model
             const modelMap = {
                 "HEAL": HealModel,
                 "SHIELD": ShieldModel,
@@ -30,50 +32,70 @@ class OrderService {
                 "WORK WEAR UNIFORMS": WorkWearModel
             };
 
-            const ProductModel = modelMap[group];
-            if (!ProductModel) {
-                throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid product group");
-            }
+            // Process each product in the order
+            const productsProcessed = await Promise.all(orderProducts.map(async (product) => {
+                const { group, productId, color, size, quantityOrdered } = product;
+                const ProductModel = modelMap[group];
+                if (!ProductModel) {
+                    throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid product group");
+                }
 
-            // Find the product and the specific variant and size
-            const product = await ProductModel.findOne({ "productId": productId, "variants.color.name": color });
-            if (!product) {
-                throw new global.DATA.PLUGINS.httperrors.BadRequest("Product or variant not found");
-            }
+                // Find the product and specific variant
+                const productDoc = await ProductModel.findOne({ "productId": productId, "variants.color.name": color });
+                if (!productDoc) {
+                    throw new global.DATA.PLUGINS.httperrors.BadRequest("Product or variant not found");
+                }
 
-            // Find the specific variant size and update the quantity
-            const variant = product.variants.find(v => v.color.name === color);
-            const variantSize = variant.variantSizes.find(v => v.size === size);
-            if (!variantSize || variantSize.quantity < quantityOrdered) {
-                throw new global.DATA.PLUGINS.httperrors.BadRequest("Insufficient stock for the variant");
-            }
+                // Check stock and update quantity
+                const variant = productDoc.variants.find(v => v.color.name === color);
+                const variantSize = variant.variantSizes.find(v => v.size === size);
+                if (!variantSize || variantSize.quantity < quantityOrdered) {
+                    throw new global.DATA.PLUGINS.httperrors.BadRequest("Insufficient stock for the variant");
+                }
 
-            // Decrease the stock quantity
-            variantSize.quantity -= quantityOrdered;
+                variantSize.quantity -= quantityOrdered;
+                await productDoc.save({ session });
 
-            // Save the product with updated quantity
-            await product.save();
+                return {
+                    group,
+                    productId,
+                    color: {
+                        name: color,
+                        hexcode: colorCodes[color] ? colorCodes[color] : null
+                    },
+                    size,
+                    quantityOrdered,
+                    price: product.price,
+                    logoUrl: product.logoUrl,
+                    logoPosition: product.logoPosition
+                };
+            }));
 
-            orderDetails.color = {
-                name: color,
-                hexcode: colorCodes[color] ? colorCodes[color] : null
-            }
             // Create and save the order
-            const newOrder = new OrderModel({ user: userId, address: addressId, ...orderDetails });
-            const savedOrder = await newOrder.save();
+            const newOrder = new OrderModel({
+                paymentId,
+                user: userId,
+                address: addressId,
+                products: productsProcessed,
+                deliveryCharges,
+                discountPercentage,
+                TotalPriceAfterDiscount
+            });
 
-            // Add the order ID to the user's orders list
-            const user = await UserModel.findById(userId);
+            const savedOrder = await newOrder.save({ session });
+
+            // Update the user's orders list
+            const user = await UserModel.findById(userId).session(session);
             if (!user) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
             }
             user.orders.push(savedOrder._id);
-            await user.save();
+            await user.save({ session });
 
             return savedOrder;
         } catch (err) {
-            console.error("Error creating order:", err.message);
-            throw err;
+            console.error("Error in createOrder: ", err);
+            throw new Error(err.message || "An internal server error occurred");
         }
     }
 

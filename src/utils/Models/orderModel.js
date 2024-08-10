@@ -1,6 +1,31 @@
 const mongoose = require('mongoose');
 const crypto = require('crypto');
 
+const productsSchema = new mongoose.Schema({
+    group: { type: String, required: true, trim: true },
+    productId: { type: String, required: true, trim: true },
+    color: {
+        name: {
+            type: String,
+            required: true,
+            trim: true
+        },
+        hexcode: {
+            type: String,
+            trim: true
+        }
+    },
+    size: { type: String, required: true, trim: true },
+    quantityOrdered: { type: Number, required: true, min: 1 },
+    price: { type: Number, required: true },
+    logoUrl: {
+        type: String, trim: true, default: null
+    },
+    logoPosition: {
+        type: String, trim: true, default: null
+    },
+});
+
 const orderSchema = new mongoose.Schema({
     paymentId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -26,28 +51,7 @@ const orderSchema = new mongoose.Schema({
         ref: 'User.addresses',
         required: true
     },
-    group: { type: String, required: true, trim: true },
-    productId: { type: String, required: true, trim: true },
-    color: {
-        name: {
-            type: String,
-            required: true,
-            trim: true
-        },
-        hexcode: {
-            type: String,
-            trim: true
-        }
-    },
-    size: { type: String, required: true, trim: true },
-    quantityOrdered: { type: Number, required: true, min: 1 },
-    price: { type: Number, required: true },
-    logoUrl: {
-        type: String, trim: true, default: null
-    },
-    logoPosition: {
-        type: String, trim: true, default: null
-    },
+    products: [productsSchema],
     deliveryCharges: {
         type: Number,
         default: 0
