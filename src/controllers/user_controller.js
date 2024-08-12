@@ -330,6 +330,33 @@ router.delete('/:userId/removeCartItem/:cartItemId', jwtHelperObj.verifyAccessTo
     }
 });
 
+router.delete('/:userId/removeCartItems', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        const { userId } = req.params;
+        const { cartItemIds } = req.body; // Array of cart item IDs
+
+        if (!cartItemIds || cartItemIds.length === 0) {
+            return res.status(400).send({ message: "No cart items provided for deletion." });
+        }
+
+        for (const cartItemId of cartItemIds) {
+            await userServiceObj.removeCartItem(userId, cartItemId, session);
+        }
+
+        await session.commitTransaction();
+        res.status(200).send("removed necessary cart items successfully");
+    } catch (error) {
+        await session.abortTransaction();
+        console.error("Failed to remove products from cart:", error.message);
+        res.status(400).send({ message: error.message });
+    } finally {
+        session.endSession();
+    }
+});
+
+
 router.post('/:userId/addToWishlist', jwtHelperObj.verifyAccessToken, async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
