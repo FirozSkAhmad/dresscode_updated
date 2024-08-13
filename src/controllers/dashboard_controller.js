@@ -482,11 +482,47 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
         session.startTransaction();
         const { orderId } = req.params;
         const data = req.body;
-        const addressDetails = data.addressDetails;
+
+        const order = await OrderModel.findOne({ orderId }).populate('user');
+        if (!order) {
+            return res.status(404).send({ message: "Order not found" });
+        }
+
+        const user = order.user;
+        const address = user.addresses.id(order.address);  // Access subdocument by ID directly from user document
+        // Extract only the desired fields from the address
+        const addressDetails = {
+            firstName: address.firstName,
+            lastName: address.lastName,
+            address: address.address,
+            city: address.city,
+            pinCode: address.pinCode,
+            state: address.state,
+            country: address.country,
+            state: address.state,
+            email: address.email,
+            phone: address.phone
+        };
+
+        const productsPromises = order.products.map(async (product) => {
+            return {
+                groupName: product.group,
+                productId: product.productId,
+                color: product.color,
+                size: product.size,
+                quantityOrdered: product.quantityOrdered,
+                price: product.price,
+                logoUrl: product.logoUrl,
+                logoPosition: product.logoPosition,
+            };
+        });
+
+        // Resolve all promises
+        const products = await Promise.all(productsPromises);
 
         const requiredData = {
             order_id: orderId,
-            order_date: formatDate(data.dateOfOrder),
+            order_date: formatDate(order.dateOfOrder),
             pickup_location: "Primary",
             billing_customer_name: addressDetails.firstName,
             billing_last_name: addressDetails.lastName,
@@ -498,18 +534,16 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
             billing_email: addressDetails.email,
             billing_phone: addressDetails.phone,
             shipping_is_billing: true,
-            order_items: [
-                {
-                    name: data.groupName,
-                    sku: data.productId,
-                    units: data.quantityOrdered,
-                    selling_price: data.price.toString()
-                }
-            ],
+            order_items: products.map(item => ({
+                name: item.groupName,
+                sku: item.productId,
+                units: item.quantityOrdered,
+                selling_price: item.price.toString()
+            })),
             payment_method: "Prepaid",
-            shipping_charges: data.deliveryCharges,
-            total_discount: calculateDiscount(data.quantityOrdered, data.price, data.discountPercentage),
-            sub_total: data.TotalPriceAfterDiscount,
+            shipping_charges: order.deliveryCharges,
+            total_discount: calculateDiscount(order.TotalPriceAfterDiscount, order.discountPercentage),
+            sub_total: order.TotalPriceAfterDiscount,
             length: data.boxLength,
             breadth: data.boxBreadth,
             height: data.boxHeight,
@@ -591,10 +625,16 @@ function formatDate(isoDateString) {
     return date.toISOString().split('T')[0];
 }
 
-function calculateDiscount(quantity, price, discountPercentage) {
-    const totalAmount = quantity * price;
-    return totalAmount * (discountPercentage / 100);
+function calculateDiscount(TotalPriceAfterDiscount, discountPercentage) {
+    // Calculate the original price before the discount
+    const originalPrice = TotalPriceAfterDiscount / (1 - (discountPercentage / 100));
+
+    // Calculate the discount amount
+    const discountAmount = originalPrice - TotalPriceAfterDiscount;
+
+    return discountAmount;
 }
+
 
 function calculateSubTotal(quantity, price, discountPercentage, deliveryCharges) {
     const totalAmount = quantity * price;
