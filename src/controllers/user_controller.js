@@ -6,7 +6,22 @@ const jwtHelperObj = new JwtHelper();
 const router = express.Router()
 const userServiceObj = new UserService();
 const mongoose = require('mongoose');
+const OrderModel = require('../utils/Models/orderModel');
+const HealModel = require('../utils/Models/healModel');
+const ShieldModel = require('../utils/Models/shieldModel');
+const EliteModel = require('../utils/Models/eliteModel');
+const TogsModel = require('../utils/Models/togsModel');
+const SpiritsModel = require('../utils/Models/spiritsModel');
+const WorkWearModel = require('../utils/Models/workWearModel');
 
+const modelMap = {
+    "HEAL": HealModel,
+    "SHIELD": ShieldModel,
+    "ELITE": EliteModel,
+    "TOGS": TogsModel,
+    "SPIRIT": SpiritsModel,
+    "WORK WEAR UNIFORMS": WorkWearModel
+};
 
 router.post('/createUser', async (req, res, next) => {
     const session = await mongoose.startSession();
@@ -206,6 +221,90 @@ router.get('/:userId/getOrders', jwtHelperObj.verifyAccessToken, async (req, res
     } catch (error) {
         console.error("Failed to retrieve orders:", error.message);
         res.status(500).send({ message: error.message });
+    }
+});
+
+router.get('/getOrderDetails/:orderId', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    const { orderId } = req.params;
+
+    try {
+        const order = await OrderModel.findOne({ orderId }).populate('user');
+        if (!order) {
+            return res.status(404).send({ message: "Order not found" });
+        }
+
+        const user = order.user;
+        const address = user.addresses.id(order.address);  // Access subdocument by ID directly from user document
+        // Extract only the desired fields from the address
+        const addressDetails = {
+            firstName: address.firstName,
+            lastName: address.lastName,
+            address: address.address,
+            city: address.city,
+            pinCode: address.pinCode,
+            state: address.state,
+            country: address.country,
+            state: address.state,
+            email: address.email,
+            phone: address.phone
+        };
+
+        const productsPromises = order.products.map(async (product) => {
+
+            const ProductModel = modelMap[product.group];
+            if (!ProductModel) {
+                return res.status(404).send({ message: "Product group not recognized" });
+            }
+
+            const productDetails = await ProductModel.findOne({ productId: product.productId })
+                .select('-variants -reviews');
+
+            if (!productDetails) {
+                return res.status(404).send({ message: "Product not found" });
+            }
+
+            return {
+                group: product.group,
+                productId: product.productId,
+                color: product.color,
+                size: product.size,
+                quantityOrdered: product.quantityOrdered,
+                price: product.price,
+                logoUrl: product.logoUrl,
+                logoPosition: product.logoPosition,
+                productDetails: productDetails,
+            };
+        });
+
+        // Resolve all promises
+        const products = await Promise.all(productsPromises);
+
+        res.status(200).json({
+            message: "Order and product details retrieved successfully",
+            orderDetails: {
+                orderId: order.orderId,
+                products: products,
+                userDetails: {
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                    email: user.email,
+                    gender: user.gender,
+                    phoneNumber: user.phoneNumber
+                },
+                addressDetails: addressDetails,
+                deliveryStatus: order.deliveryStatus,
+                dateOfOrder: order.dateOfOrder,
+                deliveryCharges: order.deliveryCharges,
+                discountPercentage: order.discountPercentage,
+                TotalPriceAfterDiscount: order.TotalPriceAfterDiscount,
+                estimatedDelivery: order.estimatedDelivery,
+                shiprocket_order_id: order.shiprocket_order_id,
+                shiprocket_shipment_id: order.shiprocket_shipment_id
+            }
+        });
+    } catch (error) {
+        console.error("Failed to retrieve order details:", error);
+        res.status(500).send({ message: "Failed to retrieve order details", error: error.message });
     }
 });
 
