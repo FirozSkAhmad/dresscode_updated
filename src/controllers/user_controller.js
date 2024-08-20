@@ -410,6 +410,28 @@ router.patch('/:userId/updateCartItemQuantity/:cartItemId', jwtHelperObj.verifyA
     }
 });
 
+router.patch('/:userId/updateCartItemCheck/:cartItemId', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        const { userId, cartItemId } = req.params;
+        const { checked } = req.body;
+
+        const updatedCartItem = await userServiceObj.updateCartItemCheck(userId, cartItemId, checked, session);
+        await session.commitTransaction();
+        res.status(200).send({
+            message: "Cart item check updated successfully",
+            cartItem: updatedCartItem
+        });
+    } catch (error) {
+        await session.abortTransaction();
+        console.error("Failed to update cart item check:", error.message);
+        res.status(400).send({ message: error.message });
+    } finally {
+        session.endSession();
+    }
+});
+
 // DELETE endpoint to remove a product from a user's cart
 router.delete('/:userId/removeCartItem/:cartItemId', jwtHelperObj.verifyAccessToken, async (req, res) => {
     const session = await mongoose.startSession();

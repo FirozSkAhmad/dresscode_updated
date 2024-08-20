@@ -614,6 +614,31 @@ class UserService {
         }
     }
 
+    async updateCartItemCheck(userId, cartItemId, checked, session) {
+        try {
+
+            const user = await UserModel.findById(userId).session(session);
+            if (!user) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
+            }
+
+            // Use the `id` method to find the subdocument in the cart
+            const item = user.cart.id(cartItemId);
+            if (!item) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest('Cart item not found');
+            }
+
+            // Update the quantity directly
+            item.checked = checked;
+            await user.save({ session });
+
+            return item;
+        } catch (err) {
+            console.error("Error in updating cart item check:", err.message);
+            throw err;
+        }
+    }
+
     async removeCartItem(userId, cartItemId, session) {
         try {
             const user = await UserModel.findById(userId).session(session);

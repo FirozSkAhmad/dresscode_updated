@@ -44,6 +44,10 @@ const cartItemSchema = new mongoose.Schema({
     },
     logoPosition: {
         type: String, trim: true, default: null
+    },
+    checked: {
+        type: Boolean,
+        default: true
     }
 });
 
