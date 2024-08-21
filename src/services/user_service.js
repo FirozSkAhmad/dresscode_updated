@@ -488,6 +488,7 @@ class UserService {
                 quantityRequired: addedOrUpdatedCartItem.quantityRequired,
                 logoUrl: addedOrUpdatedCartItem.logoUrl,
                 logoPosition: addedOrUpdatedCartItem.logoPosition,
+                checked: true,
                 _id: addedOrUpdatedCartItem._id,
                 productDetails: productDetails
             }
