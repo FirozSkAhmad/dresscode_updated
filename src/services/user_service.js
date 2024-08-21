@@ -600,9 +600,8 @@ class UserService {
         }
     }
 
-    async updateCartItemQuantity(userId, cartItemId, quantityNeedToChange, session) {
+    async updateCartItemQuantity(userId, cartItemId, flag, quantityNeedToChange, session) {
         try {
-
             const modelMap = {
                 "HEAL": HealModel,
                 "SHIELD": ShieldModel,
@@ -636,15 +635,22 @@ class UserService {
 
             const variant = productDoc.variants.find(v => v.color.name === item.color.name);
             const variantSize = variant.variantSizes.find(v => v.size === item.size);
-            if (!variantSize || variantSize.quantity < quantityNeedToChange) {
-                throw new global.DATA.PLUGINS.httperrors.BadRequest(`Insufficient stock for this item, only ${variantSize.quantity} left!`);
+            if (flag = "checkAndUpdate") {
+                if (!variantSize || variantSize.quantity < quantityNeedToChange) {
+                    throw new global.DATA.PLUGINS.httperrors.BadRequest(`Insufficient stock for this item, only ${variantSize.quantity} left!`);
+                }
+
+                // Update the quantity directly
+                item.quantityRequired = quantityNeedToChange;
+                await user.save({ session });
+
+                return item;
+            } else if (flag = "check") {
+                if (!variantSize || variantSize.quantity < quantityNeedToChange) {
+                    throw new global.DATA.PLUGINS.httperrors.BadRequest(`Insufficient stock for this item, only ${variantSize.quantity} left!`);
+                }
             }
 
-            // Update the quantity directly
-            item.quantityRequired = quantityNeedToChange;
-            await user.save({ session });
-
-            return item;
         } catch (err) {
             console.error("Error updating cart item quantity:", err.message);
             throw err;

@@ -388,14 +388,14 @@ router.get('/:userId/getCart', jwtHelperObj.verifyAccessToken, async (req, res) 
     }
 });
 
-router.patch('/:userId/updateCartItemQuantity/:cartItemId', jwtHelperObj.verifyAccessToken, async (req, res) => {
+router.patch('/:userId/updateCartItemQuantity/:cartItemId/:flag', jwtHelperObj.verifyAccessToken, async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        const { userId, cartItemId } = req.params;
+        const { userId, cartItemId, flag } = req.params;
         const { quantityNeedToChange } = req.body;
 
-        const updatedCartItem = await userServiceObj.updateCartItemQuantity(userId, cartItemId, quantityNeedToChange, session);
+        const updatedCartItem = await userServiceObj.updateCartItemQuantity(userId, cartItemId, flag, quantityNeedToChange, session);
         await session.commitTransaction();
         res.status(200).send({
             message: "Cart item quantity updated successfully",
