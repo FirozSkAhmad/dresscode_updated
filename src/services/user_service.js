@@ -479,18 +479,54 @@ class UserService {
             if (!ProductModel) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid product group");
             }
-            const productDetails = await ProductModel.findOne({ productId: cartItem.productId }).select('-variants -reviews -isDeleted -createdAt -updatedAt -__v');
-            return {
-                color: addedOrUpdatedCartItem.color,
-                group: addedOrUpdatedCartItem.group,
-                productId: addedOrUpdatedCartItem.productId,
-                size: addedOrUpdatedCartItem.size,
-                quantityRequired: addedOrUpdatedCartItem.quantityRequired,
-                logoUrl: addedOrUpdatedCartItem.logoUrl,
-                logoPosition: addedOrUpdatedCartItem.logoPosition,
-                checked: true,
-                _id: addedOrUpdatedCartItem._id,
-                productDetails: productDetails
+            const productDoc = await ProductModel.findOne({ "productId": cartItem.productId, "variants.color.name": cartItem.color.name });
+            if (!productDoc) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("Product or variant not found");
+            }
+
+            const variant = productDoc.variants.find(v => v.color.name === cartItem.color.name);
+            const variantSize = variant.variantSizes.find(v => v.size === cartItem.size);
+
+            // Convert to plain JavaScript object
+            const productDetails = productDoc.toObject();
+
+            // Removing the specified fields
+            delete productDetails.variants;
+            delete productDetails.reviews;
+            delete productDetails.isDeleted;
+            delete productDetails.createdAt;
+            delete productDetails.updatedAt;
+            delete productDetails.__v;
+
+            if (!variantSize || variantSize.quantity < cartItem.quantityRequired) {
+                return {
+                    color: addedOrUpdatedCartItem.color,
+                    group: addedOrUpdatedCartItem.group,
+                    productId: addedOrUpdatedCartItem.productId,
+                    size: addedOrUpdatedCartItem.size,
+                    quantityRequired: addedOrUpdatedCartItem.quantityRequired,
+                    logoUrl: addedOrUpdatedCartItem.logoUrl,
+                    logoPosition: addedOrUpdatedCartItem.logoPosition,
+                    checked: true,
+                    _id: addedOrUpdatedCartItem._id,
+                    isRequiredQuantityPresent: false,
+                    message: `Insufficient stock for this item, only ${variantSize.quantity} left!`,
+                    productDetails
+                };
+            } else {
+                return {
+                    color: addedOrUpdatedCartItem.color,
+                    group: addedOrUpdatedCartItem.group,
+                    productId: addedOrUpdatedCartItem.productId,
+                    size: addedOrUpdatedCartItem.size,
+                    quantityRequired: addedOrUpdatedCartItem.quantityRequired,
+                    logoUrl: addedOrUpdatedCartItem.logoUrl,
+                    logoPosition: addedOrUpdatedCartItem.logoPosition,
+                    checked: true,
+                    _id: addedOrUpdatedCartItem._id,
+                    isRequiredQuantityPresent: true,
+                    productDetails
+                };
             }
         } catch (err) {
             console.error("Error adding to cart:", err.message);
