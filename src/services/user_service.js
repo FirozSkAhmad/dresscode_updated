@@ -600,7 +600,54 @@ class UserService {
         }
     }
 
-    async updateCartItemQuantity(userId, cartItemId, flag, quantityNeedToChange, session) {
+    async checkProductQuantity(userId, productDetails, session) {
+        try {
+
+            const { group, productId, color, size, quantityRequired } = productDetails
+
+            const modelMap = {
+                "HEAL": HealModel,
+                "SHIELD": ShieldModel,
+                "ELITE": EliteModel,
+                "TOGS": TogsModel,
+                "SPIRIT": SpiritsModel,
+                "WORK WEAR UNIFORMS": WorkWearModel
+            };
+
+            const user = await UserModel.findById(userId).session(session);
+            if (!user) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
+            }
+
+            // Use the `id` method to find the subdocument in the cart
+            const item = user.cart.id(cartItemId);
+            if (!item) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest('Cart item not found');
+            }
+
+            const ProductModel = modelMap[group];
+            if (!ProductModel) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid product group");
+            }
+
+            // Find the product and specific variant
+            const productDoc = await ProductModel.findOne({ "productId": productId, "variants.color.name": color });
+            if (!productDoc) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("Product or variant not found");
+            }
+
+            const variant = productDoc.variants.find(v => v.color.name === color);
+            const variantSize = variant.variantSizes.find(v => v.size === size);
+            if (!variantSize || variantSize.quantity < quantityRequired) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest(`Insufficient stock for this item, only ${variantSize.quantity} left!`);
+            }
+        } catch (err) {
+            console.error("Error updating cart item quantity:", err.message);
+            throw err;
+        }
+    }
+
+    async updateCartItemQuantity(userId, cartItemId, quantityNeedToChange, session) {
         try {
             const modelMap = {
                 "HEAL": HealModel,
@@ -635,22 +682,15 @@ class UserService {
 
             const variant = productDoc.variants.find(v => v.color.name === item.color.name);
             const variantSize = variant.variantSizes.find(v => v.size === item.size);
-            if (flag = "checkAndUpdate") {
-                if (!variantSize || variantSize.quantity < quantityNeedToChange) {
-                    throw new global.DATA.PLUGINS.httperrors.BadRequest(`Insufficient stock for this item, only ${variantSize.quantity} left!`);
-                }
-
-                // Update the quantity directly
-                item.quantityRequired = quantityNeedToChange;
-                await user.save({ session });
-
-                return item;
-            } else if (flag = "check") {
-                if (!variantSize || variantSize.quantity < quantityNeedToChange) {
-                    throw new global.DATA.PLUGINS.httperrors.BadRequest(`Insufficient stock for this item, only ${variantSize.quantity} left!`);
-                }
+            if (!variantSize || variantSize.quantity < quantityNeedToChange) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest(`Insufficient stock for this item, only ${variantSize.quantity} left!`);
             }
 
+            // Update the quantity directly
+            item.quantityRequired = quantityNeedToChange;
+            await user.save({ session });
+
+            return item;
         } catch (err) {
             console.error("Error updating cart item quantity:", err.message);
             throw err;

@@ -388,7 +388,28 @@ router.get('/:userId/getCart', jwtHelperObj.verifyAccessToken, async (req, res) 
     }
 });
 
-router.patch('/:userId/updateCartItemQuantity/:cartItemId/:flag', jwtHelperObj.verifyAccessToken, async (req, res) => {
+router.get('/user/:userId/checkProductQuantity', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        const { userId } = req.params;
+        const productDetails = req.body;
+
+        const updatedCartItem = await userServiceObj.checkProductQuantity(userId, productDetails, session);
+        await session.commitTransaction();
+        res.status(200).send({
+            message: "sufficient stock"
+        });
+    } catch (error) {
+        await session.abortTransaction();
+        console.error("Failed to increase cart item quantity:", error.message);
+        res.status(400).send({ message: error.message });
+    } finally {
+        session.endSession();
+    }
+});
+
+router.patch('/:userId/updateCartItemQuantity/:cartItemId', jwtHelperObj.verifyAccessToken, async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
