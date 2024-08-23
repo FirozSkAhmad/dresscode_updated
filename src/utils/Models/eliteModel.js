@@ -56,7 +56,20 @@ const variantSchema = new mongoose.Schema({
             type: Number,
             required: true,
             default: 100,
-        }
+        },
+        styleCoat: {
+            type: String,
+            trim: true,
+            unique: true,
+            default: () => {
+                return crypto.randomBytes(3).toString("hex").toUpperCase().slice(0, 6);
+            },
+        },
+        sku: {
+            type: String,
+            trim: true,
+            unique: true
+        },
     }],
     imageUrls: {
         type: [String],
@@ -191,8 +204,6 @@ eliteSchema.pre('save', async function (next) {
     }
     next();
 });
-
-eliteSchema.index({ productId: 1 });
 
 module.exports = mongoose.model("Elite", eliteSchema);
 

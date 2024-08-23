@@ -375,7 +375,8 @@ class BulkUploadService {
                                 {
                                     size: data.variantSize,
                                     quantity: parseInt(data.variantQuantity),
-                                }
+                                    sku: `${data.productType}-${data.variantColor}-${data.variantSize}`,
+                                },
                             ],
                             imageUrls: data.variantImages ? data.variantImages.split(';') : [],
                         }
@@ -392,11 +393,15 @@ class BulkUploadService {
         for (const item of data) {
             let productData = await this.addEliteVariant(item, session); // Include session in function call
             productData = Array.isArray(productData) ? productData[0] : productData
+
             if (productData) {
                 let uploadEntry = uploadData.find(entry =>
-                    entry.group === item.group.name &&
-                    entry.productId?.toString() === productData.productId?.toString()
+                    entry.group === productData.group.name &&
+                    entry.productId?.toString() === item.productId?.toString()
                 );
+
+                let existingVariants = productData.variants.find(vs => vs.color.name === item.variant.color.name);
+                let existingSizeEntry = existingVariants.variantSizes.find(vs => vs.size === item.variant.variantSizes[0].size)
 
                 if (uploadEntry) {
                     let variantEntry = uploadEntry.variants.find(v => v.color.name === item.variant.color.name);
@@ -407,7 +412,9 @@ class BulkUploadService {
                         } else {
                             variantEntry.variantSizes.push({
                                 size: item.variant.variantSizes[0].size,
-                                quantityOfUpload: item.variant.variantSizes[0].quantity
+                                quantityOfUpload: item.variant.variantSizes[0].quantity,
+                                styleCoat: existingSizeEntry.styleCoat,
+                                sku: item.variant.variantSizes[0].sku
                             });
                         }
                     } else {
@@ -415,7 +422,9 @@ class BulkUploadService {
                             color: item.variant.color,
                             variantSizes: item.variant.variantSizes.map(vs => ({
                                 size: vs.size,
-                                quantityOfUpload: vs.quantity
+                                quantityOfUpload: vs.quantity,
+                                styleCoat: existingSizeEntry.styleCoat,
+                                sku: vs.sku,
                             }))
                         });
                     }
@@ -427,7 +436,9 @@ class BulkUploadService {
                             color: item.variant.color,
                             variantSizes: item.variant.variantSizes.map(vs => ({
                                 size: vs.size,
-                                quantityOfUpload: vs.quantity
+                                quantityOfUpload: vs.quantity,
+                                styleCoat: existingSizeEntry.styleCoat,
+                                sku: vs.sku,
                             }))
                         }]
                     });
@@ -922,7 +933,6 @@ class BulkUploadService {
 
     async recordUpload(uploadData, session) {
         let totalAmountOfUploaded = 0;
-        console.log(uploadData[0].variants)
         for (const product of uploadData) {
             const ProductModel = modelMap[product.group]
             const productDetails = await ProductModel.findOne({ productId: product.productId }, null, { session });

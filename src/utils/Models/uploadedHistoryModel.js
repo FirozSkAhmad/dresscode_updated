@@ -27,7 +27,9 @@ const productsSchema = new mongoose.Schema({
                 type: Number,
                 required: true,
                 min: 1,
-            }
+            },
+            styleCoat: { type: String, required: true, trim: true },
+            sku: { type: String, required: true, trim: true },
         }]
     }],
 });
