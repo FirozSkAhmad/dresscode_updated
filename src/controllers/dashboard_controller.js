@@ -276,9 +276,10 @@ router.get('/:groupName/getAllActiveProducts', jwtHelperObj.verifyAccessToken, a
             price: product.price,
             variants: product.variants.map(variant => ({
                 color: variant.color,
-                sizes: variant.variantSizes.map(size => ({
-                    size: size.size,
-                    quantity: size.quantity
+                sizes: variant.variantSizes.map(vs => ({
+                    size: vs.size,
+                    styleCoat: vs.styleCoat,
+                    quantity: vs.quantity
                 }))
             }))
         }));
