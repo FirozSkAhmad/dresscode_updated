@@ -393,7 +393,7 @@ router.get('/user/:userId/checkProductQuantity', jwtHelperObj.verifyAccessToken,
     session.startTransaction();
     try {
         const { userId } = req.params;
-        const productDetails = req.body;
+        const productDetails = req.query;
 
         const updatedCartItem = await userServiceObj.checkProductQuantity(userId, productDetails, session);
         await session.commitTransaction();
