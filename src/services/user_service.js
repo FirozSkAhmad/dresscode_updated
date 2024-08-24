@@ -619,12 +619,6 @@ class UserService {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
             }
 
-            // Use the `id` method to find the subdocument in the cart
-            const item = user.cart.id(cartItemId);
-            if (!item) {
-                throw new global.DATA.PLUGINS.httperrors.BadRequest('Cart item not found');
-            }
-
             const ProductModel = modelMap[group];
             if (!ProductModel) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid product group");
