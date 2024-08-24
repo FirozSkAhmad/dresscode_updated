@@ -897,7 +897,7 @@ class EComService {
             const sizesWithQuantities = {};
 
             product.variants.forEach(variant => {
-                if (variant.color === color && !variant.isDeleted) {
+                if (variant.color.name === color && !variant.isDeleted) {
                     variant.variantSizes.forEach(sizeEntry => {
                         if (sizeEntry.quantity > 0) {  // Ensure only sizes with available quantity are added
                             sizesWithQuantities[sizeEntry.size] = sizeEntry.quantity;
