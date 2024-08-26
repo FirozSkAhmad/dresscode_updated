@@ -392,10 +392,9 @@ router.get('/checkProductQuantity', async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        const { userId } = req.params;
         const productDetails = req.query;
 
-        await userServiceObj.checkProductQuantity(userId, productDetails, session);
+        await userServiceObj.checkProductQuantity(productDetails, session);
         await session.commitTransaction();
         res.status(200).send({
             message: "sufficient stock"
