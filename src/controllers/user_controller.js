@@ -388,7 +388,7 @@ router.get('/:userId/getCart', jwtHelperObj.verifyAccessToken, async (req, res) 
     }
 });
 
-router.get('/:userId/checkProductQuantity', jwtHelperObj.verifyAccessToken, async (req, res) => {
+router.get('/:userId/checkProductQuantity', async (req, res) => {//, jwtHelperObj.verifyAccessToken
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
