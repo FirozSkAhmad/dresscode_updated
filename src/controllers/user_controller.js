@@ -392,7 +392,6 @@ router.get('/checkProductQuantity', async (req, res) => {//, jwtHelperObj.verify
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        const { userId } = req.params;
         const productDetails = req.query;
 
         const updatedCartItem = await userServiceObj.checkProductQuantity(userId, productDetails, session);

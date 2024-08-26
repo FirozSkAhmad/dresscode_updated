@@ -600,7 +600,7 @@ class UserService {
         }
     }
 
-    async checkProductQuantity(userId, productDetails, session) {
+    async checkProductQuantity( productDetails, session) {
         try {
 
             const { group, productId, color, size, quantityRequired } = productDetails
@@ -613,11 +613,6 @@ class UserService {
                 "SPIRIT": SpiritsModel,
                 "WORK WEAR UNIFORMS": WorkWearModel
             };
-
-            const user = await UserModel.findById(userId).session(session);
-            if (!user) {
-                throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
-            }
 
             const ProductModel = modelMap[group];
             if (!ProductModel) {
