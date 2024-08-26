@@ -394,7 +394,7 @@ router.get('/checkProductQuantity', async (req, res) => {//, jwtHelperObj.verify
     try {
         const productDetails = req.query;
 
-        const updatedCartItem = await userServiceObj.checkProductQuantity(userId, productDetails, session);
+        const updatedCartItem = await userServiceObj.checkProductQuantity(productDetails, session);
         await session.commitTransaction();
         res.status(200).send({
             message: "sufficient stock"
