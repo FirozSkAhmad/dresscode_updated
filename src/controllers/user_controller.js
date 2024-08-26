@@ -388,14 +388,14 @@ router.get('/:userId/getCart', jwtHelperObj.verifyAccessToken, async (req, res) 
     }
 });
 
-router.get('/user/:userId/checkProductQuantity', jwtHelperObj.verifyAccessToken, async (req, res) => {
+router.get('/checkProductQuantity', async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
         const { userId } = req.params;
-        const productDetails = req.body;
+        const productDetails = req.query;
 
-        const updatedCartItem = await userServiceObj.checkProductQuantity(userId, productDetails, session);
+        await userServiceObj.checkProductQuantity(userId, productDetails, session);
         await session.commitTransaction();
         res.status(200).send({
             message: "sufficient stock"
