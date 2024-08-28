@@ -40,6 +40,7 @@ class OrderService {
                     throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid product group");
                 }
 
+                console.log(ProductModel,productId,color)
                 // Find the product and specific variant
                 const productDoc = await ProductModel.findOne({ "productId": productId, "variants.color.name": color });
                 if (!productDoc) {
