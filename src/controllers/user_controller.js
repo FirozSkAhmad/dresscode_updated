@@ -37,6 +37,7 @@ router.post('/createUser', async (req, res, next) => {
     } catch (err) {
         console.error("Error during transaction:", err.message);
         await session.abortTransaction();
+        session.endSession();
         next(err);;  // Maintain error information
     } finally {
         session.endSession();
