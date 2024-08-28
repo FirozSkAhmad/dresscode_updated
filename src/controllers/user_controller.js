@@ -25,25 +25,39 @@ const modelMap = {
 
 router.post('/createUser', async (req, res, next) => {
     const session = await mongoose.startSession();
-    session.startTransaction();
     try {
+        session.startTransaction();
         const newUser = await userServiceObj.createUser(req.body, session);
-        await session.commitTransaction();
+        try {
+            await session.commitTransaction();
+        } catch (commitError) {
+            console.error("Error during commit:", commitError.message);
+            throw commitError; // Ensure the error is caught by the outer catch
+        }
         res.send({
             "status": 200,
             "message": Constants.SUCCESS,
-            "user": newUser // Optionally send user details back
+            "user": newUser
         });
     } catch (err) {
-        console.error("Error during transaction:", err.message);
-        await session.abortTransaction();
-        session.endSession();
-        next(err);;  // Maintain error information
+        try {
+            await session.abortTransaction();
+        } catch (abortErr) {
+            console.error("Error aborting transaction:", abortErr.message);
+        }
+        if (err.message.includes("already in use")) {
+            res.status(409).send({
+                "status": 409,
+                "message": err.message
+            });
+        } else {
+            next(err);
+        }
     } finally {
         session.endSession();
-    }
-
+    }    
 });
+
 
 router.post('/login', async (req, res, next) => {
     const session = await mongoose.startSession();

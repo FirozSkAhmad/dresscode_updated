@@ -28,7 +28,6 @@ class UserService {
                 UserModel.findOne({ phoneNumber: phoneNumber }).session(session)
             ]);
 
-
             if (existingUserEmail) {
                 errors.push("Email address already in use");
             }
