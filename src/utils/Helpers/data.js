@@ -19,7 +19,8 @@ const colorCodes = {
     "GRAY": "#808080",
     "GREY": "#808080",
     "RED": "#ff0000",
-    "MAROON": "#800000"
+    "MAROON": "#800000",
+    "BLUE":"#0000FF"
 }
 
 module.exports = colorCodes;

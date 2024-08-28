@@ -670,7 +670,7 @@ class EComService {
             "SPIRIT": SpiritsModel,
             "WORK WEAR UNIFORMS": WorkWearModel
         };
-    
+
         const colorMap = {
             "BLACK": "#000000",
             "SAGE GREEN": "#B2AC88",
@@ -694,7 +694,7 @@ class EComService {
             "RED": "#ff0000",
             "MAROON": "#800000"
         };
-    
+
         const sizeAndColorConfig = {
             "ELITE": {
                 allColors: ["WHITE", "BLACK", "INDIGO", "SKY BLUE", "NAVY BLUE", "GREEN", "GREY", "MAROON", "RED"],
@@ -721,22 +721,22 @@ class EComService {
                 allSizes: ["S", "M", "L", "XL", "XXL"]
             }
         };
-    
+
         const modelToUse = modelMap[groupName];
-    
+
         // Building the query dynamically based on provided parameters
         const matchQuery = {
             "category.name": category,
             "subCategory.name": subCategory
         };
-    
+
         // Add parameters if they are provided and are not empty
         if (gender) matchQuery.gender = gender;
         if (productType) matchQuery["productType.type"] = productType;
         if (fit) matchQuery.fit = fit;
         if (neckline) matchQuery.neckline = neckline;
         if (sleeves) matchQuery.sleeves = sleeves;
-    
+
         try {
             const products = await modelToUse.aggregate([
                 { $match: matchQuery },
@@ -778,7 +778,7 @@ class EComService {
                     }
                 }
             ]);
-    
+
             // Collect all other colors with their sizes and quantities
             const others = products.map(product => {
                 const colorsWithSizesAndQuantities = {};
@@ -799,27 +799,27 @@ class EComService {
                         });
                     }
                 });
-    
+
                 return Object.values(colorsWithSizesAndQuantities); // Return the structured color objects with sizes and quantities
             });
-    
+
             return products.map((product, index) => {
                 // Remove the 'allVariants' key from each product
                 delete product.allVariants;
-            
+
                 // Add 'available' data for the product from the 'others' array using the same index
                 product.available = others[index];
-            
+
                 // Return the modified product
                 return product;
             });
-            
+
         } catch (error) {
             console.error("Failed to fetch products:", error);
             return [];
         }
     }
-    
+
 
 
 
@@ -928,7 +928,7 @@ class EComService {
             "SPIRIT": SpiritsModel,
             "WORK WEAR UNIFORMS": WorkWearModel
         };
-    
+
         const colorMap = {
             "BLACK": "#000000",
             "SAGE GREEN": "#B2AC88",
@@ -950,12 +950,13 @@ class EComService {
             "GRAY": "#808080",
             "GREY": "#808080",
             "RED": "#ff0000",
-            "MAROON": "#800000"
+            "MAROON": "#800000",
+            "BLUE": "#0000FF"
         };
-    
+
         const sizeAndColorConfig = {
             "ELITE": {
-                allColors: ["WHITE", "BLACK", "INDIGO", "SKY BLUE", "NAVY BLUE", "GREEN", "GREY", "MAROON", "RED"],
+                allColors: ["WHITE", "BLACK", "INDIGO", "SKY BLUE", "NAVY BLUE", "GREEN", "GREY", "MAROON", "RED", "BLUE"],
                 allSizes: ["S", "M", "L", "XL", "XXL"]
             },
             "HEAL": {
@@ -979,28 +980,28 @@ class EComService {
                 allSizes: ["S", "M", "L", "XL", "XXL"]
             }
         };
-    
+
         const modelToUse = modelMap[groupName];
-        
+
         if (!modelToUse) {
             console.error("Invalid groupName provided");
             return null;
         }
-    
+
         try {
             const product = await modelToUse.findOne({
                 productId,
                 "variants.color.name": color,
                 // "variants.variantSizes.size": size
             }).lean();
-    
+
             if (!product) {
                 console.log("Product not found");
                 return null;
             }
-    
+
             const colorsWithSizesAndQuantities = {};
-    
+
             product.variants.forEach(variant => {
                 if (!variant.isDeleted) {
                     const colorName = variant.color.name;
@@ -1018,13 +1019,13 @@ class EComService {
                     });
                 }
             });
-    
+
             const specificVariant = product.variants.find(variant => variant.color.name === color);
-    
+
             const available = Object.values(colorsWithSizesAndQuantities);
-    
+
             const currentConfig = sizeAndColorConfig[groupName];
-    
+
             return specificVariant ? {
                 productDetails: {
                     ...product,
@@ -1042,8 +1043,8 @@ class EComService {
             return null;
         }
     }
-    
-    
+
+
 
 }
 module.exports = EComService;
