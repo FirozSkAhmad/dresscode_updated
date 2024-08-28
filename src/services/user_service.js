@@ -25,7 +25,7 @@ class UserService {
             // In createUser function
             const [existingUserEmail, existingUserPhone] = await Promise.all([
                 UserModel.findOne({ email: email.toLowerCase() }).session(session),
-                UserModel.findOne({ phoneNumber }).session(session)
+                UserModel.findOne({ phoneNumber: phoneNumber }).session(session)
             ]);
 
 
@@ -600,7 +600,7 @@ class UserService {
         }
     }
 
-    async checkProductQuantity( productDetails, session) {
+    async checkProductQuantity(productDetails, session) {
         try {
 
             const { group, productId, color, size, quantityRequired } = productDetails
