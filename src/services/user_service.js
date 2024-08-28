@@ -59,7 +59,7 @@ class UserService {
 
             return newUser;
         } catch (err) {
-            console.error("Error in createUser: ", err);
+            console.error("Error in createUser: ", err.message);
             throw new Error(err.message || "An internal server error occurred");
         }
     }
