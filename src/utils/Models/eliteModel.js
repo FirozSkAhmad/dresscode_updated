@@ -26,18 +26,7 @@ const variantSchema = new mongoose.Schema({
     color: {
         name: {
             type: String,
-            required: true,
-            enum: [
-                "WHITE",
-                "BLACK",
-                "INDIGO",
-                "SKY BLUE",
-                "NAVY BLUE",
-                "GREEN",
-                "GREY",
-                "MAROON",
-                "RED",
-            ],
+            required: true
         },
         hexcode: {
             type: String,
@@ -49,8 +38,7 @@ const variantSchema = new mongoose.Schema({
         size: {
             type: String,
             required: true,
-            trim: true,
-            enum: ["S", "M", "L", "XL", "XXL"],
+            trim: true
         },
         quantity: {
             type: Number,
@@ -68,7 +56,7 @@ const variantSchema = new mongoose.Schema({
         sku: {
             type: String,
             trim: true,
-            unique: true
+            // unique: true
         },
     }],
     imageUrls: {
@@ -120,9 +108,7 @@ const eliteSchema = new mongoose.Schema({
         name: {
             type: String,
             required: true,
-            trim: true,
-            default: "CORPORATE UNIFORMS",
-            enum: ["CORPORATE UNIFORMS"]
+            trim: true
         },
         imageUrl: {
             type: String,
@@ -133,8 +119,7 @@ const eliteSchema = new mongoose.Schema({
         name: {
             type: String,
             required: true,
-            trim: true,
-            enum: ["ADMIN UNIFORMS", "RECEPTIONIST UNIFORMS", "CUSTOM UNIFORMS", "CUSTOM T-SHIRTS"]
+            trim: true
         },
         imageUrl: {
             type: String,
@@ -144,15 +129,13 @@ const eliteSchema = new mongoose.Schema({
     gender: {
         type: String,
         required: true,
-        trim: true,
-        enum: ["MEN", "WOMEN"],
+        trim: true
     },
     productType: {
         type: {
             type: String,
             required: true,
-            trim: true,
-            enum: ["SHIRT", "T-SHIRT", "SKIRT", "TROUSER", "WAISTCOAT", "BLAZER"],
+            trim: true
         },
         imageUrl: {
             type: String,
@@ -162,20 +145,32 @@ const eliteSchema = new mongoose.Schema({
     fit: {
         type: String,
         required: true,
-        trim: true,
-        enum: ["CLASSIC", "SLIM"],
+        trim: true
     },
     neckline: {
         type: String,
         required: true,
-        trim: true,
-        enum: ["SHIRT COLLAR", "MANDERIN COLLAR"],
+        trim: true
+    },
+    pattern: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    cuff: {
+        type: String,
+        required: true,
+        trim: true
     },
     sleeves: {
         type: String,
         required: true,
-        trim: true,
-        enum: ["SHORT SLEEVES", "LONG SLEEVES"],
+        trim: true
+    },
+    material: {
+        type: String,
+        required: true,
+        trim: true
     },
     price: {
         type: Number,
@@ -183,10 +178,10 @@ const eliteSchema = new mongoose.Schema({
         trim: true,
         default: null
     },
-    productDetails: {
+    productDescription: {
         type: String,
-        required: true,
         trim: true,
+        default: null
     },
     variants: [variantSchema],
     isDeleted: {

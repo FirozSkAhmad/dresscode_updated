@@ -181,7 +181,7 @@ router.post("/bulkUploadShields", jwtHelperObj.verifyAccessToken, upload.single(
     }
 });
 
-router.post("/bulkUploadHeals", upload.single('file'), async (req, res, next) => {// jwtHelperObj.verifyAccessToken,
+router.post("/bulkUploadHeals", jwtHelperObj.verifyAccessToken, upload.single('file'), async (req, res, next) => {// jwtHelperObj.verifyAccessToken,
     const session = await mongoose.startSession();  // Start a session for the transaction
     session.startTransaction();  // Begin the transaction
     try {

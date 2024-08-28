@@ -24,33 +24,40 @@ const reviewSchema = new mongoose.Schema({
 
 const variantSchema = new mongoose.Schema({
     color: {
-        type: String,
-        required: true,
-        default: "TOGS COLOR"
-        // enum: [
-        //     "WHITE",
-        //     "BLACK",
-        //     "INDIGO",
-        //     "SKY BLUE",
-        //     "NAVY BLUE",
-        //     "GREEN",
-        //     "GREY",
-        //     "MAROON",
-        //     "RED",
-        // ],
+        name: {
+            type: String,
+            required: true
+        },
+        hexcode: {
+            type: String,
+            default: null
+        }
+
     },
     variantSizes: [{
         size: {
             type: String,
             required: true,
-            trim: true,
-            enum: ["22", "24", "26", "28", "30", "32", "34", "36", "38", "40", "42", "44"],
+            trim: true
         },
         quantity: {
             type: Number,
             required: true,
             default: 100,
-        }
+        },
+        styleCoat: {
+            type: String,
+            trim: true,
+            unique: true,
+            default: () => {
+                return crypto.randomBytes(3).toString("hex").toUpperCase().slice(0, 6);
+            },
+        },
+        sku: {
+            type: String,
+            trim: true,
+            unique: true
+        },
     }],
     imageUrls: {
         type: [String],
@@ -103,9 +110,7 @@ const togsSchema = new mongoose.Schema(
             name: {
                 type: String,
                 required: true,
-                trim: true,
-                default: 'SCHOOL UNIFORMS',
-                enum: ['SCHOOL UNIFORMS']
+                trim: true
             },
             imageUrl: {
                 type: String,
@@ -116,8 +121,7 @@ const togsSchema = new mongoose.Schema(
             name: {
                 type: String,
                 required: true,
-                trim: true,
-                enum: ['REGULAR SCHOOL UNIFORMS', 'SPORTS UNIFORMS', 'WINTER UNIFORMS'],
+                trim: true
             },
             imageUrl: {
                 type: String,
@@ -127,18 +131,13 @@ const togsSchema = new mongoose.Schema(
         gender: {
             type: String,
             required: true,
-            trim: true,
-            enum: ['GIRL', 'BOY'],
+            trim: true
         },
         productType: {
             type: {
                 type: String,
                 required: true,
-                trim: true,
-                enum: [
-                    'SHIRT', 'T-SHIRT', 'SKIRTS', 'TROUSER', 'WAISTCOAT', 'BLAZER', 'TRACK PANTS',
-                    'HOODIES', 'SWEATSHIRTS', 'JACKETS', 'PINAFORE', 'CULOTTES', 'PANTS', 'SHORTS', 'SWEATER'
-                ],
+                trim: true
             },
             imageUrl: {
                 type: String,
@@ -149,7 +148,26 @@ const togsSchema = new mongoose.Schema(
             type: String,
             required: true,
             trim: true,
-            default: 'CLASSIC'
+        },
+        neckline: {
+            type: String,
+            required: true,
+            trim: true,
+        },
+        pattern: {
+            type: String,
+            required: true,
+            trim: true,
+        },
+        sleeves: {
+            type: String,
+            required: true,
+            trim: true,
+        },
+        material: {
+            type: String,
+            required: true,
+            trim: true,
         },
         price: {
             type: Number,
@@ -157,10 +175,10 @@ const togsSchema = new mongoose.Schema(
             trim: true,
             default: null
         },
-        productDeatails: {
+        productDescription: {
             type: String,
-            required: true,
             trim: true,
+            default:null
         },
         variants: [variantSchema],
         isDeleted: {

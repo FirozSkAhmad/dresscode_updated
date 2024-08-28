@@ -39,34 +39,35 @@ class BulkUploadService {
                 .on('data', (data) => {
                     results.push({
                         group: {
-                            name: data.groupName,
+                            name: data.groupName.toUpperCase(),
                             imageUrl: data.groupImageUrl
                         },
                         category: {
-                            name: data.categoryName,
+                            name: data.categoryName.toUpperCase(),
                             imageUrl: data.categoryImageUrl
                         },
                         subCategory: {
-                            name: data.subCategoryName,
+                            name: data.subCategoryName.toUpperCase(),
                             imageUrl: data.subCategoryImageUrl
                         },
-                        gender: data.gender,
+                        gender: data.gender.toUpperCase(),
                         productType: {
-                            type: data.productType,
+                            type: data.productType.toUpperCase(),
                             imageUrl: data.productTypeImageUrl
                         },
-                        fit: data.fit,
-                        sleeves: data.sleeves,
-                        fabric: data.fabric,
+                        fit: data.fit.toUpperCase(),
+                        sleeves: data.sleeves.toUpperCase(),
+                        fabric: data.fabric.toUpperCase(),
                         price: data.price,
                         productDetails: data.productDetails,
                         variant: {
-                            color: { name: data.categoryName === "COATS" ? "COATS COLOR" : data.variantColor, hexcode: colorCodes[data.variantColor] ? colorCodes[data.variantColor] : null },
+                            color: { name: data.variantColor, hexcode: colorCodes[data.variantColor.toUpperCase()] ? colorCodes[data.variantColor.toUpperCase()] : null },
                             variantSizes: [
                                 {
-                                    size: data.variantSize,
+                                    size: data.variantSize.toUpperCase(),
                                     quantity: parseInt(data.variantQuantity),
-                                }
+                                    sku: `${data.gender.toUpperCase()}-${data.productType}-${data.variantColor}-${data.variantSize}`,
+                                },
                             ],
                             imageUrls: data.variantImages ? data.variantImages.split(';') : [],
                         }
@@ -77,22 +78,20 @@ class BulkUploadService {
         });
     }
 
-    async bulkHealInsertOrUpdate(data) {
-        // First, update existing products to add variants if they do not exist
-        // for (const item of data) {
-        //     await this.addHealVariant(item);
-        // }
-
+    async bulkHealInsertOrUpdate(data, session) {
         let uploadData = [];
 
         for (const item of data) {
-            const productData = await this.addHealVariant(item, session); // Include session in function call
+            let productData = await this.addHealVariant(item, session); // Include session in function call
             productData = Array.isArray(productData) ? productData[0] : productData
             if (productData) {
                 let uploadEntry = uploadData.find(entry =>
                     entry.group === item.group.name &&
-                    entry.productId?.toString() === productData.productId?.toString()
+                    entry.productId?.toString() === item.productId?.toString()
                 );
+
+                let existingVariants = productData.variants.find(vs => vs.color.name === item.variant.color.name);
+                let existingSizeEntry = existingVariants.variantSizes.find(vs => vs.size === item.variant.variantSizes[0].size)
 
                 if (uploadEntry) {
                     let variantEntry = uploadEntry.variants.find(v => v.color.name === item.variant.color.name);
@@ -103,7 +102,9 @@ class BulkUploadService {
                         } else {
                             variantEntry.variantSizes.push({
                                 size: item.variant.variantSizes[0].size,
-                                quantityOfUpload: item.variant.variantSizes[0].quantity
+                                quantityOfUpload: item.variant.variantSizes[0].quantity,
+                                styleCoat: existingSizeEntry.styleCoat,
+                                sku: item.variant.variantSizes[0].sku
                             });
                         }
                     } else {
@@ -111,7 +112,9 @@ class BulkUploadService {
                             color: item.variant.color,
                             variantSizes: item.variant.variantSizes.map(vs => ({
                                 size: vs.size,
-                                quantityOfUpload: vs.quantity
+                                quantityOfUpload: vs.quantity,
+                                styleCoat: existingSizeEntry.styleCoat,
+                                sku: vs.sku,
                             }))
                         });
                     }
@@ -123,7 +126,9 @@ class BulkUploadService {
                             color: item.variant.color,
                             variantSizes: item.variant.variantSizes.map(vs => ({
                                 size: vs.size,
-                                quantityOfUpload: vs.quantity
+                                quantityOfUpload: vs.quantity,
+                                styleCoat: existingSizeEntry.styleCoat,
+                                sku: vs.sku,
                             }))
                         }]
                     });
@@ -173,6 +178,8 @@ class BulkUploadService {
                 fit: item.fit,
                 sleeves: item.sleeves,
                 fabric: item.fabric,
+                price: item.price,
+                productDescription: item.productDescription,
                 variants: [item.variant]
             }], { session });
         }
@@ -348,34 +355,37 @@ class BulkUploadService {
                 .on('data', (data) => {
                     results.push({
                         group: {
-                            name: data.groupName,
+                            name: data.groupName.toUpperCase(),
                             imageUrl: data.groupImageUrl
                         },
                         category: {
-                            name: data.categoryName,
+                            name: data.categoryName.toUpperCase(),
                             imageUrl: data.categoryImageUrl
                         },
                         subCategory: {
-                            name: data.subCategoryName,
+                            name: data.subCategoryName.toUpperCase(),
                             imageUrl: data.subCategoryImageUrl
                         },
-                        gender: data.gender,
+                        gender: data.gender.toUpperCase(),
                         productType: {
-                            type: data.productType,
+                            type: data.productType.toUpperCase(),
                             imageUrl: data.productTypeImageUrl
                         },
-                        fit: data.fit,
-                        neckline: data.neckline,
-                        sleeves: data.sleeves,
+                        fit: data.fit.toUpperCase(),
+                        neckline: data.neckline.toUpperCase(),
+                        pattern: data.pattern.toUpperCase(),
+                        cuff: data.cuff.toUpperCase(),
+                        sleeves: data.sleeves.toUpperCase(),
+                        material: data.material.toUpperCase(),
                         price: data.price,
-                        productDetails: data.productDetails,
+                        productDescription: data.productDescription,
                         variant: {
-                            color: { name: data.variantColor, hexcode: colorCodes[data.variantColor] ? colorCodes[data.variantColor] : null },
+                            color: { name: data.variantColor, hexcode: colorCodes[data.variantColor.toUpperCase()] ? colorCodes[data.variantColor.toUpperCase()] : null },
                             variantSizes: [
                                 {
-                                    size: data.variantSize,
+                                    size: data.variantSize.toUpperCase(),
                                     quantity: parseInt(data.variantQuantity),
-                                    sku: `${data.productType}-${data.variantColor}-${data.variantSize}`,
+                                    sku: `${data.gender.toUpperCase()}-${data.productType}-${data.variantColor}-${data.variantSize}`,
                                 },
                             ],
                             imageUrls: data.variantImages ? data.variantImages.split(';') : [],
@@ -448,7 +458,6 @@ class BulkUploadService {
         return uploadData;
     }
 
-
     async addEliteVariant(item, session) {
         const existingProduct = await EliteModel.findOne({
             'group.name': item.group.name,
@@ -458,7 +467,10 @@ class BulkUploadService {
             'productType.type': item.productType.type,
             fit: item.fit,
             neckline: item.neckline,
-            sleeves: item.sleeves
+            pattern: item.pattern,
+            cuff: item.cuff,
+            sleeves: item.sleeves,
+            material: item.material,
         }, null, { session });
 
         if (existingProduct) {
@@ -486,9 +498,12 @@ class BulkUploadService {
                 productType: item.productType,
                 fit: item.fit,
                 neckline: item.neckline,
+                pattern: item.pattern,
+                cuff: item.cuff,
                 sleeves: item.sleeves,
+                material: item.material,
                 price: item.price,
-                productDetails: item.productDetails,
+                productDescription: item.productDescription,
                 variants: [item.variant]
             }], { session });
         }
@@ -512,32 +527,37 @@ class BulkUploadService {
                 .on('data', (data) => {
                     results.push({
                         group: {
-                            name: data.groupName,
+                            name: data.groupName.toUpperCase(),
                             imageUrl: data.groupImageUrl
                         },
                         category: {
-                            name: data.categoryName,
+                            name: data.categoryName.toUpperCase(),
                             imageUrl: data.categoryImageUrl
                         },
                         subCategory: {
-                            name: data.subCategoryName,
+                            name: data.subCategoryName.toUpperCase(),
                             imageUrl: data.subCategoryImageUrl
                         },
-                        gender: data.gender,
+                        gender: data.gender.toUpperCase(),
                         productType: {
-                            type: data.productType,
+                            type: data.productType.toUpperCase(),
                             imageUrl: data.productTypeImageUrl
                         },
-                        fit: data.fit,
+                        fit: data.fit.toUpperCase(),
+                        neckline: data.neckline.toUpperCase(),
+                        pattern: data.pattern.toUpperCase(),
+                        sleeves: data.sleeves.toUpperCase(),
+                        material: data.material.toUpperCase(),
                         price: data.price,
-                        productDetails: data.productDetails,
+                        productDescription: data.productDescription,
                         variant: {
-                            color: { name: data.variantColor ? data.variantColor : "TOGS COLOR", hexcode: colorCodes[data.variantColor] ? colorCodes[data.variantColor] : null },
+                            color: { name: data.variantColor, hexcode: colorCodes[data.variantColor.toUpperCase()] ? colorCodes[data.variantColor.toUpperCase()] : null },
                             variantSizes: [
                                 {
-                                    size: data.variantSize,
+                                    size: data.variantSize.toUpperCase(),
                                     quantity: parseInt(data.variantQuantity),
-                                }
+                                    sku: `${data.gender.toUpperCase()}-${data.productType.toUpperCase()}-${data.variantColor.toUpperCase()}-${data.variantSize.toUpperCase()}`,
+                                },
                             ],
                             imageUrls: data.variantImages ? data.variantImages.split(';') : [],
                         }
@@ -549,21 +569,19 @@ class BulkUploadService {
     }
 
     async bulkTogsInsertOrUpdate(data, session) {
-        // First, update existing products to add variants if they do not exist
-        // for (const item of data) {
-        //     await this.addTogsVariant(item);
-        // }
-
         let uploadData = [];
 
         for (const item of data) {
-            const productData = await this.addTogsVariant(item, session); // Include session in function call
+            let productData = await this.addTogsVariant(item, session); // Include session in function call
             productData = Array.isArray(productData) ? productData[0] : productData
             if (productData) {
                 let uploadEntry = uploadData.find(entry =>
                     entry.group === item.group.name &&
-                    entry.productId?.toString() === productData.productId?.toString()
+                    entry.productId?.toString() === item.productId?.toString()
                 );
+
+                let existingVariants = productData.variants.find(vs => vs.color.name === item.variant.color.name);
+                let existingSizeEntry = existingVariants.variantSizes.find(vs => vs.size === item.variant.variantSizes[0].size)
 
                 if (uploadEntry) {
                     let variantEntry = uploadEntry.variants.find(v => v.color.name === item.variant.color.name);
@@ -574,7 +592,9 @@ class BulkUploadService {
                         } else {
                             variantEntry.variantSizes.push({
                                 size: item.variant.variantSizes[0].size,
-                                quantityOfUpload: item.variant.variantSizes[0].quantity
+                                quantityOfUpload: item.variant.variantSizes[0].quantity,
+                                styleCoat: existingSizeEntry.styleCoat,
+                                sku: item.variant.variantSizes[0].sku
                             });
                         }
                     } else {
@@ -582,7 +602,9 @@ class BulkUploadService {
                             color: item.variant.color,
                             variantSizes: item.variant.variantSizes.map(vs => ({
                                 size: vs.size,
-                                quantityOfUpload: vs.quantity
+                                quantityOfUpload: vs.quantity,
+                                styleCoat: existingSizeEntry.styleCoat,
+                                sku: vs.sku,
                             }))
                         });
                     }
@@ -594,7 +616,9 @@ class BulkUploadService {
                             color: item.variant.color,
                             variantSizes: item.variant.variantSizes.map(vs => ({
                                 size: vs.size,
-                                quantityOfUpload: vs.quantity
+                                quantityOfUpload: vs.quantity,
+                                styleCoat: existingSizeEntry.styleCoat,
+                                sku: vs.sku,
                             }))
                         }]
                     });
@@ -611,7 +635,11 @@ class BulkUploadService {
             'subCategory.name': item.subCategory.name,
             gender: item.gender,
             'productType.type': item.productType.type,
-            fit: item.fit
+            fit: item.fit,
+            neckline: item.neckline,
+            pattern: item.pattern,
+            sleeves: item.sleeves,
+            material: item.material
         }, null, { session });
 
         if (existingProduct) {
@@ -640,6 +668,12 @@ class BulkUploadService {
                 gender: item.gender,
                 productType: item.productType,
                 fit: item.fit,
+                neckline: item.neckline,
+                pattern: item.pattern,
+                sleeves: item.sleeves,
+                material: item.material,
+                price: item.price,
+                productDetails: item.productDetails,
                 variants: [item.variant]
             }], { session });
         }

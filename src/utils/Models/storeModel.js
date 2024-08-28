@@ -1,82 +1,56 @@
 const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
 
-// Define the ProductVariant reference schema
-const productVariantsSchema = new mongoose.Schema({
-    productId: {
-        type: mongoose.Schema.Types.ObjectId, // Reference to Product model
-        required: true,
-        ref: 'Product'
-    },
-    variantIdsQunatity: [{
-        variantId: {
-            type: mongoose.Schema.Types.ObjectId, // Reference to Variant subdocuments in Product model
-            ref: 'Variant' // Make sure you define a Variant model if it's referenced directly, or adjust according to your schema
-        },
-        quantity: {
-            type: Number,
-            required: true
-        }
-    }
-    ]
-});
-
-// Define the ProductVariant reference schema
-const assignedIdsSchema = new mongoose.Schema({
-    assignedId: {
-        type: mongoose.Schema.Types.ObjectId, // Reference to Product model
-        required: true,
-        ref: 'AssignedHistory'
-    }
-});
-
-const storeSchema = new Schema({
+const storeSchema = new mongoose.Schema({
     storeName: {
         type: String,
         required: true,
-        maxlength: 100
-    },
-    storeType: {
-        type: String,
-        required: true,
-        enum: ["SCHOOL"],
     },
     storeAddress: {
         type: String,
         required: true,
-        maxlength: 200
     },
     city: {
         type: String,
         required: true,
-        maxlength: 50
     },
     pincode: {
         type: String,
         required: true,
-        maxlength: 10
     },
     state: {
         type: String,
         required: true,
-        maxlength: 50
     },
-    commissionPersentage: {
+    commissionPercentage: {
         type: Number,
-        required: false,
+        required: true,
         min: 0,
-        max: 100 // Assuming this is a percentage
+        max: 100,
     },
-    userId: {
-        type: Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
+    userName: {
+        type: String,
+        required: true,
+        unique: true,
     },
-    productVariants: [productVariantsSchema],
-    assignedIds: [assignedIdsSchema] //arrary of assignedIds to a particular store
+    phoneNo: {
+        type: String,
+        required: true,
+        unique: true,
+        match: [/^\d{10}$/, 'Please enter a valid phone number'],
+    },
+    emailID: {
+        type: String,
+        required: true,
+        unique: true,
+        match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email address'],
+    },
+    password: {
+        type: String,
+        required: true,
+    },
+    products: [productsSechma]
 }, {
     timestamps: true,
-    collection: 'stores'
 });
 
 // Indexes for optimized querying

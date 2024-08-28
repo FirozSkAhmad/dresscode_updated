@@ -24,26 +24,39 @@ const reviewSchema = new mongoose.Schema({
 
 const variantSchema = new mongoose.Schema({
     color: {
-        type: String,
-        required: true,
-        enum: [
-            "BLACK", "SAGE GREEN", "CHERRY LACQUER",
-            "ELECTRIC INDIGO", "MAUVE", "CELESTIAL YELLOW",
-            "DUSTED GRAPE", "SEPIA MIDNIGHT PLUM",
-            "TERRACOTTA", "DIGITAL MIST", "COATS COLOR"
-        ],
+        name: {
+            type: String,
+            required: true
+        },
+        hexcode: {
+            type: String,
+            default: null
+        }
+
     },
     variantSizes: [{
         size: {
             type: String,
             required: true,
-            trim: true,
-            enum: ["XS", "S", "M", "L", "XL", "XXL"],
+            trim: true
         },
         quantity: {
             type: Number,
             required: true,
             default: 100,
+        },
+        styleCoat: {
+            type: String,
+            trim: true,
+            unique: true,
+            default: () => {
+                return crypto.randomBytes(3).toString("hex").toUpperCase().slice(0, 6);
+            },
+        },
+        sku: {
+            type: String,
+            trim: true,
+            // unique: true
         }
     }],
     imageUrls: {
@@ -98,8 +111,7 @@ const healSchema = new mongoose.Schema(
             name: {
                 type: String,
                 required: true,
-                trim: true,
-                enum: ['COATS', 'SCRUBS'],
+                trim: true
             },
             imageUrl: {
                 type: String,
@@ -110,8 +122,7 @@ const healSchema = new mongoose.Schema(
             name: {
                 type: String,
                 required: true,
-                trim: true,
-                enum: ['MEDICAL COATS', 'DOCTOR COATS', 'NURSE SCRUB SETS', 'REGULAR SCRUB SETS'],
+                trim: true
             },
             imageUrl: {
                 type: String,
@@ -121,15 +132,13 @@ const healSchema = new mongoose.Schema(
         gender: {
             type: String,
             required: true,
-            trim: true,
-            enum: ['UNISEX', 'MEN', 'WOMEN'],
+            trim: true
         },
         productType: {
             type: {
                 type: String,
                 required: true,
-                trim: true,
-                enum: ['SHORT COATS', 'LONG COATS', 'TOP', 'PANT'],
+                trim: true
             },
             imageUrl: {
                 type: String,
@@ -139,19 +148,16 @@ const healSchema = new mongoose.Schema(
         fit: {
             type: String,
             required: true,
-            trim: true,
-            default: 'CLASSIC'
+            trim: true
         },
         sleeves: {
             type: String,
-            trim: true,
-            enum: ["SHORT SLEEVES", "LONG SLEEVES"],
+            trim: true
         },
         fabric: {
             type: String,
             required: true,
-            trim: true,
-            enum: ["POLY COTTON", "LAB COATS", "SPUN POLYESTER", "100% POLYESTER"],
+            trim: true
         },
         price: {
             type: Number,
@@ -159,9 +165,8 @@ const healSchema = new mongoose.Schema(
             trim: true,
             default: null
         },
-        productDeatails: {
+        productDescription: {
             type: String,
-            required: true,
             trim: true,
             default: null
         },
