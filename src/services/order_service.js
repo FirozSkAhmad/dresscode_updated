@@ -64,8 +64,6 @@ class OrderService {
                         hexcode: colorCodes[color] ? colorCodes[color] : null
                     },
                     size,
-                    styleCoat,
-                    sku,
                     quantityOrdered,
                     price: product.price,
                     logoUrl: product.logoUrl,
