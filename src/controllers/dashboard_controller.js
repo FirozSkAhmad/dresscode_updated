@@ -506,11 +506,19 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
         };
 
         const productsPromises = order.products.map(async (product) => {
+            const ProductModel = modelMap[product.group];
+            const productDoc = await ProductModel.findOne({ productId: product.productId });
+            const variant = productDoc.variants.find(v => v.color.name === product.color.name);
+            const variantSize = variant.variantSizes.find(v => v.size === product.size);
+
             return {
                 groupName: product.group,
                 productId: product.productId,
+                productName: `${productDoc.group.name}-${productDoc.productType.type}-${product.color.name}`,
                 color: product.color,
                 size: product.size,
+                sku: variantSize.sku,
+                styleCoat: variantSize.styleCoat,
                 quantityOrdered: product.quantityOrdered,
                 price: product.price,
                 logoUrl: product.logoUrl,
@@ -536,8 +544,8 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
             billing_phone: addressDetails.phone,
             shipping_is_billing: true,
             order_items: products.map(item => ({
-                name: item.groupName,
-                sku: item.productId,
+                name: item.productName,
+                sku: item.styleCoat,
                 units: item.quantityOrdered,
                 selling_price: item.price.toString()
             })),
@@ -562,7 +570,7 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
         // Data for courier assignment
         const assignCourierData = {
             shipment_id: createOrderResponse.data.shipment_id,
-            courier_id: data.courierId
+            courier_id: data.courierId ? data.courierId : "24"
         };
 
         // Second API call to assign a courier

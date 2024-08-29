@@ -93,11 +93,11 @@ const orderSchema = new mongoose.Schema({
         default:null
     },
     pickup_scheduled_date:{
-        type: Number,
+        type: String,
         default:null
     },
     pickup_token_number:{
-        type: Number,
+        type: String,
         default:null
     }
 });
