@@ -25,9 +25,8 @@ class UserService {
             // In createUser function
             const [existingUserEmail, existingUserPhone] = await Promise.all([
                 UserModel.findOne({ email: email.toLowerCase() }).session(session),
-                UserModel.findOne({ phoneNumber }).session(session)
+                UserModel.findOne({ phoneNumber: phoneNumber }).session(session)
             ]);
-
 
             if (existingUserEmail) {
                 errors.push("Email address already in use");
@@ -59,7 +58,7 @@ class UserService {
 
             return newUser;
         } catch (err) {
-            console.error("Error in createUser: ", err);
+            console.error("Error in createUser: ", err.message);
             throw new Error(err.message || "An internal server error occurred");
         }
     }
