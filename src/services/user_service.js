@@ -85,7 +85,7 @@ class UserService {
                 { session: session }
             );
 
-            const tokenPayload = userData._id + ":" + userData.firstName;
+            const tokenPayload = userData._id + ":" + userData.name;
             const accessToken = await this.jwtObject.generateAccessToken(tokenPayload);
 
             const data = {

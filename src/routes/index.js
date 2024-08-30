@@ -6,6 +6,7 @@ const OrderController = require('../controllers/order_controller')
 const PaymentController = require('../controllers/payment_controller')
 const DashboardController = require('../controllers/dashboard_controller')
 const ImgToURLConverter = require('../controllers/imgToUrlConverter_controller')
+const OAuthController = require('../controllers/oAuth_controller')
 
 class IndexRoute {
   constructor(expressApp) {
@@ -21,6 +22,7 @@ class IndexRoute {
     this.app.use('/payment', PaymentController)
     this.app.use('/dashboard', DashboardController)
     this.app.use('/image', ImgToURLConverter)
+    this.app.use('/oAuth', OAuthController)
   }
 }
 

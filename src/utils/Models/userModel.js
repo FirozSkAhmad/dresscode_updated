@@ -62,6 +62,11 @@ const addressSchema = new mongoose.Schema({
         required: [true, 'Last name is required'],
         trim: true
     },
+    name: {
+        type: String,
+        required: [true, 'Name is required'],
+        trim: true
+    },
     address: {
         type: String,
         required: [true, 'address name is required'],
@@ -113,14 +118,10 @@ const addressSchema = new mongoose.Schema({
 });
 
 const userSchema = new mongoose.Schema({
-    firstName: {
+    uid: { type: String, unique: true },
+    name: {
         type: String,
-        required: [true, 'First name is required'],
-        trim: true
-    },
-    lastName: {
-        type: String,
-        required: [true, 'Last name is required'],
+        required: [true, 'Name is required'],
         trim: true
     },
     email: {
@@ -138,12 +139,10 @@ const userSchema = new mongoose.Schema({
     },
     gender: {
         type: String,
-        required: [true, 'Gender is required'],
         enum: ['MALE', 'FEMALE', 'OTHER']
     },
     phoneNumber: {
         type: String,
-        required: [true, 'Phone number is required'],
         validate: {
             validator: function (v) {
                 return /\d{10}/.test(v);
@@ -153,14 +152,29 @@ const userSchema = new mongoose.Schema({
     },
     password: {
         type: String,
-        required: [true, 'Password is required'],
         minlength: 6
     },
     addresses: [addressSchema],
     orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
     quotes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Quote' }],
-    cart: [cartItemSchema], // Adding the cart as an array of cartItemSchema
+    cart: [cartItemSchema],
     wishlist: [wishlistItemSchema]
+});
+
+// Pre-save middleware to enforce conditional requirements
+userSchema.pre('save', function(next) {
+    if (!this.uid) {
+        if (!this.gender) {
+            this.invalidate('gender', 'Gender is required');
+        }
+        if (!this.phoneNumber) {
+            this.invalidate('phoneNumber', 'Phone number is required');
+        }
+        if (!this.password ) {
+            this.invalidate('password', 'Password is required');
+        }
+    }
+    next();
 });
 
 module.exports = mongoose.model("User", userSchema);
