@@ -1,4 +1,4 @@
-const admin = require("./firebase");
+const admin = require("../firebase");
 const UserModel = require('../utils/Models/userModel');
 const express = require('express');
 const router = express.Router()
