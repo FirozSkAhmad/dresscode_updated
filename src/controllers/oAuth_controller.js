@@ -7,7 +7,6 @@ const jwtHelperObj = new JwtHelper();
 const Constants = require('../utils/Constants/response_messages')
 
 async function verifyToken(req, res, next) {
-    console.log(req.headers)
     const idToken = req.headers.authorization;
 
     if (!idToken) {
