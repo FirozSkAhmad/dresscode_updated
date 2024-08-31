@@ -62,11 +62,6 @@ const addressSchema = new mongoose.Schema({
         required: [true, 'Last name is required'],
         trim: true
     },
-    name: {
-        type: String,
-        required: [true, 'Name is required'],
-        trim: true
-    },
     address: {
         type: String,
         required: [true, 'address name is required'],

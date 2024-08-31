@@ -706,12 +706,12 @@ router.get('/download-excel', async (req, res) => {
                         variantSize: size.size,
                         variantColor: variant.color.name,
                         variantQuantity: size.quantity,
-                        variantImage: variant.imageUrls.join(", "),
+                        variantImage: variant.imageUrls.join(";"),
                         styleCoat: size.styleCoat,
                         sku: size.sku
                     };
                     worksheet.getRow(rowIndex).height = 50; // Set the row height to accommodate the barcode image
-                    worksheet.addRow(rowValues);
+                    worksheet.addRow(rowValues, `V${rowIndex}:V${rowIndex}`);
                     worksheet.addImage(barcodeImageId, `V${rowIndex}:V${rowIndex}`);
 
                     rowIndex++;
