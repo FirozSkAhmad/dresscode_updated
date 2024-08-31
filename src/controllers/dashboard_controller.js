@@ -15,6 +15,7 @@ const WorkWearModel = require('../utils/Models/workWearModel');
 const OrderModel = require('../utils/Models/orderModel');
 const QuoteModel = require('../utils/Models/quoteModel');
 const DashboardUserModel = require('../utils/Models/dashboardUserModel');
+const { createObjectCsvWriter } = require('csv-writer');
 const { startSession } = require('mongoose');
 const axios = require('axios');
 require('dotenv').config();  // Make sure to require dotenv if you need access to your .env variables
@@ -626,6 +627,89 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
         session.endSession();
         console.error("Failed to send order to Shiprocket or update database:", error);
         res.status(500).send({ message: "Failed to process request", error: error.message });
+    }
+});
+
+router.get('/download-csv', async (req, res) => {
+    try {
+        // Fetching data from MongoDB
+        const data = await EliteModel.find({}).select('group category subCategory gender productType fit neckline pattern cuff sleeves material price variants -_id').lean();
+
+        // Flatten the data to get the desired structure
+        const csvData = [];
+        data.forEach(item => {
+            item.variants.forEach(variant => {
+                variant.variantSizes.forEach(size => {
+                    csvData.push({
+                        groupName: item.group.name,
+                        groupImageUrl: item.group.imageUrl,
+                        categoryName: item.category.name,
+                        categoryImageUrl: item.category.imageUrl,
+                        subCategoryName: item.subCategory.name,
+                        subCategoryImageUrl: item.subCategory.imageUrl,
+                        gender: item.gender,
+                        productType: item.productType.type,
+                        fit: item.fit,
+                        neckline: item.neckline,
+                        pattern: item.pattern,
+                        cuff: item.cuff,
+                        sleeves: item.sleeves,
+                        material: item.material,
+                        price: item.price,
+                        variantSize: size.size,
+                        variantColor: variant.color.name,
+                        variantQuantity: size.quantity,
+                        variantImage: variant.imageUrls.join(", "), // If multiple images, joined by comma
+                        styleCoat: size.styleCoat,
+                        sku: size.sku
+                    });
+                });
+            });
+        });
+        
+        // CSV Writer configuration
+        const csvWriter = createObjectCsvWriter({
+            path: 'output.csv', // Path where the file should be saved
+            header: [
+                { id: 'groupName', title: 'groupName' },
+                { id: 'groupImageUrl', title: 'groupImageUrl' },
+                { id: 'categoryName', title: 'categoryName' },
+                { id: 'categoryImageUrl', title: 'categoryImageUrl' },
+                { id: 'subCategoryName', title: 'subCategoryName' },
+                { id: 'subCategoryImageUrl', title: 'subCategoryImageUrl' },
+                { id: 'gender', title: 'gender' },
+                { id: 'productType', title: 'productType' },
+                { id: 'fit', title: 'fit' },
+                { id: 'neckline', title: 'neckline' },
+                { id: 'pattern', title: 'pattern' },
+                { id: 'cuff', title: 'cuff' },
+                { id: 'sleeves', title: 'sleeves' },
+                { id: 'material', title: 'material' },
+                { id: 'price', title: 'price' },
+                { id: 'variantSize', title: 'variantSize' },
+                { id: 'variantColor', title: 'variantColor' },
+                { id: 'variantQuantity', title: 'variantQuantity' },
+                { id: 'variantImage', title: 'variantImage' },
+                { id: 'styleCoat', title: 'styleCoat' },
+                { id: 'sku', title: 'sku' }
+            ]
+        });
+
+
+        // Writing data to CSV
+        await csvWriter.writeRecords(csvData);
+
+        // Set the headers to download file
+        res.download('output.csv', 'variants.csv', (err) => {
+            if (err) {
+                res.status(500).send('Error downloading the file');
+            }
+            // Optional: delete the file locally if not needed further
+        });
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).send('Failed to download CSV');
     }
 });
 
