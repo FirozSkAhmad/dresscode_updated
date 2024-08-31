@@ -19,7 +19,7 @@ class UserService {
 
     async createUser(userDetails, session) {
         try {
-            const { firstName, lastName, email, gender, phoneNumber, password } = userDetails;
+            const { name, email, gender, phoneNumber, password } = userDetails;
             let errors = [];
 
             // In createUser function
@@ -45,8 +45,7 @@ class UserService {
 
             // Prepare the user payload
             const userPayload = {
-                firstName,
-                lastName,
+                name,
                 email: email.toLowerCase(),
                 gender: gender.toUpperCase(),
                 phoneNumber,

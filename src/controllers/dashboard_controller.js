@@ -16,6 +16,8 @@ const OrderModel = require('../utils/Models/orderModel');
 const QuoteModel = require('../utils/Models/quoteModel');
 const DashboardUserModel = require('../utils/Models/dashboardUserModel');
 const { createObjectCsvWriter } = require('csv-writer');
+const ExcelJS = require('exceljs');
+const bwipjs = require('bwip-js');
 const { startSession } = require('mongoose');
 const axios = require('axios');
 require('dotenv').config();  // Make sure to require dotenv if you need access to your .env variables
@@ -630,17 +632,61 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
     }
 });
 
-router.get('/download-csv', async (req, res) => {
+
+router.get('/download-excel', async (req, res) => {
     try {
-        // Fetching data from MongoDB
+        // Fetch data from MongoDB
         const data = await EliteModel.find({}).select('group category subCategory gender productType fit neckline pattern cuff sleeves material price variants -_id').lean();
 
-        // Flatten the data to get the desired structure
-        const csvData = [];
-        data.forEach(item => {
-            item.variants.forEach(variant => {
-                variant.variantSizes.forEach(size => {
-                    csvData.push({
+        // Create a new workbook and add a worksheet
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Product Variants');
+
+        // Define headers for the Excel file
+        worksheet.columns = [
+            { header: 'Group Name', key: 'groupName', width: 20 },
+            { header: 'Group Image URL', key: 'groupImageUrl', width: 30 },
+            { header: 'Category Name', key: 'categoryName', width: 20 },
+            { header: 'Category Image URL', key: 'categoryImageUrl', width: 30 },
+            { header: 'SubCategory Name', key: 'subCategoryName', width: 20 },
+            { header: 'SubCategory Image URL', key: 'subCategoryImageUrl', width: 30 },
+            { header: 'Gender', key: 'gender', width: 10 },
+            { header: 'Product Type', key: 'productType', width: 15 },
+            { header: 'Fit', key: 'fit', width: 10 },
+            { header: 'Neckline', key: 'neckline', width: 15 },
+            { header: 'Pattern', key: 'pattern', width: 15 },
+            { header: 'Cuff', key: 'cuff', width: 10 },
+            { header: 'Sleeves', key: 'sleeves', width: 15 },
+            { header: 'Material', key: 'material', width: 15 },
+            { header: 'Price', key: 'price', width: 10 },
+            { header: 'Variant Size', key: 'variantSize', width: 12 },
+            { header: 'Variant Color', key: 'variantColor', width: 15 },
+            { header: 'Variant Quantity', key: 'variantQuantity', width: 18 },
+            { header: 'Variant Image', key: 'variantImage', width: 30 },
+            { header: 'Style Coat', key: 'styleCoat', width: 20 },
+            { header: 'SKU', key: 'sku', width: 20 },
+            { header: 'Barcode', key: 'barcode', width: 30 } // Placeholder for barcode images
+        ];
+
+        let rowIndex = 2;
+        for (const item of data) {
+            for (const variant of item.variants) {
+                for (const size of variant.variantSizes) {
+                    // Generate a barcode for each styleCoat
+                    const barcodeBuffer = await bwipjs.toBuffer({
+                        bcid: 'code128',    // Use Code 128 barcode type
+                        text: size.styleCoat, // Use styleCoat as the barcode text
+                        scale: 3,           // 3x scaling factor
+                        height: 10,         // Bar height, in millimeters
+                        includetext: true,  // Include human-readable text
+                    });
+
+                    const barcodeImageId = workbook.addImage({
+                        buffer: barcodeBuffer,
+                        extension: 'png',
+                    });
+
+                    const rowValues = {
                         groupName: item.group.name,
                         groupImageUrl: item.group.imageUrl,
                         categoryName: item.category.name,
@@ -659,57 +705,27 @@ router.get('/download-csv', async (req, res) => {
                         variantSize: size.size,
                         variantColor: variant.color.name,
                         variantQuantity: size.quantity,
-                        variantImage: variant.imageUrls.join(", "), // If multiple images, joined by comma
+                        variantImage: variant.imageUrls.join(", "),
                         styleCoat: size.styleCoat,
                         sku: size.sku
-                    });
-                });
-            });
-        });
-        
-        // CSV Writer configuration
-        const csvWriter = createObjectCsvWriter({
-            path: 'output.csv', // Path where the file should be saved
-            header: [
-                { id: 'groupName', title: 'groupName' },
-                { id: 'groupImageUrl', title: 'groupImageUrl' },
-                { id: 'categoryName', title: 'categoryName' },
-                { id: 'categoryImageUrl', title: 'categoryImageUrl' },
-                { id: 'subCategoryName', title: 'subCategoryName' },
-                { id: 'subCategoryImageUrl', title: 'subCategoryImageUrl' },
-                { id: 'gender', title: 'gender' },
-                { id: 'productType', title: 'productType' },
-                { id: 'fit', title: 'fit' },
-                { id: 'neckline', title: 'neckline' },
-                { id: 'pattern', title: 'pattern' },
-                { id: 'cuff', title: 'cuff' },
-                { id: 'sleeves', title: 'sleeves' },
-                { id: 'material', title: 'material' },
-                { id: 'price', title: 'price' },
-                { id: 'variantSize', title: 'variantSize' },
-                { id: 'variantColor', title: 'variantColor' },
-                { id: 'variantQuantity', title: 'variantQuantity' },
-                { id: 'variantImage', title: 'variantImage' },
-                { id: 'styleCoat', title: 'styleCoat' },
-                { id: 'sku', title: 'sku' }
-            ]
-        });
+                    };
 
-
-        // Writing data to CSV
-        await csvWriter.writeRecords(csvData);
-
-        // Set the headers to download file
-        res.download('output.csv', 'variants.csv', (err) => {
-            if (err) {
-                res.status(500).send('Error downloading the file');
+                    worksheet.addRow(rowValues);
+                    worksheet.addImage(barcodeImageId, `V${rowIndex}:V${rowIndex}`);
+                    rowIndex++;
+                }
             }
-            // Optional: delete the file locally if not needed further
-        });
+        }
+
+        // Set headers for file download
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename="ProductVariants.xlsx"');
+        await workbook.xlsx.write(res);
+        res.end();
 
     } catch (error) {
-        console.log(error);
-        res.status(500).send('Failed to download CSV');
+        console.error(error);
+        res.status(500).send('Failed to generate Excel file');
     }
 });
 
