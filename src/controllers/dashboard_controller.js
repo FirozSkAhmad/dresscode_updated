@@ -385,7 +385,8 @@ router.get('/getOrderDetails/:orderId', jwtHelperObj.verifyAccessToken, async (r
                 TotalPriceAfterDiscount: order.TotalPriceAfterDiscount,
                 estimatedDelivery: order.estimatedDelivery,
                 shiprocket_order_id: order.shiprocket_order_id,
-                shiprocket_shipment_id: order.shiprocket_shipment_id
+                shiprocket_shipment_id: order.shiprocket_shipment_id,
+                shiprocket_awb_code: order.shiprocket_awb_code
             }
         });
     } catch (error) {
@@ -644,28 +645,28 @@ router.get('/download-excel', async (req, res) => {
 
         // Define headers for the Excel file
         worksheet.columns = [
-            { header: 'Group Name', key: 'groupName', width: 20 },
-            { header: 'Group Image URL', key: 'groupImageUrl', width: 30 },
-            { header: 'Category Name', key: 'categoryName', width: 20 },
-            { header: 'Category Image URL', key: 'categoryImageUrl', width: 30 },
-            { header: 'SubCategory Name', key: 'subCategoryName', width: 20 },
-            { header: 'SubCategory Image URL', key: 'subCategoryImageUrl', width: 30 },
-            { header: 'Gender', key: 'gender', width: 10 },
-            { header: 'Product Type', key: 'productType', width: 15 },
-            { header: 'Fit', key: 'fit', width: 10 },
-            { header: 'Neckline', key: 'neckline', width: 15 },
-            { header: 'Pattern', key: 'pattern', width: 15 },
-            { header: 'Cuff', key: 'cuff', width: 10 },
-            { header: 'Sleeves', key: 'sleeves', width: 15 },
-            { header: 'Material', key: 'material', width: 15 },
-            { header: 'Price', key: 'price', width: 10 },
-            { header: 'Variant Size', key: 'variantSize', width: 12 },
-            { header: 'Variant Color', key: 'variantColor', width: 15 },
-            { header: 'Variant Quantity', key: 'variantQuantity', width: 18 },
-            { header: 'Variant Image', key: 'variantImage', width: 30 },
-            { header: 'Style Coat', key: 'styleCoat', width: 20 },
-            { header: 'SKU', key: 'sku', width: 20 },
-            { header: 'Barcode', key: 'barcode', width: 30 } // Placeholder for barcode images
+            { header: 'groupName', key: 'groupName', width: 20 },
+            { header: 'groupImageUrl', key: 'groupImageUrl', width: 30 },
+            { header: 'categoryName', key: 'categoryName', width: 20 },
+            { header: 'categoryImageUrl', key: 'categoryImageUrl', width: 30 },
+            { header: 'subCategoryName', key: 'subCategoryName', width: 20 },
+            { header: 'subCategoryImageUrl', key: 'subCategoryImageUrl', width: 30 },
+            { header: 'gender', key: 'gender', width: 10 },
+            { header: 'productType', key: 'productType', width: 15 },
+            { header: 'fit', key: 'fit', width: 10 },
+            { header: 'neckline', key: 'neckline', width: 15 },
+            { header: 'pattern', key: 'pattern', width: 15 },
+            { header: 'cuff', key: 'cuff', width: 10 },
+            { header: 'sleeves', key: 'sleeves', width: 15 },
+            { header: 'material', key: 'material', width: 15 },
+            { header: 'price', key: 'price', width: 10 },
+            { header: 'variantSize', key: 'variantSize', width: 12 },
+            { header: 'variantColor', key: 'variantColor', width: 15 },
+            { header: 'variantQuantity', key: 'variantQuantity', width: 18 },
+            { header: 'variantImage', key: 'variantImage', width: 30 },
+            { header: 'styleCoat', key: 'styleCoat', width: 20 },
+            { header: 'sku', key: 'sku', width: 30 },
+            { header: 'Barcode', key: 'barcode', width: 30, height: 20 } // Placeholder for barcode images
         ];
 
         let rowIndex = 2;
@@ -709,9 +710,10 @@ router.get('/download-excel', async (req, res) => {
                         styleCoat: size.styleCoat,
                         sku: size.sku
                     };
-
+                    worksheet.getRow(rowIndex).height = 50; // Set the row height to accommodate the barcode image
                     worksheet.addRow(rowValues);
                     worksheet.addImage(barcodeImageId, `V${rowIndex}:V${rowIndex}`);
+
                     rowIndex++;
                 }
             }
