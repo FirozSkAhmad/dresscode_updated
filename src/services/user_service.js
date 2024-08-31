@@ -101,7 +101,7 @@ class UserService {
 
     async getUserDetails(userId) {
         try {
-            const user = await UserModel.findById(userId, 'firstName lastName email gender phoneNumber');
+            const user = await UserModel.findById(userId, 'name email gender phoneNumber');
             if (!user) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
             }
