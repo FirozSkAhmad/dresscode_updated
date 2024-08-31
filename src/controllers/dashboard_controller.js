@@ -18,8 +18,8 @@ const DashboardUserModel = require('../utils/Models/dashboardUserModel');
 const { createObjectCsvWriter } = require('csv-writer');
 const ExcelJS = require('exceljs');
 const bwipjs = require('bwip-js');
-const { startSession } = require('mongoose');
 const axios = require('axios');
+const { startSession } = require('mongoose');
 require('dotenv').config();  // Make sure to require dotenv if you need access to your .env variables
 
 const modelMap = {
@@ -630,6 +630,33 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
         session.endSession();
         console.error("Failed to send order to Shiprocket or update database:", error);
         res.status(500).send({ message: "Failed to process request", error: error.message });
+    }
+});
+
+router.get('/track/awb/:awb_code', async (req, res) => {
+    const { awb_code } = req.params;
+
+    const authorizationHeader = req.headers['authorization'];
+
+    if (!authorizationHeader) {
+        return res.status(401).json({ error: 'No authorization token provided' });
+    }
+
+    const token = authorizationHeader.split(' ')[1]; // Assuming the token is prefixed by 'Bearer'
+
+    try {
+        const response = await axios.get(`https://apiv2.shiprocket.in/v1/external/courier/track/awb/${awb_code}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        // Process the response
+        res.status(200).json(response.data);
+
+    } catch (error) {
+        console.error("Error in tracking with awb: ", err.message);
+        res.status(500).send({ message: "Failed to track with awb", error: error.message });
     }
 });
 
