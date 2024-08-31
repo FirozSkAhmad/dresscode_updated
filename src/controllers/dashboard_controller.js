@@ -633,6 +633,96 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
     }
 });
 
+router.post('/manifests/generate', async (req, res) => {
+    const reqData = req.body;
+
+    const authorizationHeader = req.headers['authorization'];
+
+    if (!authorizationHeader) {
+        return res.status(401).json({ error: 'No authorization token provided' });
+    }
+
+    const token = authorizationHeader.split(' ')[1]; // Assuming the token is prefixed by 'Bearer'
+
+    try {
+        const response = await axios.post(`https://apiv2.shiprocket.in/v1/external/manifests/generate`, reqData, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        // Process the response normally
+        res.status(200).json(response.data);
+    } catch (error) {
+        console.error("Error in generating manifest: ", error.message);
+        if (error.response) {
+            res.status(error.response.status).send(
+                error.response.data
+            );
+        } else if (error.request) {
+            // The request was made but no response was received
+            res.status(500).send({ message: "No response received", error: error.message });
+        } else {
+            // Something happened in setting up the request that triggered an Error
+            res.status(500).send({ message: "Error setting up request", error: error.message });
+        }
+    }
+
+});
+
+router.post('/generate/label', async (req, res) => {
+    const reqData = req.body;
+
+    const authorizationHeader = req.headers['authorization'];
+
+    if (!authorizationHeader) {
+        return res.status(401).json({ error: 'No authorization token provided' });
+    }
+
+    const token = authorizationHeader.split(' ')[1]; // Assuming the token is prefixed by 'Bearer'
+
+    try {
+        const response = await axios.post(`https://apiv2.shiprocket.in/v1/external/courier/generate/label`, reqData, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        // Process the response
+        res.status(200).json(response.data);
+
+    } catch (error) {
+        console.error("Error in generating label: ", error.message);
+        res.status(500).send({ message: "Failed to generate label", error: error.message });
+    }
+});
+
+router.post('/print/invoice', async (req, res) => {
+    const reqData = req.body;
+
+    const authorizationHeader = req.headers['authorization'];
+
+    if (!authorizationHeader) {
+        return res.status(401).json({ error: 'No authorization token provided' });
+    }
+
+    const token = authorizationHeader.split(' ')[1]; // Assuming the token is prefixed by 'Bearer'
+
+    try {
+        const response = await axios.post(`https://apiv2.shiprocket.in/v1/external/orders/print/invoice`, reqData, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        // Process the response
+        res.status(200).json(response.data);
+
+    } catch (error) {
+        console.error("Error in printing invoice: ", error.message);
+        res.status(500).send({ message: "Failed to print invoice", error: error.message });
+    }
+});
+
 router.get('/track/awb/:awb_code', async (req, res) => {
     const { awb_code } = req.params;
 
@@ -659,7 +749,6 @@ router.get('/track/awb/:awb_code', async (req, res) => {
         res.status(500).send({ message: "Failed to track with awb", error: error.message });
     }
 });
-
 
 router.get('/download-excel', async (req, res) => {
     try {
