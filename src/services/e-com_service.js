@@ -337,7 +337,10 @@ class EComService {
                         colors: colors[0]?.colors || [],
                         sizes: sizes[0]?.sizes || [],
                         necklines: necklines[0]?.necklines || [],
-                        sleeves: sleeves[0]?.sleeves || []
+                        sleeves: sleeves[0]?.sleeves || [],
+                        cuff: cuff[0]?.cuff || [],
+                        pattern: pattern[0]?.pattern || [],
+                        material: material[0]?.material || [],
                     }
                 }
             };

@@ -873,7 +873,7 @@ router.get('/download-excel', async (req, res) => {
         let addBarcodesCount = rowIndex - 2; // Calculate how many barcodes we need to add
         for (let i = 0; i < addBarcodesCount; i++) {
             let barcodeRow = i + 2; // Adjust the row index to start from the first data row
-            worksheet.addImage(barcodeIds[i], `v${barcodeRow}:V${barcodeRow}`);
+            worksheet.addImage(barcodeIds[i], `U${barcodeRow}:W${barcodeRow}`);
         }
 
         // Set headers for file download
