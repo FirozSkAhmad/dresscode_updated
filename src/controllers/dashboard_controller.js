@@ -14,6 +14,7 @@ const SpiritsModel = require('../utils/Models/spiritsModel');
 const WorkWearModel = require('../utils/Models/workWearModel');
 const OrderModel = require('../utils/Models/orderModel');
 const QuoteModel = require('../utils/Models/quoteModel');
+const dimensionsModel = require('../utils/Models/dimensionsModel');
 const DashboardUserModel = require('../utils/Models/dashboardUserModel');
 const { createObjectCsvWriter } = require('csv-writer');
 const ExcelJS = require('exceljs');
@@ -481,6 +482,21 @@ router.get('/getQuoteDetails/:quoteId', jwtHelperObj.verifyAccessToken, async (r
     }
 });
 
+router.get('/predefined/boxes', async (req, res) => {
+    try {
+        const boxes = await dimensionsModel.find().select('predefinedId boxLength boxBreadth boxHeight').exec();
+        if (!boxes || boxes.length === 0) {
+            res.status(404).json({ message: 'No boxes found' });
+        } else {
+            res.status(200).json(boxes);
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error fetching boxes' });
+    }
+});
+
+
 router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, async (req, res) => {
     const session = await startSession();
     try {
@@ -597,6 +613,21 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
                 'Authorization': `Bearer ${process.env.SHIPROCKET_API_TOKEN}`
             }
         });
+
+        const existingBox = await dimensionsModel.findOne({
+            boxLength: data.boxLength,
+            boxBreadth: data.boxBreadth,
+            boxHeight: data.boxHeight
+        });
+
+        if (!existingBox) {
+            const newBox = new dimensionsModel({
+                boxLength,
+                boxBreadth,
+                boxHeight
+            });
+            await newBox.save();
+        }
 
         // Update the Order in MongoDB with details from all Shiprocket responses
         const updateData = {
