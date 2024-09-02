@@ -283,7 +283,7 @@ class EComService {
                 }
             ]);
 
-            const { fits, colors, sizes, fabrics, necklines, sleeves } = results[0];
+            const { fits, colors, sizes, fabrics, necklines, sleeves, cuff, pattern, material } = results[0];
             if (groupName === "HEAL") {
                 if (category === "COATS") {
                     return {
