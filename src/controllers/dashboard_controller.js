@@ -816,6 +816,7 @@ router.get('/download-excel', async (req, res) => {
             { header: 'Barcode', key: 'barcode', width: 30, height: 20 } // Placeholder for barcode images
         ];
 
+        let barcodeIds = [];
         let rowIndex = 2;
         for (const item of data) {
             for (const variant of item.variants) {
@@ -833,6 +834,8 @@ router.get('/download-excel', async (req, res) => {
                         buffer: barcodeBuffer,
                         extension: 'png',
                     });
+
+                    barcodeIds.push(barcodeImageId);
 
                     const rowValues = {
                         groupName: item.group.name,
@@ -855,15 +858,22 @@ router.get('/download-excel', async (req, res) => {
                         variantQuantity: size.quantity,
                         variantImage: variant.imageUrls.join(";"),
                         styleCoat: size.styleCoat,
-                        sku: size.sku
+                        sku: size.sku,
                     };
+                    worksheet.addRow(rowValues);
                     worksheet.getRow(rowIndex).height = 50; // Set the row height to accommodate the barcode image
-                    worksheet.addRow(rowValues, `V${rowIndex}:V${rowIndex}`);
-                    worksheet.addImage(barcodeImageId, `V${rowIndex}:V${rowIndex}`);
+                    // worksheet.addImage(barcodeImageId, `V${rowIndex}:V${rowIndex}`);
 
                     rowIndex++;
                 }
             }
+        }
+
+        // Now add barcode images using a separate loop
+        let addBarcodesCount = rowIndex - 2; // Calculate how many barcodes we need to add
+        for (let i = 0; i < addBarcodesCount; i++) {
+            let barcodeRow = i + 2; // Adjust the row index to start from the first data row
+            worksheet.addImage(barcodeIds[i], `v${barcodeRow}:V${barcodeRow}`);
         }
 
         // Set headers for file download

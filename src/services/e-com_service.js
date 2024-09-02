@@ -275,7 +275,10 @@ class EComService {
                             { $group: { _id: null, sizes: { $addToSet: "$variants.variantSizes.size" } } }
                         ],
                         necklines: [{ $group: { _id: null, necklines: { $addToSet: "$neckline" } } }],
-                        sleeves: [{ $group: { _id: null, sleeves: { $addToSet: "$sleeves" } } }]
+                        sleeves: [{ $group: { _id: null, sleeves: { $addToSet: "$sleeves" } } }],
+                        cuff: [{ $group: { _id: null, sleeves: { $addToSet: "$sleeves" } } }],
+                        pattern: [{ $group: { _id: null, sleeves: { $addToSet: "$sleeves" } } }],
+                        material: [{ $group: { _id: null, sleeves: { $addToSet: "$sleeves" } } }]
                     }
                 }
             ]);
