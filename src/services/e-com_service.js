@@ -276,9 +276,9 @@ class EComService {
                         ],
                         necklines: [{ $group: { _id: null, necklines: { $addToSet: "$neckline" } } }],
                         sleeves: [{ $group: { _id: null, sleeves: { $addToSet: "$sleeves" } } }],
-                        cuff: [{ $group: { _id: null, sleeves: { $addToSet: "$cuff" } } }],
-                        pattern: [{ $group: { _id: null, sleeves: { $addToSet: "$pattern" } } }],
-                        material: [{ $group: { _id: null, sleeves: { $addToSet: "$material" } } }]
+                        cuff: [{ $group: { _id: null, cuff: { $addToSet: "$cuff" } } }],
+                        pattern: [{ $group: { _id: null, pattern: { $addToSet: "$pattern" } } }],
+                        material: [{ $group: { _id: null, material: { $addToSet: "$material" } } }]
                     }
                 }
             ]);

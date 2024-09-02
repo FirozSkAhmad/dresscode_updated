@@ -812,7 +812,7 @@ router.get('/download-excel', async (req, res) => {
             { header: 'variantQuantity', key: 'variantQuantity', width: 18 },
             { header: 'variantImage', key: 'variantImage', width: 30 },
             { header: 'styleCoat', key: 'styleCoat', width: 20 },
-            { header: 'sku', key: 'sku', width: 30 },
+            // { header: 'sku', key: 'sku', width: 30 },
             { header: 'Barcode', key: 'barcode', width: 30, height: 20 } // Placeholder for barcode images
         ];
 
@@ -858,7 +858,7 @@ router.get('/download-excel', async (req, res) => {
                         variantQuantity: size.quantity,
                         variantImage: variant.imageUrls.join(";"),
                         styleCoat: size.styleCoat,
-                        sku: size.sku,
+                        // sku: size.sku,
                     };
                     worksheet.addRow(rowValues);
                     worksheet.getRow(rowIndex).height = 50; // Set the row height to accommodate the barcode image
