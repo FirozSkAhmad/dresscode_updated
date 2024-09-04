@@ -88,7 +88,7 @@ const quoteSchema = new mongoose.Schema({
         }
     },
     size: { type: String, required: true, trim: true },
-    quantityRequired: { type: Number, required: true, min: 100 },
+    quantityRequired: { type: Number, required: true, min: 35 },
     logoUrl: {
         type: String, trim: true, default: null
     },
