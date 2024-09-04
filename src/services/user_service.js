@@ -628,7 +628,7 @@ class UserService {
             const variant = productDoc.variants.find(v => v.color.name === color);
             const variantSize = variant.variantSizes.find(v => v.size === size);
             if (!variantSize || variantSize.quantity < quantityRequired) {
-                throw new global.DATA.PLUGINS.httperrors.BadRequest(`Insufficient stock for this item, only ${variantSize.quantity} left! But if your required quantity is more then 35 you can rasie a qoute.`);
+                throw new global.DATA.PLUGINS.httperrors.BadRequest(`Insufficient stock for this item, only ${variantSize.quantity} left! But if your required quantity is more than 35, please raise a quote.`);
             }
         } catch (err) {
             console.error("Error updating cart item quantity:", err.message);
