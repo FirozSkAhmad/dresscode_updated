@@ -90,6 +90,7 @@ class UserService {
                 accessToken: accessToken,
                 userId: userData._id,
                 name: userData.name,
+                email: userData.email,
                 phoneNumber: userData.phoneNumber,
             };
 
