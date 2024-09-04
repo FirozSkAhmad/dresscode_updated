@@ -21,7 +21,7 @@ class IndexRoute {
     this.app.use('/order', OrderController)
     this.app.use('/payment', PaymentController)
     this.app.use('/dashboard', DashboardController)
-    this.app.use('/image', ImgToURLConverter)
+    this.app.use('/uploadToS3', ImgToURLConverter)
     this.app.use('/oAuth', OAuthController)
   }
 }

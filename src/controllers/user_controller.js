@@ -24,39 +24,52 @@ const modelMap = {
 };
 
 router.post('/createUser', async (req, res, next) => {
-    const session = await mongoose.startSession();
+    const session = await mongoose.startSession(); // Start a new session for the transaction
+    session.startTransaction(); // Start the transaction
     try {
-        session.startTransaction();
-        const newUser = await userServiceObj.createUser(req.body, session);
-        try {
-            await session.commitTransaction();
-        } catch (commitError) {
-            console.error("Error during commit:", commitError.message);
-            throw commitError; // Ensure the error is caught by the outer catch
-        }
-        res.send({
-            "status": 200,
-            "message": Constants.SUCCESS,
-            "user": newUser
+        const { name, email, gender, phoneNumber, password } = req.body; // Extract userDetails from the request body
+
+        // Check for an existing user by email or phone number
+        const existingUser = await UserModel.findOne({
+            $or: [
+                { email: email.toLowerCase() },
+                { phoneNumber: phoneNumber }
+            ]
         });
-    } catch (err) {
-        try {
-            await session.abortTransaction();
-        } catch (abortErr) {
-            console.error("Error aborting transaction:", abortErr.message);
+
+        if (existingUser) {
+            // If user exists, return an error
+            return res.status(400).send("Email or Phone number already in use");
         }
-        if (err.message.includes("already in use")) {
-            res.status(409).send({
-                "status": 409,
-                "message": err.message
-            });
-        } else {
-            next(err);
-        }
-    } finally {
-        session.endSession();
-    }    
+
+        // Hash the password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        // Prepare the user payload
+        const userPayload = {
+            name,
+            email: email.toLowerCase(),
+            gender: gender.toUpperCase(),
+            phoneNumber,
+            password: hashedPassword
+        };
+
+        // Create the new user within the transaction
+        const newUser = await UserModel.create([userPayload], { session });
+        await session.commitTransaction(); // Commit the transaction if all operations are successful
+        session.endSession(); // End the session
+
+        // Send success response
+        res.status(201).send({ message: 'User created successfully', user: newUser });
+    } catch (error) {
+        // Rollback the transaction in case of error
+        await session.abortTransaction();
+        session.endSession(); // End the session
+        res.status(500).send({ message: 'Error creating user', error: error.message });
+    }
 });
+
 
 
 router.post('/login', async (req, res, next) => {
