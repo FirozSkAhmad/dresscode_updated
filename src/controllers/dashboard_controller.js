@@ -590,7 +590,7 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
         // Data for courier assignment
         const assignCourierData = {
             shipment_id: createOrderResponse.data.shipment_id,
-            courier_id: data.courierId ? data.courierId : "24"
+            // courier_id: data.courierId ? data.courierId : "24"
         };
 
         // Second API call to assign a courier
