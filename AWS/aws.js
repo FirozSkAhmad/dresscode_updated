@@ -1,58 +1,76 @@
-// const sharp = require('sharp');
-const aws = require('aws-sdk');
+const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { Upload } = require('@aws-sdk/lib-storage');
+const { fromEnv } = require('@aws-sdk/credential-provider-env');
 
-// AWS Configuration
-aws.config.update({
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+// AWS Configuration for SDK v3
+const s3Client = new S3Client({
   region: 'ap-south-1',
+  credentials: fromEnv(), // Automatically loads credentials from environment variables
 });
 
-// Function to upload a file to AWS S3
-let uploadFile = async (file, folderName) => {
-  return new Promise(function (resolve, reject) {
-    let s3 = new aws.S3({ apiVersion: '2006-03-01' });
-
-    const uploadImg = (buffer) => {
-      var uploadParams = {
-        ACL: 'public-read',
-        Bucket: 'dresscode-imgs',
-        Key: `${folderName}/` + file.originalname,
-        Body: buffer,
-      };
-
-      s3.upload(uploadParams, function (err, data) {
-        if (err) {
-          console.log(err.message);
-          return reject({ error: err.message });
-        }
-        console.log('File uploaded successfully');
-        return resolve(data.Location);
-      });
+// Function to upload a file to AWS S3 using SDK v3
+const uploadFile = async (file, folderName) => {
+  try {
+    const uploadParams = {
+      ACL: 'public-read',
+      Bucket: 'dresscode-buck',
+      Key: `${folderName}/${file.originalname}`,
+      Body: file.buffer,
     };
-    uploadImg(file.buffer);
-  });
+
+    const command = new PutObjectCommand(uploadParams);
+    const data = await s3Client.send(command);
+    console.log('File uploaded successfully');
+    const location = `https://${uploadParams.Bucket}.s3.${s3Client.config.region}.amazonaws.com/${uploadParams.Key}`;
+    return location;
+  } catch (err) {
+    console.error('Error uploading file:', err.message);
+    throw err; // Rethrowing the error to handle it outside this function if necessary
+  }
 };
 
-// Function to delete a file from AWS S3
-let deleteFile = async (fileName, folderName) => {
-  return new Promise((resolve, reject) => {
-    let s3 = new aws.S3({ apiVersion: '2006-03-01' });
+// Function to upload a PDF to AWS S3 using SDK v3
+const uploadPdfToS3 = async (pdfBuffer, fileName, folderName) => {
+  try {
+    // Using high-level Upload class from lib-storage for managed uploads
+    const uploader = new Upload({
+      client: s3Client,
+      params: {
+        ACL: 'public-read',
+        Bucket: 'dresscode-buck',
+        Key: `${folderName}/${fileName}.pdf`,
+        Body: pdfBuffer,
+        ContentType: 'application/pdf',
+      },
+    });
 
-    var deleteParams = {
-      Bucket: 'pab-volunteer-imgs',
-      Key: `${folderName}/` + fileName,
+    const result = await uploader.done();
+    const location = `https://${uploader.params.Bucket}.s3.${s3Client.config.region}.amazonaws.com/${uploader.params.Key}`;
+    return location;
+  } catch (err) {
+    console.error('Error uploading PDF to S3', err);
+    throw err;
+  }
+};
+
+// Function to delete a file from AWS S3 using SDK v3
+const deleteFile = async (fileName, folderName) => {
+  try {
+    const deleteParams = {
+      Bucket: 'dresscode-buck',
+      Key: `${folderName}/${fileName}`,
     };
 
-    s3.deleteObject(deleteParams, function (err, data) {
-      if (err) {
-        return reject({ error: err.message });
-      }
-      console.log('File deleted successfully');
-      return resolve(data);
-    });
-  });
+    const command = new DeleteObjectCommand(deleteParams);
+    const data = await s3Client.send(command);
+    console.log('File deleted successfully');
+    return data;
+  } catch (err) {
+    console.error('Error deleting file:', err.message);
+    throw err;
+  }
 };
 
 // Exporting the functions
-module.exports = { uploadFile, deleteFile };
+module.exports = { uploadFile, deleteFile, uploadPdfToS3 };
+

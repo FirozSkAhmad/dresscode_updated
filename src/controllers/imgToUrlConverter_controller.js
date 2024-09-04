@@ -1,6 +1,7 @@
 const express = require('express');
-const { uploadFile } = require("../../AWS/aws")
-const multer = require("multer");
+const { uploadFile, uploadPdfToS3 } = require("../../AWS/aws")
+const multer = require('multer');
+const upload = multer();
 const router = express.Router();
 
 router.post('/generateImgUrl', multer().any(), async (req, res) => {
