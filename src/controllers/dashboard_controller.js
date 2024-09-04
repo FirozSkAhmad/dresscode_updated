@@ -781,10 +781,29 @@ router.get('/track/awb/:awb_code', async (req, res) => {
     }
 });
 
-router.get('/download-excel', async (req, res) => {
+router.get('/:uploadedId/generateBarcodes', async (req, res) => {
     try {
+        const { uploadedId } = req.params;
+
+        const history = await UploadedHistoryModel.findOne({ uploadedId });
+        if (!history) {
+            return res.status(404).send({ message: "Upload history not found" });
+        }
+
+        // Retrieve product details for each product in the history
+        const productsDetails = await Promise.all(history.products.map(async (product) => {
+            const ProductModel = modelMap[product.group];
+            if (!ProductModel) {
+                throw new Error(`No model found for group: ${product.group}`);
+            }
+            const productDetails = await ProductModel.findOne({ productId: product.productId })
+                .select('-variants -reviews -_id');
+
+            return { ...product.toObject(), productDetails };
+        }));
+
         // Fetch data from MongoDB
-        const data = await EliteModel.find({}).select('group category subCategory gender productType fit neckline pattern cuff sleeves material price variants -_id').lean();
+        // const data = await EliteModel.find({}).select('group category subCategory gender productType fit neckline pattern cuff sleeves material price variants -_id').lean();
 
         // Create a new workbook and add a worksheet
         const workbook = new ExcelJS.Workbook();
@@ -810,70 +829,67 @@ router.get('/download-excel', async (req, res) => {
             { header: 'variantSize', key: 'variantSize', width: 12 },
             { header: 'variantColor', key: 'variantColor', width: 15 },
             { header: 'variantQuantity', key: 'variantQuantity', width: 18 },
-            { header: 'variantImage', key: 'variantImage', width: 30 },
+            // { header: 'variantImage', key: 'variantImage', width: 30 },
             { header: 'styleCoat', key: 'styleCoat', width: 20 },
-            // { header: 'sku', key: 'sku', width: 30 },
+            { header: 'sku', key: 'sku', width: 30 },
             { header: 'Barcode', key: 'barcode', width: 30, height: 20 } // Placeholder for barcode images
         ];
 
         let barcodeIds = [];
         let rowIndex = 2;
-        for (const item of data) {
-            for (const variant of item.variants) {
-                for (const size of variant.variantSizes) {
-                    // Generate a barcode for each styleCoat
-                    const barcodeBuffer = await bwipjs.toBuffer({
-                        bcid: 'code128',    // Use Code 128 barcode type
-                        text: size.styleCoat, // Use styleCoat as the barcode text
-                        scale: 3,           // 3x scaling factor
-                        height: 10,         // Bar height, in millimeters
-                        includetext: true,  // Include human-readable text
-                    });
+        for (const item of productsDetails) {
 
-                    const barcodeImageId = workbook.addImage({
-                        buffer: barcodeBuffer,
-                        extension: 'png',
-                    });
+            // Generate a barcode for each styleCoat
+            const barcodeBuffer = await bwipjs.toBuffer({
+                bcid: 'code128',    // Use Code 128 barcode type
+                text: item.variants[0].variantSizes[0].styleCoat, // Use styleCoat as the barcode text
+                scale: 3,           // 3x scaling factor
+                height: 10,         // Bar height, in millimeters
+                includetext: true,  // Include human-readable text
+            });
 
-                    barcodeIds.push(barcodeImageId);
+            const barcodeImageId = workbook.addImage({
+                buffer: barcodeBuffer,
+                extension: 'png',
+            });
 
-                    const rowValues = {
-                        groupName: item.group.name,
-                        groupImageUrl: item.group.imageUrl,
-                        categoryName: item.category.name,
-                        categoryImageUrl: item.category.imageUrl,
-                        subCategoryName: item.subCategory.name,
-                        subCategoryImageUrl: item.subCategory.imageUrl,
-                        gender: item.gender,
-                        productType: item.productType.type,
-                        fit: item.fit,
-                        neckline: item.neckline,
-                        pattern: item.pattern,
-                        cuff: item.cuff,
-                        sleeves: item.sleeves,
-                        material: item.material,
-                        price: item.price,
-                        variantSize: size.size,
-                        variantColor: variant.color.name,
-                        variantQuantity: size.quantity,
-                        variantImage: variant.imageUrls.join(";"),
-                        styleCoat: size.styleCoat,
-                        // sku: size.sku,
-                    };
-                    worksheet.addRow(rowValues);
-                    worksheet.getRow(rowIndex).height = 50; // Set the row height to accommodate the barcode image
-                    // worksheet.addImage(barcodeImageId, `V${rowIndex}:V${rowIndex}`);
+            barcodeIds.push(barcodeImageId);
 
-                    rowIndex++;
-                }
-            }
+            const rowValues = {
+                groupName: item.productDetails.group.name,
+                groupImageUrl: item.productDetails.group.imageUrl,
+                categoryName: item.productDetails.category.name,
+                categoryImageUrl: item.productDetails.category.imageUrl,
+                subCategoryName: item.productDetails.subCategory.name,
+                subCategoryImageUrl: item.productDetails.subCategory.imageUrl,
+                gender: item.productDetails.gender,
+                productType: item.productDetails.productType.type,
+                fit: item.productDetails.fit,
+                neckline: item.productDetails.neckline,
+                pattern: item.productDetails.pattern ? item.productDetails.pattern : "N/A",
+                cuff: item.productDetails.cuff ? item.productDetails.cuff : "N/A",
+                sleeves: item.productDetails.sleeves,
+                material: item.productDetails.material ? item.productDetails.material : "N/A",
+                price: item.productDetails.price,
+                variantSize: item.variants[0].variantSizes[0].size,
+                variantColor: item.variants[0].color.name,
+                variantQuantity: item.variants[0].variantSizes[0].quantityOfUpload,
+                // variantImage: item.variants[0].variantSizes[0].quantityOfUpload,
+                styleCoat: item.variants[0].variantSizes[0].styleCoat,
+                sku: item.variants[0].variantSizes[0].sku,
+            };
+            worksheet.addRow(rowValues);
+            worksheet.getRow(rowIndex).height = 50; // Set the row height to accommodate the barcode image
+            // worksheet.addImage(barcodeImageId, `V${rowIndex}:V${rowIndex}`);
+
+            rowIndex++;
         }
 
         // Now add barcode images using a separate loop
         let addBarcodesCount = rowIndex - 2; // Calculate how many barcodes we need to add
         for (let i = 0; i < addBarcodesCount; i++) {
             let barcodeRow = i + 2; // Adjust the row index to start from the first data row
-            worksheet.addImage(barcodeIds[i], `U${barcodeRow}:W${barcodeRow}`);
+            worksheet.addImage(barcodeIds[i], `U${barcodeRow}:U${barcodeRow}`);
         }
 
         // Set headers for file download
