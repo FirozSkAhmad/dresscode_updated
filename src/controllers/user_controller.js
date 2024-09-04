@@ -13,6 +13,7 @@ const EliteModel = require('../utils/Models/eliteModel');
 const TogsModel = require('../utils/Models/togsModel');
 const SpiritsModel = require('../utils/Models/spiritsModel');
 const WorkWearModel = require('../utils/Models/workWearModel');
+const userModel = require('../utils/Models/userModel');
 
 const modelMap = {
     "HEAL": HealModel,
