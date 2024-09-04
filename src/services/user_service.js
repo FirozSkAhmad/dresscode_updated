@@ -89,7 +89,8 @@ class UserService {
             const data = {
                 accessToken: accessToken,
                 userId: userData._id,
-                firstName: userData.firstName
+                name: userData.name,
+                phoneNumber: userData.phoneNumber,
             };
 
             return data;
