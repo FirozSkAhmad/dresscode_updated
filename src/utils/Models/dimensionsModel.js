@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const crypto = require('crypto'); // Use crypto module for random string generation
 
 const boxSchema = new mongoose.Schema({
     predefinedId: {

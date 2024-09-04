@@ -503,7 +503,7 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
         session.startTransaction();
         const { orderId } = req.params;
         const data = req.body;
-
+        const { boxLength, boxBreadth, boxHeight } = data
         const order = await OrderModel.findOne({ orderId }).populate('user');
         if (!order) {
             return res.status(404).send({ message: "Order not found" });

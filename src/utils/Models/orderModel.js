@@ -89,7 +89,7 @@ const orderSchema = new mongoose.Schema({
         default:null
     },
     shiprocket_awb_code:{
-        type: Number,
+        type: String,
         default:null
     },
     pickup_scheduled_date:{
