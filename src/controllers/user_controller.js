@@ -14,6 +14,7 @@ const TogsModel = require('../utils/Models/togsModel');
 const SpiritsModel = require('../utils/Models/spiritsModel');
 const WorkWearModel = require('../utils/Models/workWearModel');
 const UserModel = require('../utils/Models/userModel');
+const bcrypt = require('bcrypt');
 
 const modelMap = {
     "HEAL": HealModel,
