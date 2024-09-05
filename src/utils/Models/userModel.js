@@ -113,7 +113,7 @@ const addressSchema = new mongoose.Schema({
 });
 
 const userSchema = new mongoose.Schema({
-    uid: { type: String, unique: true },
+    uid: { type: String, default: null },
     name: {
         type: String,
         required: [true, 'Name is required'],
@@ -157,7 +157,7 @@ const userSchema = new mongoose.Schema({
 });
 
 // Pre-save middleware to enforce conditional requirements
-userSchema.pre('save', function(next) {
+userSchema.pre('save', function (next) {
     if (!this.uid) {
         if (!this.gender) {
             this.invalidate('gender', 'Gender is required');
@@ -165,7 +165,7 @@ userSchema.pre('save', function(next) {
         if (!this.phoneNumber) {
             this.invalidate('phoneNumber', 'Phone number is required');
         }
-        if (!this.password ) {
+        if (!this.password) {
             this.invalidate('password', 'Password is required');
         }
     }
