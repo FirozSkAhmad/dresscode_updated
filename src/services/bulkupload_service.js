@@ -354,23 +354,11 @@ class BulkUploadService {
                 .pipe(csv({ mapHeaders: ({ header }) => header.trim() }))
                 .on('data', (data) => {
                     results.push({
-                        group: {
-                            name: data.groupName.toUpperCase(),
-                            imageUrl: data.groupImageUrl
-                        },
-                        category: {
-                            name: data.categoryName.toUpperCase(),
-                            imageUrl: data.categoryImageUrl
-                        },
-                        subCategory: {
-                            name: data.subCategoryName.toUpperCase(),
-                            imageUrl: data.subCategoryImageUrl
-                        },
+                        group: data.groupName.toUpperCase(),
+                        category: data.categoryName.toUpperCase(),
+                        subCategory: data.subCategoryName.toUpperCase(),
                         gender: data.gender.toUpperCase(),
-                        productType: {
-                            type: data.productType.toUpperCase(),
-                            imageUrl: data.productTypeImageUrl
-                        },
+                        productType: data.productType.toUpperCase(),
                         fit: data.fit.toUpperCase(),
                         neckline: data.neckline.toUpperCase(),
                         pattern: data.pattern.toUpperCase(),
@@ -380,7 +368,7 @@ class BulkUploadService {
                         price: data.price,
                         productDescription: data.productDescription,
                         variant: {
-                            color: { name: data.variantColor, hexcode: colorCodes[data.variantColor.toUpperCase()] ? colorCodes[data.variantColor.toUpperCase()] : null },
+                            color: { name: data.variantColor, hexcode: data.hexcode },
                             variantSizes: [
                                 {
                                     size: data.variantSize.toUpperCase(),
@@ -406,7 +394,7 @@ class BulkUploadService {
 
             if (productData) {
                 let uploadEntry = uploadData.find(entry =>
-                    entry.group === productData.group.name &&
+                    entry.group === productData.group &&
                     entry.productId?.toString() === item.productId?.toString()
                 );
 
@@ -440,7 +428,7 @@ class BulkUploadService {
                     }
                 } else {
                     uploadData.push({
-                        group: item.group.name,
+                        group: item.group,
                         productId: productData.productId,
                         variants: [{
                             color: item.variant.color,
@@ -459,38 +447,8 @@ class BulkUploadService {
     }
 
     async addEliteVariant(item, session) {
-        const existingProduct = await EliteModel.findOne({
-            'group.name': item.group.name,
-            'category.name': item.category.name,
-            'subCategory.name': item.subCategory.name,
-            gender: item.gender,
-            'productType.type': item.productType.type,
-            fit: item.fit,
-            neckline: item.neckline,
-            pattern: item.pattern,
-            cuff: item.cuff,
-            sleeves: item.sleeves,
-            material: item.material,
-        }, null, { session });
-
-        if (existingProduct) {
-            const variant = existingProduct.variants.find(v => v.color.name === item.variant.color.name);
-            if (variant) {
-                const sizeDetail = variant.variantSizes.find(v => v.size === item.variant.variantSizes[0].size);
-                if (sizeDetail) {
-                    sizeDetail.quantity += item.variant.variantSizes[0].quantity;
-                } else {
-                    variant.variantSizes.push(item.variant.variantSizes[0]);
-                }
-                await existingProduct.save({ session });
-            } else {
-                existingProduct.variants.push(item.variant);
-                await existingProduct.save({ session });
-            }
-            return existingProduct;
-        } else {
-            // Create new product if it does not exist
-            return await EliteModel.create([{
+        try {
+            const existingProduct = await EliteModel.findOne({
                 group: item.group,
                 category: item.category,
                 subCategory: item.subCategory,
@@ -502,12 +460,48 @@ class BulkUploadService {
                 cuff: item.cuff,
                 sleeves: item.sleeves,
                 material: item.material,
-                price: item.price,
-                productDescription: item.productDescription,
-                variants: [item.variant]
-            }], { session });
+            }, null, { session });
+    
+            if (existingProduct) {
+                const variant = existingProduct.variants.find(v => v.color.name === item.variant.color.name);
+                if (variant) {
+                    const sizeDetail = variant.variantSizes.find(v => v.size === item.variant.variantSizes[0].size);
+                    if (sizeDetail) {
+                        sizeDetail.quantity += item.variant.variantSizes[0].quantity;
+                    } else {
+                        variant.variantSizes.push(item.variant.variantSizes[0]);
+                    }
+                    await existingProduct.save({ session });
+                } else {
+                    existingProduct.variants.push(item.variant);
+                    await existingProduct.save({ session });
+                }
+                return existingProduct;
+            } else {
+                // Create new product if it does not exist
+                return await EliteModel.create([{
+                    group: item.group,
+                    category: item.category,
+                    subCategory: item.subCategory,
+                    gender: item.gender,
+                    productType: item.productType,
+                    fit: item.fit,
+                    neckline: item.neckline,
+                    pattern: item.pattern,
+                    cuff: item.cuff,
+                    sleeves: item.sleeves,
+                    material: item.material,
+                    price: item.price,
+                    productDescription: item.productDescription,
+                    variants: [item.variant]
+                }], { session });
+            }
+        } catch (error) {
+            console.error("Error adding variant to Elite product:", error.message);
+            throw new Error("Failed to add or update variant"); // Rethrow the error to handle it in upper layers if necessary
         }
     }
+    
 
     async processTogsCsvFile(buffer, session) {
         const data = await this.parseTogsCsv(buffer);

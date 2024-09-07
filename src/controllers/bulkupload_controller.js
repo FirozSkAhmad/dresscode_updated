@@ -43,7 +43,7 @@ router.post("/bulkUploadElites", jwtHelperObj.verifyAccessToken, upload.single('
     } catch (err) {
         await session.abortTransaction();
         session.endSession();
-        console.error("Error while uploading the data:", err.message);
+        console.error("Error while uploading the ELITE data:", err.message);
         next(err);
     }
 });

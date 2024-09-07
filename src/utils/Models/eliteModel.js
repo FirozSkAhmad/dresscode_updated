@@ -32,7 +32,6 @@ const variantSchema = new mongoose.Schema({
             type: String,
             default: null
         }
-
     },
     variantSizes: [{
         size: {
@@ -43,7 +42,7 @@ const variantSchema = new mongoose.Schema({
         quantity: {
             type: Number,
             required: true,
-            default: 100,
+            default: 0,
         },
         styleCoat: {
             type: String,
@@ -93,38 +92,20 @@ const eliteSchema = new mongoose.Schema({
         },
     },
     group: {
-        name: {
-            type: String,
-            required: true,
-            trim: true,
-            default: "ELITE"
-        },
-        imageUrl: {
-            type: String,
-            required: true
-        }
+        type: String,
+        required: true,
+        trim: true,
+        default: "ELITE"
     },
     category: {
-        name: {
-            type: String,
-            required: true,
-            trim: true
-        },
-        imageUrl: {
-            type: String,
-            required: true
-        }
+        type: String,
+        required: true,
+        trim: true
     },
     subCategory: {
-        name: {
-            type: String,
-            required: true,
-            trim: true
-        },
-        imageUrl: {
-            type: String,
-            required: true
-        }
+        type: String,
+        required: true,
+        trim: true
     },
     gender: {
         type: String,
@@ -132,15 +113,9 @@ const eliteSchema = new mongoose.Schema({
         trim: true
     },
     productType: {
-        type: {
-            type: String,
-            required: true,
-            trim: true
-        },
-        imageUrl: {
-            type: String,
-            required: true
-        }
+        type: String,
+        required: true,
+        trim: true
     },
     fit: {
         type: String,
@@ -194,7 +169,7 @@ const eliteSchema = new mongoose.Schema({
 
 eliteSchema.pre('save', async function (next) {
     // Additional validation logic, e.g., custom business rules
-    if (!this.group.name.startsWith('ELITE')) {
+    if (!this.group.startsWith('ELITE')) {
         throw new Error('Group must start with "ELITE"');
     }
     next();

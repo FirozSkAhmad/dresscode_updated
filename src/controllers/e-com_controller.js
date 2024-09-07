@@ -61,6 +61,19 @@ router.get('/getProductFilters', async (req, res, next) => {
     }
 });
 
+// Route to get filters for a specific group with colors and sizes
+router.get('/getFiltersByGroup', async (req, res) => {
+    try {
+        const groupName = req.query.groupName.toUpperCase(); // Assuming group is case-insensitive
+        const EComServiceObj = new EComService();
+        const result = await EComServiceObj.getFiltersByGroup(groupName);
+        res.status(200).send(result)
+    } catch (err) {
+        console.error('Failed to retrieve group filters:', err.message);
+        next(err);
+    }
+});
+
 router.get('/getFits', async (req, res, next) => {
     try {
         const { groupName, category, subCategory, gender, productsType } = req.query
@@ -121,6 +134,17 @@ router.get('/getProductsByFilters', async (req, res, next) => {
         const { groupName, category, subCategory, gender, productType, fit, color, size, neckline, sleeves } = req.query
         const EComServiceObj = new EComService();
         const result = await EComServiceObj.getProductsByFilters(groupName, category, subCategory, gender, productType, fit, color, size, neckline, sleeves);
+        res.status(200).send(result)
+    } catch (err) {
+        next(err);
+    }
+});
+
+router.get('/getProductsByGroup', async (req, res, next) => {
+    try {
+        const { groupName, color, size } = req.query
+        const EComServiceObj = new EComService();
+        const result = await EComServiceObj.getProductsByGroup(groupName, color, size);
         res.status(200).send(result)
     } catch (err) {
         next(err);
