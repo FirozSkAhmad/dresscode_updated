@@ -266,17 +266,20 @@ router.get('/:groupName/getAllActiveProducts', jwtHelperObj.verifyAccessToken, a
         // }
 
         const formattedProducts = allProducts.map(product => ({
-            group: product.group.name ? product.group.name : null,
+            group: product.group ? product.group : null,
             productId: product.productId,
-            category: product?.category.name ? product.category.name : null,
-            subCategory: product?.subCategory.name ? product.subCategory.name : null,
+            category: product?.category ? product.category : null,
+            subCategory: product?.subCategory ? product.subCategory : null,
             gender: product.gender,
             productType: product.productType.type,
             fit: product?.fit ? product.fit : null,
-            neckline: product?.neckline ? product.neckline.name : null,
-            sleeves: product?.sleeves ? product.sleeves.name : null,
-            fabric: product?.fabric ? product.fabric.name : null,
-            productDetails: product.productDetails,
+            neckline: product?.neckline ? product.neckline : null,
+            pattern: product?.pattern ? product.pattern : null,
+            cuff: product?.cuff ? product.cuff : null,
+            sleeves: product?.sleeves ? product.sleeves : null,
+            material: product?.material ? product.material : null,
+            fabric: product?.fabric ? product.fabric : null,
+            productDescription: product.productDescription,
             price: product.price,
             variants: product.variants.map(variant => ({
                 color: variant.color,
@@ -400,11 +403,11 @@ router.get('/getOders', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
         const orders = await OrderModel.find({}, 'orderId dateOfOrder status -_id').exec();
         res.status(200).send({
-            message: "Upload histories retrieved successfully",
+            message: "Orders retrieved successfully",
             orders: orders
         });
     } catch (error) {
-        console.error("Failed to retrieve upload histories:", error);
+        console.error("Failed to retrieve Orders:", error.message);
         res.status(500).send({ message: "Failed to retrieve upload histories", error: error.message });
     }
 });
