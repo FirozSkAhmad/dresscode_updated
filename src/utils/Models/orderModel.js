@@ -24,6 +24,14 @@ const productsSchema = new mongoose.Schema({
     logoPosition: {
         type: String, trim: true, default: null
     },
+    discountPercentage: {
+        type: Number,
+        default: 0
+    },
+    discountAmount: {
+        type: Number,
+        default: 0
+    },
 });
 
 const orderSchema = new mongoose.Schema({
@@ -56,10 +64,7 @@ const orderSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
-    discountPercentage: {
-        type: Number,
-        default: 0
-    },
+    TotalDiscountAmount: { type: Number, required: true },
     TotalPriceAfterDiscount: { type: Number, required: true },
     dateOfOrder: { type: Date, default: Date.now },
     deliveryStatus: {
@@ -76,29 +81,29 @@ const orderSchema = new mongoose.Schema({
         enum: ['Pending', 'Assigned'],
         default: 'Pending'
     },
-    shiprocket_order_id:{
+    shiprocket_order_id: {
         type: Number,
-        default:null
+        default: null
     },
-    shiprocket_shipment_id:{
+    shiprocket_shipment_id: {
         type: Number,
-        default:null
+        default: null
     },
-    shiprocket_courier_id:{
+    shiprocket_courier_id: {
         type: Number,
-        default:null
+        default: null
     },
-    shiprocket_awb_code:{
+    shiprocket_awb_code: {
         type: String,
-        default:null
+        default: null
     },
-    pickup_scheduled_date:{
+    pickup_scheduled_date: {
         type: String,
-        default:null
+        default: null
     },
-    pickup_token_number:{
+    pickup_token_number: {
         type: String,
-        default:null
+        default: null
     }
 });
 

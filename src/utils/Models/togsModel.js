@@ -95,38 +95,20 @@ const togsSchema = new mongoose.Schema(
             },
         },
         group: {
-            name: {
                 type: String,
                 required: true,
                 trim: true,
                 default: 'TOGS'
-            },
-            imageUrl: {
-                type: String,
-                required: true
-            }
         },
         category: {
-            name: {
                 type: String,
                 required: true,
                 trim: true
-            },
-            imageUrl: {
-                type: String,
-                required: true
-            }
         },
         subCategory: {
-            name: {
                 type: String,
                 required: true,
                 trim: true
-            },
-            imageUrl: {
-                type: String,
-                required: true
-            }
         },
         gender: {
             type: String,
@@ -134,15 +116,9 @@ const togsSchema = new mongoose.Schema(
             trim: true
         },
         productType: {
-            type: {
                 type: String,
                 required: true,
                 trim: true
-            },
-            imageUrl: {
-                type: String,
-                required: true
-            }
         },
         fit: {
             type: String,

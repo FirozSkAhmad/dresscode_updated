@@ -67,7 +67,9 @@ class OrderService {
                     quantityOrdered,
                     price: product.price,
                     logoUrl: product.logoUrl,
-                    logoPosition: product.logoPosition
+                    logoPosition: product.logoPosition,
+                    discountPercentage: product.discountPercentage,
+                    discountAmount: product.discountAmount
                 };
             }));
 
@@ -78,7 +80,7 @@ class OrderService {
                 address: addressId,
                 products: productsProcessed,
                 deliveryCharges,
-                discountPercentage,
+                TotalDiscountAmount,
                 TotalPriceAfterDiscount
             });
 

@@ -43,7 +43,7 @@ const variantSchema = new mongoose.Schema({
         quantity: {
             type: Number,
             required: true,
-            default: 100,
+            default: 0,
         },
         styleCoat: {
             type: String,
@@ -96,38 +96,20 @@ const healSchema = new mongoose.Schema(
             },
         },
         group: {
-            name: {
-                type: String,
-                required: true,
-                trim: true,
-                default: 'HEAL'
-            },
-            imageUrl: {
-                type: String,
-                required: true
-            }
+            type: String,
+            required: true,
+            trim: true,
+            default: "HEAL"
         },
         category: {
-            name: {
-                type: String,
-                required: true,
-                trim: true
-            },
-            imageUrl: {
-                type: String,
-                required: true
-            }
+            type: String,
+            required: true,
+            trim: true
         },
         subCategory: {
-            name: {
-                type: String,
-                required: true,
-                trim: true
-            },
-            imageUrl: {
-                type: String,
-                required: true
-            }
+            type: String,
+            required: true,
+            trim: true
         },
         gender: {
             type: String,
@@ -135,15 +117,9 @@ const healSchema = new mongoose.Schema(
             trim: true
         },
         productType: {
-            type: {
-                type: String,
-                required: true,
-                trim: true
-            },
-            imageUrl: {
-                type: String,
-                required: true
-            }
+            type: String,
+            required: true,
+            trim: true
         },
         fit: {
             type: String,
@@ -185,8 +161,8 @@ const healSchema = new mongoose.Schema(
 
 healSchema.index({ productId: 1 });
 healSchema.index({
-    'group.name': 'text', 'category.name': 'text', 'subCategory.name': 'text',
-    'gender': 'text', 'productType.type': 'text', 'fit': 'text',
+    'group': 'text', 'category': 'text', 'subCategory': 'text',
+    'gender': 'text', 'productType': 'text', 'fit': 'text',
     'sleeves': 'text', 'fabric': 'text', 'variants.variantSizes.size': 'text'
 });
 
