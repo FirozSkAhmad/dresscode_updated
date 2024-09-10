@@ -20,7 +20,7 @@ class OrderService {
 
     async createOrder(userId, addressId, orderDetails, session) {
         try {
-            const { paymentId, products: orderProducts, deliveryCharges, TotalDiscountAmount, TotalPriceAfterDiscount } = orderDetails;
+            const { paymentId, products: orderProducts, deliveryCharges, TotalAmount, TotalDiscountAmount, TotalPriceAfterDiscount } = orderDetails;
 
             // Mapping from group to Product Model
             const modelMap = {
@@ -80,6 +80,7 @@ class OrderService {
                 address: addressId,
                 products: productsProcessed,
                 deliveryCharges,
+                TotalAmount,
                 TotalDiscountAmount,
                 TotalPriceAfterDiscount
             });
