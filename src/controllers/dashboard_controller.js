@@ -534,6 +534,7 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
             const productDoc = await ProductModel.findOne({ productId: product.productId });
             const variant = productDoc.variants.find(v => v.color.name === product.color.name);
             const variantSize = variant.variantSizes.find(v => v.size === product.size);
+            const unitDiscount = (product.discountAmount / product.quantityOrdered)
 
             return {
                 groupName: product.group,
@@ -547,7 +548,7 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
                 price: product.price,
                 logoUrl: product.logoUrl,
                 logoPosition: product.logoPosition,
-                discountAmount: product.discountAmount
+                unitDiscount: unitDiscount
             };
         });
 
@@ -573,7 +574,7 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
                 sku: item.styleCoat,
                 units: item.quantityOrdered,
                 selling_price: item.price.toString(),
-                discount: item.discountAmount.toString()
+                discount: item.unitDiscount.toString()
                 // tax: "",
             })),
             payment_method: "Prepaid",
