@@ -64,6 +64,7 @@ const orderSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    TotalAmount: { type: Number, required: true },
     TotalDiscountAmount: { type: Number, required: true },
     TotalPriceAfterDiscount: { type: Number, required: true },
     dateOfOrder: { type: Date, default: Date.now },
