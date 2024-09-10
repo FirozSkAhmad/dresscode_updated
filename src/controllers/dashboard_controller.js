@@ -547,6 +547,7 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
                 price: product.price,
                 logoUrl: product.logoUrl,
                 logoPosition: product.logoPosition,
+                discountAmount: product.discountAmount
             };
         });
 
