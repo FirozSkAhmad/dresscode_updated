@@ -383,6 +383,7 @@ router.get('/getOrderDetails/:orderId', jwtHelperObj.verifyAccessToken, async (r
                 },
                 addressDetails: addressDetails,
                 deliveryStatus: order.deliveryStatus,
+                status: order.status,
                 dateOfOrder: order.dateOfOrder,
                 deliveryCharges: order.deliveryCharges,
                 discountPercentage: order.discountPercentage,
