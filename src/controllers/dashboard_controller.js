@@ -636,6 +636,7 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
 
         // Update the Order in MongoDB with details from all Shiprocket responses
         const updateData = {
+            deliveryStatus: 'Assigned',
             status: 'Assigned',
             shiprocket_order_id: createOrderResponse.data.order_id,
             shiprocket_shipment_id: createOrderResponse.data.shipment_id,
