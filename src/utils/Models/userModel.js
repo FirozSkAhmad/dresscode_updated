@@ -15,6 +15,9 @@ const wishlistItemSchema = new mongoose.Schema({
         }
     },
     size: { type: String, required: true, trim: true },
+    imgUrl: {
+        type: String, trim: true, default: null
+    },
     logoUrl: {
         type: String, trim: true, default: null
     },
