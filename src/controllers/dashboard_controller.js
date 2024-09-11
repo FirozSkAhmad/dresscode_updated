@@ -146,6 +146,88 @@ router.get('/uploadedHistory/:uploadedId/products', jwtHelperObj.verifyAccessTok
     }
 });
 
+// GET endpoint to get the overview of stock (quantity and amount) and orders (group-wise and total)
+router.get('/getOverview', async (req, res) => {
+    try {
+        // Fetch all upload histories for stock overview
+        const uploadHistories = await UploadedHistoryModel.find({});
+
+        // Initialize a stock object to hold the group-wise and total stock quantity, amount, and order counts
+        let stock = {};
+        let totalAmount = 0;
+        let totalQuantity = 0;
+        let totalOrders = 0;
+
+        // Loop through each upload history and calculate group-wise stock quantity and amount
+        for (const history of uploadHistories) {
+            const productsDetails = await Promise.all(history.products.map(async (product) => {
+                const ProductModel = modelMap[product.group];
+                if (!ProductModel) {
+                    throw new Error(`No model found for group: ${product.group}`);
+                }
+                // Retrieve the product details based on productId
+                const productDetails = await ProductModel.findOne({ productId: product.productId })
+                    .select('price');  // Only select the price field
+
+                if (!productDetails) {
+                    throw new Error(`No product details found for productId: ${product.productId}`);
+                }
+
+                // Initialize variables for this product's group
+                let groupTotalAmount = 0;
+                let groupTotalQuantity = 0;
+
+                // Calculate the stock amount and quantity for each variant in the product
+                product.variants.forEach(variant => {
+                    variant.variantSizes.forEach(size => {
+                        const quantity = size.quantityOfUpload;
+                        const amount = quantity * productDetails.price;  // Multiply quantity by price
+
+                        groupTotalAmount += amount;
+                        groupTotalQuantity += quantity;
+                    });
+                });
+
+                // Update the stock for the group (amount, quantity)
+                if (!stock[product.group]) {
+                    stock[product.group] = { amount: 0, quantity: 0, orders: 0 };
+                }
+                stock[product.group].amount += groupTotalAmount;
+                stock[product.group].quantity += groupTotalQuantity;
+
+                totalAmount += groupTotalAmount;  // Add to total stock amount
+                totalQuantity += groupTotalQuantity;  // Add to total stock quantity
+
+                return { ...product.toObject(), productDetails };
+            }));
+        }
+
+        // Fetch all orders for order overview
+        const orders = await OrderModel.find({});
+
+        // Loop through each order and count orders by group
+        orders.forEach(order => {
+            totalOrders += 1;  // Increment total orders count
+
+            order.products.forEach(product => {
+                if (!stock[product.group]) {
+                    stock[product.group] = { amount: 0, quantity: 0, orders: 0 };
+                }
+                stock[product.group].orders += 1;  // Increment the order count for the group
+            });
+        });
+
+        // Include the total amount, quantity, and orders in the stock object
+        stock.total = { amount: totalAmount, quantity: totalQuantity, orders: totalOrders };
+
+        // Send the response
+        res.status(200).send(stock);
+    } catch (error) {
+        console.error("Failed to fetch overview details:", error);
+        res.status(500).send({ message: "Failed to fetch overview details", error: error.message });
+    }
+});
+
 // DELETE endpoint to logically delete a Variant
 router.delete('/removeVariant', jwtHelperObj.verifyAccessToken, async (req, res) => {
     const { group, styleCoat } = req.body;
