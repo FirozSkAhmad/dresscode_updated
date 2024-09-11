@@ -146,9 +146,9 @@ router.get('/uploadedHistory/:uploadedId/products', jwtHelperObj.verifyAccessTok
     }
 });
 
-// DELETE endpoint to logically delete a product
-router.patch('/deleteProduct', jwtHelperObj.verifyAccessToken, async (req, res) => {
-    const { group, productId } = req.body;
+// DELETE endpoint to logically delete a Variant
+router.delete('/removeVariant', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    const { group, styleCoat } = req.body;
 
     // Start a MongoDB session for the transaction
     const session = await mongoose.startSession();
@@ -162,42 +162,45 @@ router.patch('/deleteProduct', jwtHelperObj.verifyAccessToken, async (req, res) 
             return res.status(404).send({ message: "Invalid product group" });
         }
 
-        // Update the product's isDeleted status within the transaction
+        // Pull the variant with the specified styleCoat from the variants array
         const updatedProduct = await ProductModel.findOneAndUpdate(
-            { productId: productId },
-            { $set: { isDeleted: true } },
-            { new: true, session }  // Include the session to ensure this operation is part of the transaction
+            { 'variants.variantSizes.styleCoat': styleCoat },  // Find the product by styleCoat
+            {
+                $pull: { 'variants.$.variantSizes': { styleCoat: styleCoat } }  // Remove the variant with matching styleCoat
+            },
+            { new: true, session }  // Ensure this is part of the transaction and return the updated product
         );
 
         if (!updatedProduct) {
             await session.abortTransaction();
             session.endSession();
-            return res.status(404).send({ message: "Product not found" });
+            return res.status(404).send({ message: "Variant not found" });
         }
 
         // Commit the transaction after the update is successful
         await session.commitTransaction();
-        session.endSession();  // Always end the session
+        session.endSession();
         res.status(200).send({
-            message: "Product deleted successfully",
-            product: updatedProduct
+            message: "Variant removed successfully"
         });
     } catch (error) {
         // Handle any errors that occur during the transaction
         await session.abortTransaction();
         session.endSession();
-        console.error("Failed to delete product:", error);
-        res.status(500).send({ message: "Failed to delete product", error: error.message });
+        console.error("Failed to remove variant:", error);
+        res.status(500).send({ message: "Failed to remove variant", error: error.message });
     }
 });
 
-router.patch('/updateProductDetails', jwtHelperObj.verifyAccessToken, async (req, res) => {
-    const { group, productId, color, size, newPrice, newQuantity } = req.body;
+// PATCH endpoint to update quantity of a specific variant and product-level price
+router.patch('/updateVariant', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    const { group, styleCoat, newQuantity, newPrice } = req.body;
 
-    const session = await mongoose.startSession(); // Start a new session for the transaction
-    session.startTransaction(); // Begin the transaction
-
+    // Start a MongoDB session for the transaction
+    const session = await mongoose.startSession();
     try {
+        session.startTransaction();  // Start the transaction
+
         const ProductModel = modelMap[group];
         if (!ProductModel) {
             await session.abortTransaction();
@@ -205,51 +208,39 @@ router.patch('/updateProductDetails', jwtHelperObj.verifyAccessToken, async (req
             return res.status(404).send({ message: "Invalid product group" });
         }
 
-        // Find the product within the transaction
-        const product = await ProductModel.findOne({ productId: productId }).session(session);
-        if (!product) {
-            await session.abortTransaction();
-            session.endSession();
-            return res.status(404).send({ message: "Product not found" });
-        }
+        // Update the quantity of the specific variant and price at the product level
+        const updatedProduct = await ProductModel.findOneAndUpdate(
+            { 'variants.variantSizes.styleCoat': styleCoat },  // Find the product by styleCoat
+            {
+                $set: {
+                    'variants.$[].variantSizes.$[size].quantity': newQuantity,
+                    'price': newPrice  // Update price at product level
+                }
+            },
+            {
+                arrayFilters: [{ 'size.styleCoat': styleCoat }],  // Filter the specific size variant
+                new: true, session // Ensure this is part of the transaction and return the updated document
+            }
+        );
 
-        // Update the price of the product
-        product.price = newPrice;
-
-        // Find and update the specific variant's quantity
-        const variant = product.variants.find(v => v.color === color);
-        if (!variant) {
+        if (!updatedProduct) {
             await session.abortTransaction();
             session.endSession();
             return res.status(404).send({ message: "Variant not found" });
         }
 
-        const variantSize = variant.variantSizes.find(v => v.size === size);
-        if (!variantSize) {
-            await session.abortTransaction();
-            session.endSession();
-            return res.status(404).send({ message: "Variant size not found" });
-        }
-
-        // Update the quantity
-        variantSize.quantity = newQuantity;
-
-        // Save the updated product within the transaction
-        await product.save({ session: session });
-
-        // Commit the transaction
+        // Commit the transaction after the update is successful
         await session.commitTransaction();
         session.endSession();
-
         res.status(200).send({
-            message: "Product details updated successfully",
-            product: product  // Optionally return the updated product
+            message: "Variant quantity and product price updated successfully"
         });
     } catch (error) {
+        // Handle any errors that occur during the transaction
         await session.abortTransaction();
         session.endSession();
-        console.error("Failed to update product details:", error);
-        res.status(500).send({ message: "Failed to update product details", error: error.message });
+        console.error("Failed to update variant and price:", error);
+        res.status(500).send({ message: "Failed to update variant and price", error: error.message });
     }
 });
 
