@@ -383,7 +383,7 @@ class EComService {
             ]);
 
             if (filters.length === 0) {
-                return res.status(404).json({ message: "No data found for this group." });
+                throw new Error("No data found for this group.");
             }
 
             // Format response

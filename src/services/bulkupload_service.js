@@ -48,6 +48,7 @@ class BulkUploadService {
                         fabric: data.fabric.toUpperCase(),
                         price: data.price,
                         productDetails: data.productDetails,
+                        sizeChart: data.sizeChart,
                         variant: {
                             color: { name: data.variantColor, hexcode: data.hexcode },
                             variantSizes: [
@@ -168,6 +169,7 @@ class BulkUploadService {
                 fabric: item.fabric,
                 price: item.price,
                 productDescription: item.productDescription,
+                sizeChart: item.sizeChart,
                 variants: [item.variant]
             }], { session });
         }
@@ -355,6 +357,7 @@ class BulkUploadService {
                         material: data.material.toUpperCase(),
                         price: data.price,
                         productDescription: data.productDescription,
+                        sizeChart: data.sizeChart,
                         variant: {
                             color: { name: data.variantColor, hexcode: data.hexcode },
                             variantSizes: [
@@ -481,6 +484,7 @@ class BulkUploadService {
                     material: item.material,
                     price: item.price,
                     productDescription: item.productDescription,
+                    sizeChart: item.sizeChart,
                     variants: [item.variant]
                 }], { session });
             }

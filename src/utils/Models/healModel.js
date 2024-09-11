@@ -146,6 +146,11 @@ const healSchema = new mongoose.Schema(
             trim: true,
             default: null
         },
+        sizeChart: {
+            type: String,
+            trim: true,
+            default: null
+        },
         variants: [variantSchema],
         isDeleted: {
             type: Boolean,
