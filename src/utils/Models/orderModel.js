@@ -18,6 +18,9 @@ const productsSchema = new mongoose.Schema({
     size: { type: String, required: true, trim: true },
     quantityOrdered: { type: Number, required: true, min: 1 },
     price: { type: Number, required: true },
+    imgUrl: {
+        type: String, trim: true, default: null
+    },
     logoUrl: {
         type: String, trim: true, default: null
     },

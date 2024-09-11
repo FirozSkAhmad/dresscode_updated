@@ -66,6 +66,7 @@ class OrderService {
                     size,
                     quantityOrdered,
                     price: product.price,
+                    imgUrl: product.imgUrl,
                     logoUrl: product.logoUrl,
                     logoPosition: product.logoPosition,
                     discountPercentage: product.discountPercentage,
