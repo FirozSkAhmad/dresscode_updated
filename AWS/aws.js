@@ -21,7 +21,9 @@ const uploadFile = async (file, folderName) => {
     const command = new PutObjectCommand(uploadParams);
     const data = await s3Client.send(command);
     console.log('File uploaded successfully');
-    const location = `https://${uploadParams.Bucket}.s3.${s3Client.config.region}.amazonaws.com/${uploadParams.Key}`;
+    // Encode the file name to handle spaces and special characters
+    const encodedFileName = encodeURIComponent(file.originalname);
+    const location = `https://${uploadParams.Bucket}.s3.ap-south-1.amazonaws.com/${folderName}/${encodedFileName}`;
     return location;
   } catch (err) {
     console.error('Error uploading file:', err.message);

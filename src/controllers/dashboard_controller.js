@@ -858,7 +858,7 @@ router.get('/track/awb/:awb_code', async (req, res) => {
         res.status(200).json(response.data);
 
     } catch (error) {
-        console.error("Error in tracking with awb: ", err.message);
+        console.error("Error in tracking with awb: ", error.message);
         res.status(500).send({ message: "Failed to track with awb", error: error.message });
     }
 });
