@@ -157,6 +157,7 @@ const userSchema = new mongoose.Schema({
     },
     addresses: [addressSchema],
     orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
+    returnOrders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'ReturnOrders' }],
     quotes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Quote' }],
     cart: [cartItemSchema],
     wishlist: [wishlistItemSchema]

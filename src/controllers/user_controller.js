@@ -7,6 +7,7 @@ const router = express.Router()
 const userServiceObj = new UserService();
 const mongoose = require('mongoose');
 const OrderModel = require('../utils/Models/orderModel');
+const ReturnOrdersModel = require('../utils/Models/returnOrdersModel');
 const HealModel = require('../utils/Models/healModel');
 const ShieldModel = require('../utils/Models/shieldModel');
 const EliteModel = require('../utils/Models/eliteModel');
@@ -619,6 +620,215 @@ router.get('/:group/:productId/getProductReviews', jwtHelperObj.verifyAccessToke
     } catch (error) {
         console.error("Failed to retrieve reviews:", error.message);
         res.status(500).send({ message: error.message });
+    }
+});
+
+router.post('/order/cancel/', jwtHelperObj.verifyAccessToken, async (req, res) => {
+
+    try {
+        // Call Shiprocket cancel API
+        const response = await axios.post(`https://apiv2.shiprocket.in/v1/external/orders/cancel`, req.body, {
+            headers: {
+                'Authorization': `Bearer ${process.env.SHIPROCKET_API_TOKEN}`
+            }
+        });
+
+        // If the Shiprocket API call is successful, update the order's deliveryStatus
+        await OrderModel.findOneAndUpdate(
+            { orderId: orderId },  // Find the order by orderId (assuming it's passed in req.body)
+            { deliveryStatus: 'Canceled' },  // Update the deliveryStatus to Canceled
+            { new: true }  // Return the updated document
+        );
+
+        // Respond with the Shiprocket API response
+        res.status(200).json({
+            message: "Order canceled successfully",
+            shiprocketResponse: response.data
+        });
+
+    } catch (error) {
+        console.error("Error in canceling the order: ", error.message);
+        res.status(500).send({ message: "Failed to cancel order", error: error.message });
+    }
+});
+
+router.post('/order/return', jwtHelperObj.verifyAccessToken, async (req, res) => {
+
+    const { orderId, products, TotalAmount, TotalDiscountAmount } = req.body
+
+    const session = await startSession();
+    try {
+        session.startTransaction();
+        const order = await OrderModel.findOne({ orderId }).populate('user');
+        if (!order) {
+            return res.status(404).send({ message: "Order not found" });
+        }
+
+        if (order.deliveryStatus !== "Delivered") {
+            return res.status(400).send({ message: "Order is not delivered yet" });
+        }
+
+        const user = order.user;
+        const address = user.addresses.id(order.address);  // Access subdocument by ID directly from user document
+        // Extract only the desired fields from the address
+        const addressDetails = {
+            firstName: address.firstName,
+            lastName: address.lastName,
+            address: address.address,
+            city: address.city,
+            pinCode: address.pinCode,
+            state: address.state,
+            country: address.country,
+            state: address.state,
+            email: address.email,
+            phone: address.phone
+        };
+
+        let totalQuantityOrdered = order.products.reduce((total, product) => {
+            return total + product.quantityOrdered;
+        }, 0);
+
+        let totalReturnQuantity = 0
+
+        const productsPromises = products.map(async (product) => {
+            const ProductModel = modelMap[product.group];
+            const productDoc = await ProductModel.findOne({ productId: product.productId });
+            const variant = productDoc.variants.find(v => v.color.name === product.color.name);
+            const variantSize = variant.variantSizes.find(v => v.size === product.size);
+            const unitDiscount = (product.discountAmount / product.quantityOrdered)
+
+            totalReturnQuantity += product.quantityOrdered;
+
+            return {
+                groupName: product.group,
+                productId: product.productId,
+                productName: `${productDoc.group.name}-${productDoc.productType.type}-${product.color.name}`,
+                color: product.color,
+                size: product.size,
+                sku: variantSize.sku,
+                styleCoat: variantSize.styleCoat,
+                quantityOrdered: product.quantityOrdered,
+                price: product.price,
+                logoUrl: product.logoUrl,
+                logoPosition: product.logoPosition,
+                unitDiscount: unitDiscount,
+                imageUrl: product.imgUrl
+            };
+        });
+
+        const returnWeight = order.weight / totalQuantityOrdered
+
+        // Resolve all promises
+        const allProducts = await Promise.all(productsPromises);
+
+        const requiredData = {
+            order_id: orderId,
+            order_date: formatDate(order.dateOfOrder),
+            channel_id: "5385351",
+            pickup_customer_name: addressDetails.firstName,
+            pickup_address: addressDetails.address,
+            pickup_city: addressDetails.city,
+            pickup_state: addressDetails.state,
+            pickup_country: addressDetails.state,
+            pickup_pincode: addressDetails.state,
+            pickup_email: addressDetails.state,
+            pickup_phone: addressDetails.state,
+            pickup_isd_code: "91",
+            shipping_customer_name: "Shashi",
+            shipping_address: "DressCode ,  G Anupamanandh Vijay Kumar Building, Opp RVR School of Photography, Annapurna Studio Lane,  Rd No :2, LV Prasad Marg, Jubilee Hills .",
+            shipping_city: "Hyderabad",
+            shipping_country: "India",
+            shipping_pincode: 500033,
+            shipping_state: "Telangana",
+            shipping_email: "info@dress-code.in",
+            shipping_isd_code: "91",
+            shipping_phone: 7036436370,
+            order_items: allProducts.map(item => ({
+                name: item.productName,
+                qc_enable: true,
+                qc_product_name: productName,
+                sku: item.styleCoat,
+                units: item.quantityOrdered,
+                selling_price: item.price.toString(),
+                discount: item.unitDiscount.toString(),
+                qc_brand: "DreesCode",
+                qc_product_image: item.imageUrl
+            })),
+            payment_method: "Prepaid",
+            total_discount: TotalDiscountAmount,
+            sub_total: TotalAmount,
+            length: order.length,
+            breadth: order.breadth,
+            height: order.height,
+            weight: returnWeight
+        };
+
+        // Call Shiprocket cancel API
+        const createReturnResponse = await axios.post(`https://apiv2.shiprocket.in/v1/external/orders/create/return`, req.body, {
+            headers: {
+                'Authorization': `Bearer ${process.env.SHIPROCKET_API_TOKEN}`
+            }
+        });
+
+        const assignCourierData = {
+            shipment_id: createReturnResponse.data.shipment_id,
+            is_return: 1
+        };
+
+        const assignCourierResponse = await axios.post(`https://apiv2.shiprocket.in/v1/external/orders/create/return`, assignCourierData, {
+            headers: {
+                'Authorization': `Bearer ${process.env.SHIPROCKET_API_TOKEN}`
+            }
+        });
+
+        const productIdsToUpdate = products.map(product => product._id);
+
+
+        const updatedOrder = await OrderModel.updateMany(
+            {
+                _id: orderId,
+                'products._id': { $in: productIdsToUpdate }
+            },
+            {
+                $set: { 'products.$[elem].return': true, 'products.$[elem].return_status': 'Pending' }
+            },
+            {
+                arrayFilters: [{ 'elem._id': { $in: productIdsToUpdate } }],
+                multi: true  // To update multiple matching products
+            }
+        )
+        console.log("Products updated successfully:", updatedOrder);
+
+        // Create and save the return order
+        const newReturnOrder = new ReturnOrdersModel({
+            paymentId: order.paymentId,
+            user: order.user._id,
+            address: order.address,
+            products: products,
+            deliveryCharges,
+            TotalAmount,
+            TotalDiscountAmount,
+            TotalPriceAfterDiscount
+        });
+
+        const savedReturnOrder = await newReturnOrder.save({ session });
+
+        // Update the user's orders list
+        const existingUser = await UserModel.findById(order.user._id).session(session);
+        if (!existingUser) {
+            throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
+        }
+        existingUser.returnOrders.push(savedReturnOrder._id);
+        await existingUser.save({ session });
+
+        // Respond with the Shiprocket API response
+        res.status(200).json({
+            message: "Order canceled successfully"
+        });
+
+    } catch (error) {
+        console.error("Error in canceling the order: ", error.message);
+        res.status(500).send({ message: "Failed to cancel order", error: error.message });
     }
 });
 

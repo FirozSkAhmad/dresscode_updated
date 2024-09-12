@@ -34,24 +34,21 @@ const productsSchema = new mongoose.Schema({
     discountAmount: {
         type: Number,
         default: 0
-    },
-    return: {
-        type: Boolean,
-        default: false
-    },
-    return_status:{
-        type: String,
-        default: 'N/A'
     }
 });
 
-const orderSchema = new mongoose.Schema({
+const returnOrderSchema = new mongoose.Schema({
     paymentId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Payment',
         default: null
     },
     orderId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Order',
+        default: null
+    },
+    returnOrderId: {
         type: String,
         trim: true,
         unique: true,
@@ -71,42 +68,21 @@ const orderSchema = new mongoose.Schema({
         required: true
     },
     products: [productsSchema],
-    deliveryCharges: {
-        type: Number,
-        default: 0
-    },
     TotalAmount: { type: Number, required: true },
     TotalDiscountAmount: { type: Number, required: true },
     TotalPriceAfterDiscount: { type: Number, required: true },
-    dateOfOrder: { type: Date, default: Date.now },
     length: { type: Number, required: true },
     breadth: { type: Number, required: true },
     height: { type: Number, required: true },
     weight: { type: Number, required: true },
-    deliveryStatus: {
+    returnStatus: {
         type: String,
         required: true,
-        // enum: ['Pending', 'Assigned',"Canceled"],
         default: 'Pending'
     },
-    dateOfOrder: { type: Date, default: null },
-    dateOfDelivery: { type: Date, default: null },
-    estimatedDelivery: { type: Date, default: null },
-    status: {
-        type: String,
-        required: true,
-        enum: ['Pending', 'Assigned'],
-        default: 'Pending'
-    },
-    shiprocket_order_id: {
-        type: Number,
-        default: null
-    },
+    dateOfReturnGenerated: { type: Date, default: Date.now },
+    dateOfReturned: { type: Date, default: null },
     shiprocket_shipment_id: {
-        type: Number,
-        default: null
-    },
-    shiprocket_courier_id: {
         type: Number,
         default: null
     },
@@ -114,17 +90,8 @@ const orderSchema = new mongoose.Schema({
         type: String,
         default: null
     },
-    pickup_scheduled_date: {
-        type: String,
-        default: null
-    },
-    pickup_token_number: {
-        type: String,
-        default: null
-    }
 });
 
-orderSchema.index({ orderId: 1 })
+returnOrderSchema.index({ orderId: 1 })
 
-module.exports = mongoose.model("Order", orderSchema);
-
+module.exports = mongoose.model("ReturnOrders", returnOrderSchema);

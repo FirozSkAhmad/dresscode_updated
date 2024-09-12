@@ -327,7 +327,12 @@ class UserService {
 
     async getUserOrdersWithProductDetails(userId) {
         try {
-            const user = await UserModel.findById(userId).populate('orders');
+            // Find the user and populate only orders where deliveryStatus is not "Canceled"
+            const user = await UserModel.findById(userId)
+                .populate({
+                    path: 'orders',
+                    match: { deliveryStatus: { $ne: 'Canceled' } }  // Filter out "Canceled" orders
+                });
 
             if (!user) {
                 throw new Error('User not found');
@@ -354,7 +359,6 @@ class UserService {
             throw err;
         }
     }
-
 
 
     async getUserQuotesWithProductDetails(userId) {

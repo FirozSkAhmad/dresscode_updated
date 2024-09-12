@@ -12,6 +12,7 @@ const EliteModel = require('../utils/Models/eliteModel');
 const TogsModel = require('../utils/Models/togsModel');
 const SpiritsModel = require('../utils/Models/spiritsModel');
 const WorkWearModel = require('../utils/Models/workWearModel');
+const ReturnOrdersModel = require('../utils/Models/returnOrdersModel');
 const OrderModel = require('../utils/Models/orderModel');
 const QuoteModel = require('../utils/Models/quoteModel');
 const dimensionsModel = require('../utils/Models/dimensionsModel');
@@ -374,18 +375,49 @@ router.get('/:groupName/getAllActiveProducts', jwtHelperObj.verifyAccessToken, a
     }
 });
 
-router.get('/getOders', jwtHelperObj.verifyAccessToken, async (req, res) => {
+router.get('/getOrders', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
-        const orders = await OrderModel.find({}, 'orderId dateOfOrder status -_id').exec();
+        // Find orders where deliveryStatus is not "Canceled"
+        const orders = await OrderModel.find({ deliveryStatus: { $ne: 'Canceled' } }, 'orderId dateOfOrder status -_id').exec();
+
         res.status(200).send({
-            message: "Upload histories retrieved successfully",
+            message: "Orders retrieved successfully",
             orders: orders
+        });
+    } catch (error) {
+        console.error("Failed to retrieve orders:", error);
+        res.status(500).send({ message: "Failed to retrieve orders", error: error.message });
+    }
+});
+
+router.get('/getCancledOrders', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    try {
+        // Find orders where deliveryStatus is "Canceled"
+        const orders = await OrderModel.find({ deliveryStatus: 'Canceled' }, 'orderId dateOfOrder status -_id').exec();
+
+        res.status(200).send({
+            message: "Cancled Orders retrieved successfully",
+            canceled_orders: orders
+        });
+    } catch (error) {
+        console.error("Failed to retrieve orders:", error);
+        res.status(500).send({ message: "Failed to retrieve orders", error: error.message });
+    }
+});
+
+router.get('/getReturnOders', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    try {
+        const returnOrders = await ReturnOrdersModel.find({}, 'returnOrderId dateOfOrder status -_id').exec();
+        res.status(200).send({
+            message: "Return Orders retrieved successfully",
+            return_orders: returnOrders
         });
     } catch (error) {
         console.error("Failed to retrieve upload histories:", error);
         res.status(500).send({ message: "Failed to retrieve upload histories", error: error.message });
     }
 });
+
 
 router.get('/getOrderDetails/:orderId', jwtHelperObj.verifyAccessToken, async (req, res) => {
     const { orderId } = req.params;
@@ -473,16 +505,103 @@ router.get('/getOrderDetails/:orderId', jwtHelperObj.verifyAccessToken, async (r
     }
 });
 
+router.get('/getReturnOrderDetails/:returnOrderId', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    const { returnOrderId } = req.params;
+
+    try {
+        const returnOrder = await ReturnOrdersModel.findOne({ returnOrderId }).populate('user');
+        if (!returnOrder) {
+            return res.status(404).send({ message: "return order not found" });
+        }
+
+        const user = returnOrder.user;
+        const address = user.addresses.id(order.address);  // Access subdocument by ID directly from user document
+        // Extract only the desired fields from the address
+        const addressDetails = {
+            firstName: address.firstName,
+            lastName: address.lastName,
+            address: address.address,
+            city: address.city,
+            pinCode: address.pinCode,
+            state: address.state,
+            country: address.country,
+            state: address.state,
+            email: address.email,
+            phone: address.phone
+        };
+
+        const productsPromises = returnOrder.products.map(async (product) => {
+
+            const ProductModel = modelMap[product.group];
+            if (!ProductModel) {
+                return res.status(404).send({ message: "Product group not recognized" });
+            }
+
+            const productDetails = await ProductModel.findOne({ productId: product.productId })
+                .select('-variants -reviews');
+
+            if (!productDetails) {
+                return res.status(404).send({ message: "Product not found" });
+            }
+
+            return {
+                group: product.group,
+                productId: product.productId,
+                color: product.color,
+                size: product.size,
+                quantityOrdered: product.quantityOrdered,
+                price: product.price,
+                logoUrl: product.logoUrl,
+                logoPosition: product.logoPosition,
+                productDescription: productDescription,
+            };
+        });
+
+        // Resolve all promises
+        const products = await Promise.all(productsPromises);
+
+        res.status(200).json({
+            message: "Return Order and product details retrieved successfully",
+            orderDetails: {
+                orderId: returnOrder.orderId,
+                products: products,
+                userDetails: {
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                    email: user.email,
+                    gender: user.gender,
+                    phoneNumber: user.phoneNumber
+                },
+                addressDetails: addressDetails,
+                deliveryStatus: returnOrder.deliveryStatus,
+                status: returnOrder.status,
+                dateOfOrder: returnOrder.dateOfOrder,
+                TotalAmount: returnOrder.TotalAmount,
+                TotalDiscountAmount: returnOrder.TotalDiscountAmount,
+                TotalPriceAfterDiscount: returnOrder.TotalPriceAfterDiscount,
+                dateOfReturnGenerated: returnOrder.dateOfReturnGenerated,
+                shiprocket_shipment_id: returnOrder.shiprocket_shipment_id,
+                shiprocket_awb_code: returnOrder.shiprocket_awb_code
+            }
+        });
+    } catch (error) {
+        console.error("Failed to retrieve return order details:", error);
+        res.status(500).send({ message: "Failed to retrieve order details", error: error.message });
+    }
+});
+
 router.get('/getOders', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
-        const orders = await OrderModel.find({}, 'orderId dateOfOrder status -_id').exec();
+        // Find orders where deliveryStatus is not "Canceled"
+        const orders = await OrderModel.find({ deliveryStatus: { $ne: 'Canceled' } }, 'orderId dateOfOrder status -_id').exec();
+
         res.status(200).send({
             message: "Orders retrieved successfully",
             orders: orders
         });
     } catch (error) {
-        console.error("Failed to retrieve Orders:", error.message);
-        res.status(500).send({ message: "Failed to retrieve upload histories", error: error.message });
+        console.error("Failed to retrieve orders:", error);
+        res.status(500).send({ message: "Failed to retrieve orders", error: error.message });
     }
 });
 
@@ -710,8 +829,15 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
             await newBox.save();
         }
 
+        const dateOfOrder = getFormattedDate()
+
         // Update the Order in MongoDB with details from all Shiprocket responses
         const updateData = {
+            dateOfOrder: dateOfOrder,
+            length: data.boxLength,
+            breadth: data.boxBreadth,
+            height: data.boxHeight,
+            weight: data.boxWeight,
             deliveryStatus: 'Assigned',
             status: 'Assigned',
             shiprocket_order_id: createOrderResponse.data.order_id,
@@ -1006,6 +1132,15 @@ function calculateSubTotal(quantity, price, discountPercentage, deliveryCharges)
     const totalAmount = quantity * price;
     const discountAmount = calculateDiscount(quantity, price, discountPercentage);
     return (totalAmount - discountAmount) + deliveryCharges;
+}
+
+function getFormattedDate() {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-based, so add 1
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
 }
 
 
