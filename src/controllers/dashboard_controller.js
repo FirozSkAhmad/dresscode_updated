@@ -731,7 +731,7 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
             return {
                 groupName: product.group,
                 productId: product.productId,
-                productName: `${productDoc.group.name}-${productDoc.productType.type}-${product.color.name}`,
+                productName: `${productDoc.group}-${productDoc.productType}-${product.color.name}`,
                 color: product.color,
                 size: product.size,
                 sku: variantSize.sku,
