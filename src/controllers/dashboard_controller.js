@@ -1020,11 +1020,8 @@ router.get('/:uploadedId/generateBarcodes', async (req, res) => {
         // Define headers for the Excel file
         worksheet.columns = [
             { header: 'groupName', key: 'groupName', width: 20 },
-            { header: 'groupImageUrl', key: 'groupImageUrl', width: 30 },
             { header: 'categoryName', key: 'categoryName', width: 20 },
-            { header: 'categoryImageUrl', key: 'categoryImageUrl', width: 30 },
             { header: 'subCategoryName', key: 'subCategoryName', width: 20 },
-            { header: 'subCategoryImageUrl', key: 'subCategoryImageUrl', width: 30 },
             { header: 'gender', key: 'gender', width: 10 },
             { header: 'productType', key: 'productType', width: 15 },
             { header: 'fit', key: 'fit', width: 10 },
@@ -1064,16 +1061,13 @@ router.get('/:uploadedId/generateBarcodes', async (req, res) => {
             barcodeIds.push(barcodeImageId);
 
             const rowValues = {
-                groupName: item.productDetails.group.name,
-                groupImageUrl: item.productDetails.group.imageUrl,
-                categoryName: item.productDetails.category.name,
-                categoryImageUrl: item.productDetails.category.imageUrl,
-                subCategoryName: item.productDetails.subCategory.name,
-                subCategoryImageUrl: item.productDetails.subCategory.imageUrl,
+                groupName: item.productDetails.group,
+                categoryName: item.productDetails.category,
+                subCategoryName: item.productDetails.subCategory,
                 gender: item.productDetails.gender,
-                productType: item.productDetails.productType.type,
+                productType: item.productDetails.productType,
                 fit: item.productDetails.fit,
-                neckline: item.productDetails.neckline,
+                neckline: item.productDetails.neckline ? item.productDetails.neckline : "N/A",
                 pattern: item.productDetails.pattern ? item.productDetails.pattern : "N/A",
                 cuff: item.productDetails.cuff ? item.productDetails.cuff : "N/A",
                 sleeves: item.productDetails.sleeves,
@@ -1097,7 +1091,7 @@ router.get('/:uploadedId/generateBarcodes', async (req, res) => {
         let addBarcodesCount = rowIndex - 2; // Calculate how many barcodes we need to add
         for (let i = 0; i < addBarcodesCount; i++) {
             let barcodeRow = i + 2; // Adjust the row index to start from the first data row
-            worksheet.addImage(barcodeIds[i], `U${barcodeRow}:U${barcodeRow}`);
+            worksheet.addImage(barcodeIds[i], `R${barcodeRow}:R${barcodeRow}`);
         }
 
         // Set headers for file download
