@@ -787,6 +787,8 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
             }
         });
 
+        console.log(createOrderResponse)
+
         // Data for courier assignment
         const assignCourierData = {
             shipment_id: createOrderResponse.data.shipment_id,
