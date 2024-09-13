@@ -80,6 +80,10 @@ const returnOrderSchema = new mongoose.Schema({
         required: true,
         default: 'Pending'
     },
+    refund_payment_status: {
+        type: String,
+        default: 'Pending'
+    },
     dateOfReturnGenerated: { type: Date, default: Date.now },
     dateOfReturned: { type: Date, default: null },
     shiprocket_shipment_id: {

@@ -255,6 +255,47 @@ router.get('/:userId/getOrders', jwtHelperObj.verifyAccessToken, async (req, res
     }
 });
 
+router.get('/:userId/getCanceleOrders', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        const cancledOrders = await userServiceObj.getUserCanceledOrdersWithProductDetails(userId);
+
+        if (cancledOrders.length === 0) {
+            return res.status(404).send({ message: 'No canceled orders found for this user.' });
+        }
+
+        res.status(200).send({
+            message: "Cancled Orders retrieved successfully",
+            cancledOrders: cancledOrders
+        });
+    } catch (error) {
+        console.error("Failed to retrieve orders:", error.message);
+        res.status(500).send({ message: error.message });
+    }
+});
+
+
+router.get('/:userId/getReturnOrders', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        const returnOrders = await userServiceObj.getUserReturnOrdersWithProductDetails(userId);
+
+        if (returnOrders.length === 0) {
+            return res.status(404).send({ message: 'No return orders found for this user.' });
+        }
+
+        res.status(200).send({
+            message: "Retrun Orders retrieved successfully",
+            returnOrders: returnOrders
+        });
+    } catch (error) {
+        console.error("Failed to retrieve orders:", error.message);
+        res.status(500).send({ message: error.message });
+    }
+});
+
 router.get('/getOrderDetails/:orderId', jwtHelperObj.verifyAccessToken, async (req, res) => {
     const { orderId } = req.params;
 
@@ -623,7 +664,9 @@ router.get('/:group/:productId/getProductReviews', jwtHelperObj.verifyAccessToke
     }
 });
 
-router.post('/order/cancel/', jwtHelperObj.verifyAccessToken, async (req, res) => {
+router.post('/order/cancel/:orderId', jwtHelperObj.verifyAccessToken, async (req, res) => {
+
+    const { orderId } = req.params;
 
     try {
         // Call Shiprocket cancel API
@@ -637,6 +680,7 @@ router.post('/order/cancel/', jwtHelperObj.verifyAccessToken, async (req, res) =
         await OrderModel.findOneAndUpdate(
             { orderId: orderId },  // Find the order by orderId (assuming it's passed in req.body)
             { deliveryStatus: 'Canceled' },  // Update the deliveryStatus to Canceled
+            { refund_payment_status: 'Pending' },  // Update the refund_payment_status to Pending
             { new: true }  // Return the updated document
         );
 

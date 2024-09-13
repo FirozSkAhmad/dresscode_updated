@@ -1112,6 +1112,58 @@ router.get('/:uploadedId/generateBarcodes', async (req, res) => {
     }
 });
 
+router.patch('/return-order/:returnOrderId/update-refund-status', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    const { returnOrderId } = req.params;
+    const { refund_payment_status } = req.body;
+
+    try {
+        // Find the return order by returnOrderId and update refund_payment_status
+        const updatedReturnOrder = await ReturnOrdersModel.findOneAndUpdate(
+            { returnOrderId: returnOrderId },
+            { refund_payment_status: refund_payment_status },
+            { new: true }  // Return the updated document
+        );
+
+        if (!updatedReturnOrder) {
+            return res.status(404).json({ message: 'Return order not found' });
+        }
+
+        res.json({
+            message: 'Refund payment status updated successfully',
+            returnOrder: updatedReturnOrder
+        });
+    } catch (err) {
+        console.error('Error updating refund payment status:', err);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+router.patch('/return-order/:returnOrderId/update-refund-status', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    const { returnOrderId } = req.params;
+    const { refund_payment_status } = req.body;
+
+    try {
+        // Find the return order by returnOrderId and update refund_payment_status
+        const updatedReturnOrder = await ReturnOrdersModel.findOneAndUpdate(
+            { returnOrderId: returnOrderId },
+            { refund_payment_status: refund_payment_status },
+            { new: true }  // Return the updated document
+        );
+
+        if (!updatedReturnOrder) {
+            return res.status(404).json({ message: 'Return order not found' });
+        }
+
+        res.json({
+            message: 'Refund payment status updated successfully',
+            returnOrder: updatedReturnOrder
+        });
+    } catch (err) {
+        console.error('Error updating refund payment status:', err);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
 function formatDate(isoDateString) {
     const date = new Date(isoDateString);
     return date.toISOString().split('T')[0];

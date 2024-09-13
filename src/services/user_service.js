@@ -361,6 +361,79 @@ class UserService {
     }
 
 
+    async getUserCanceledOrdersWithProductDetails(userId) {
+        try {
+            // Find the user and populate only orders where deliveryStatus is "Canceled"
+            const user = await UserModel.findById(userId)
+                .populate({
+                    path: 'orders',
+                    match: { deliveryStatus: 'Canceled' }  // Filter to only "Canceled" orders
+                });
+
+            if (!user) {
+                throw new Error('User not found');
+            }
+
+            const ordersWithDetails = await Promise.all(user.orders.map(async (order) => {
+                const productsWithDetails = await this.enhanceOrderWithProductDetails(order);
+                const addressDetails = user.addresses.id(order.address);
+
+                if (!addressDetails) {
+                    throw new Error("Address not found");
+                }
+
+                return {
+                    ...order.toObject(),
+                    products: productsWithDetails,
+                    addressDetails: addressDetails.toObject()
+                };
+            }));
+
+            return ordersWithDetails;
+        } catch (err) {
+            console.error("Error retrieving canceled orders with product and address details:", err);
+            throw err;
+        }
+    }
+
+    async getUserReturnOrdersWithProductDetails(userId) {
+        try {
+            // Find the user and populate return orders along with paymentId and other necessary details
+            const user = await UserModel.findById(userId)
+                .populate({
+                    path: 'returnOrders',
+                    populate: {
+                        path: 'paymentId', // Populate the paymentId within the returnOrders
+                    }
+                });
+
+            if (!user) {
+                throw new Error('User not found');
+            }
+
+            const returnOrdersWithDetails = await Promise.all(user.returnOrders.map(async (returnOrder) => {
+                const productsWithDetails = await this.enhanceOrderWithProductDetails(returnOrder);
+                const addressDetails = user.addresses.id(returnOrder.address); // Fixed returnOrder.address reference
+
+                if (!addressDetails) {
+                    throw new Error("Address not found");
+                }
+
+                return {
+                    ...returnOrder.toObject(),
+                    products: productsWithDetails,
+                    addressDetails: addressDetails.toObject(),
+                    paymentDetails: returnOrder.paymentId ? returnOrder.paymentId.toObject() : null, // Include payment details if available
+                };
+            }));
+
+            return returnOrdersWithDetails;
+        } catch (err) {
+            console.error("Error retrieving return orders with product and address details:", err);
+            throw err;
+        }
+    }
+
     async getUserQuotesWithProductDetails(userId) {
         try {
             // Find the user's orders

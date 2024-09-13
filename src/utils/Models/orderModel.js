@@ -39,7 +39,7 @@ const productsSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-    return_status:{
+    return_status: {
         type: String,
         default: 'N/A'
     }
@@ -79,15 +79,19 @@ const orderSchema = new mongoose.Schema({
     TotalDiscountAmount: { type: Number, required: true },
     TotalPriceAfterDiscount: { type: Number, required: true },
     dateOfOrder: { type: Date, default: Date.now },
-    length: { type: Number, required: true },
-    breadth: { type: Number, required: true },
-    height: { type: Number, required: true },
-    weight: { type: Number, required: true },
+    length: { type: Number, default: null },
+    breadth: { type: Number, default: null },
+    height: { type: Number, default: null },
+    weight: { type: Number, default: null },
     deliveryStatus: {
         type: String,
         required: true,
         // enum: ['Pending', 'Assigned',"Canceled"],
         default: 'Pending'
+    },
+    refund_payment_status: {
+        type: String,
+        default: null
     },
     dateOfOrder: { type: Date, default: null },
     dateOfDelivery: { type: Date, default: null },
