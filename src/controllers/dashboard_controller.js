@@ -829,11 +829,11 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
             await newBox.save();
         }
 
-        const dateOfOrder = getFormattedDate()
+        // const dateOfOrder = getFormattedDate()
 
         // Update the Order in MongoDB with details from all Shiprocket responses
         const updateData = {
-            dateOfOrder: dateOfOrder,
+            // dateOfOrder: dateOfOrder,
             length: data.boxLength,
             breadth: data.boxBreadth,
             height: data.boxHeight,
@@ -867,7 +867,7 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
     } catch (error) {
         await session.abortTransaction();
         session.endSession();
-        console.error("Failed to send order to Shiprocket or update database:", error);
+        console.error("Failed to send order to Shiprocket or update database:", error.message);
         res.status(500).send({ message: "Failed to process request", error: error.message });
     }
 });
