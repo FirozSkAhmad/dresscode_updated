@@ -833,15 +833,12 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
             await newBox.save();
         }
 
-        // const dateOfOrder = getFormattedDate()
-
         // Update the Order in MongoDB with details from all Shiprocket responses
         const updateData = {
-            // dateOfOrder: dateOfOrder,
-            // length: data.boxLength,
-            // breadth: data.boxBreadth,
-            // height: data.boxHeight,
-            // weight: data.boxWeight,
+            length: data.boxLength,
+            breadth: data.boxBreadth,
+            height: data.boxHeight,
+            weight: data.boxWeight,
             deliveryStatus: 'Assigned',
             status: 'Assigned',
             shiprocket_order_id: createOrderResponse.data.order_id,

@@ -93,7 +93,6 @@ const orderSchema = new mongoose.Schema({
         type: String,
         default: null
     },
-    dateOfOrder: { type: Date, default: null },
     dateOfDelivery: { type: Date, default: null },
     estimatedDelivery: { type: Date, default: null },
     status: {
