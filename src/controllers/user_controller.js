@@ -16,6 +16,7 @@ const SpiritsModel = require('../utils/Models/spiritsModel');
 const WorkWearModel = require('../utils/Models/workWearModel');
 const UserModel = require('../utils/Models/userModel');
 const bcrypt = require('bcrypt');
+const JWTHelper = require('../utils/Helpers/jwt_helper')
 
 const modelMap = {
     "HEAL": HealModel,
@@ -94,6 +95,42 @@ router.post('/login', async (req, res, next) => {
         session.endSession();
     }
 });
+
+
+router.post('/refresh-token', async (req, res, next) => {
+    const refreshToken = req.body.refreshToken;
+
+    if (!refreshToken) {
+        return next(new global.DATA.PLUGINS.httperrors.BadRequest("Refresh token is required"));
+    }
+
+    // Start a session for the transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    
+    try {
+        const jwtObject = new JWTHelper();
+        // Generate a new access token within the transaction
+        const newAccessToken = await jwtObject.refreshAccessToken(refreshToken);
+
+        // If there are any database operations to be performed, they can be included here
+
+        // Commit the transaction
+        await session.commitTransaction();
+        
+        // Send the new access token as a response
+        res.json({ accessToken: newAccessToken });
+    } catch (error) {
+        // Abort the transaction in case of an error
+        await session.abortTransaction();
+        console.error("Transaction aborted due to an error:", error.message);
+        next(error);
+    } finally {
+        // End the session
+        session.endSession();
+    }
+});
+
 
 // GET endpoint to retrieve specific details for a user
 router.get('/:userId/getUserDetails', jwtHelperObj.verifyAccessToken, async (req, res) => {

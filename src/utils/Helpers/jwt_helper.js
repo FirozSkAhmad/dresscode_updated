@@ -29,7 +29,7 @@ class JWTHelper {
             const payload = {}
             const secret = process.env.REFRESH_TOKEN_SECRETKEY
             const options = {
-                expiresIn: '1y',
+                expiresIn: '7d',
                 issuer: 'DressCodeApplication',
                 audience: tokenPayload,
             }
@@ -43,6 +43,19 @@ class JWTHelper {
             })
         })
     }
+
+    async refreshAccessToken(refreshToken) {
+        return new Promise((resolve, reject) => {
+            global.DATA.PLUGINS.jsonwebtoken.verify(refreshToken, process.env.REFRESH_TOKEN_SECRETKEY, (err, decodedToken) => {
+                if (err) {
+                    return reject(new global.DATA.PLUGINS.httperrors.Unauthorized("Refresh Token Invalid/Expired"));
+                }
+                const newToken = this.generateAccessToken(decodedToken.aud);
+                resolve(newToken);
+            });
+        });
+    }
+   
     
     verifyAccessToken(req, res, next) {
         if (!req.headers['authorization']) return next(new global.DATA.PLUGINS.httperrors.Unauthorized("Please provide token"))
