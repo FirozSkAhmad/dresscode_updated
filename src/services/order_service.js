@@ -11,6 +11,7 @@ const mongoose = require('mongoose');
 const JWTHelper = require('../utils/Helpers/jwt_helper')
 const bcrypt = require('bcrypt');
 const colorCodes = require('../utils/Helpers/data');
+const Razorpay = require('razorpay')
 
 class OrderService {
     constructor() {
@@ -31,6 +32,10 @@ class OrderService {
                 "SPIRIT": SpiritsModel,
                 "WORK WEAR UNIFORMS": WorkWearModel
             };
+
+            let totalDiscountAmount = 0; // Initialize total discount amount
+            let totalPriceAfterDiscount = 0; // Initialize total price after discount
+            let totalAmount = 0; // Initialize total amount without discount
 
             // Process each product in the order
             const productsProcessed = await Promise.all(orderProducts.map(async (product) => {
@@ -53,37 +58,56 @@ class OrderService {
                     throw new global.DATA.PLUGINS.httperrors.BadRequest("Insufficient stock for the variant");
                 }
 
-                variantSize.quantity -= quantityOrdered;
-                await productDoc.save({ session });
+
+                // Determine the discount percentage based on the quantity ordered
+                let discountPercentage = 0;
+                if (quantityOrdered >= 6 && quantityOrdered <= 10) {
+                    discountPercentage = 5;
+                } else if (quantityOrdered >= 11 && quantityOrdered <= 20) {
+                    discountPercentage = 10;
+                } else if (quantityOrdered >= 21 && quantityOrdered <= 35) {
+                    discountPercentage = 15;
+                }
+
+                // Calculate discount amount
+                const discountAmount = (productDoc.price * quantityOrdered * discountPercentage) / 100;
+
+                // Calculate total price after discount for this product
+                const totalPrice = productDoc.price * quantityOrdered;
+                const priceAfterDiscount = totalPrice - discountAmount;
+
+                // Accumulate the total amount, total discount, and total price after discount
+                totalAmount += totalPrice;
+                totalDiscountAmount += discountAmount;
+                totalPriceAfterDiscount += priceAfterDiscount;
 
                 return {
                     group,
                     productId,
                     color: {
                         name: color,
-                        hexcode: colorCodes[color] ? colorCodes[color] : null
+                        hexcode: variant.color.hexcode
                     },
                     size,
                     quantityOrdered,
-                    price: product.price,
+                    price: productDoc.price,
                     imgUrl: product.imgUrl,
                     logoUrl: product.logoUrl,
                     logoPosition: product.logoPosition,
-                    discountPercentage: product.discountPercentage,
-                    discountAmount: product.discountAmount
+                    discountPercentage,
+                    discountAmount
                 };
             }));
 
             // Create and save the order
             const newOrder = new OrderModel({
-                paymentId,
                 user: userId,
                 address: addressId,
                 products: productsProcessed,
-                deliveryCharges,
-                TotalAmount,
-                TotalDiscountAmount,
-                TotalPriceAfterDiscount
+                deliveryCharges: 0,
+                TotalAmount: TotalAmount,
+                TotalDiscountAmount: totalDiscountAmount,
+                TotalPriceAfterDiscount: totalPriceAfterDiscount
             });
 
             const savedOrder = await newOrder.save({ session });
@@ -96,7 +120,22 @@ class OrderService {
             user.orders.push(savedOrder._id);
             await user.save({ session });
 
-            return savedOrder;
+            const instance = new Razorpay({
+                key_id: process.env.RAZORPAY_KEY_ID,
+                key_secret: process.env.RAZORPAY_SECRET,
+            });
+
+            const options = {
+                amount: Number(req.body.amount * 100),
+                currency: "INR",
+            };
+            const order = await instance.orders.create(options);
+
+            return {
+                razorpay_checkout_order_id: order.id,
+                razorpay_checkout_order_amount: order.amount,
+                orderId: savedOrder.orderId
+            };
         } catch (err) {
             console.error("Error in createOrder: ", err);
             throw new Error(err.message || "An internal server error occurred");

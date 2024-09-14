@@ -331,7 +331,7 @@ class UserService {
             const user = await UserModel.findById(userId)
                 .populate({
                     path: 'orders',
-                    match: { deliveryStatus: { $ne: 'Canceled' } }  // Filter out "Canceled" orders
+                    match: { deliveryStatus: { $ne: 'Canceled' }, order_created: { $ne: false } }  // Filter out "Canceled" orders
                 });
 
             if (!user) {

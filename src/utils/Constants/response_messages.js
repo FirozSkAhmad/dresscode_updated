@@ -1,5 +1,6 @@
 module.exports = {
     SUCCESS: "Success",
+    FAILURE: "unsuccessfull",
     REGISTER_SUCCESS: "User Registered Successfully",
     LOGIN_SUCCESS: "User Logged in Successfully",
     LOGOUT_SUCCESS: "User Logged out Successfully",

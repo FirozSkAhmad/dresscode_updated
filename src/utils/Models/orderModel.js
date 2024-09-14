@@ -124,6 +124,10 @@ const orderSchema = new mongoose.Schema({
     pickup_token_number: {
         type: String,
         default: null
+    },
+    order_created: {
+        type: Boolean,
+        default: false
     }
 });
 

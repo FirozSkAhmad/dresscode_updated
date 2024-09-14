@@ -16,11 +16,11 @@ router.post('/createOrder/user/:userId/address/:addressId', jwtHelperObj.verifyA
         const orderDetails = req.body;
         const { userId, addressId } = req.params
 
-        const newOrder = await OrderServiceObj.createOrder(userId, addressId, orderDetails, session);
+        const newOrderDetails = await OrderServiceObj.createOrder(userId, addressId, orderDetails, session);
         await session.commitTransaction();
         res.status(201).send({
             message: "Order created successfully",
-            order: newOrder
+            newOrderDetails
         });
     } catch (error) {
         await session.abortTransaction();
