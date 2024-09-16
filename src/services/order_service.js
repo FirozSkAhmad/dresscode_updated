@@ -133,7 +133,6 @@ class OrderService {
 
             return {
                 razorpay_checkout_order_id: order.id,
-                razorpay_checkout_order_amount: order.amount,
                 orderId: savedOrder.orderId
             };
         } catch (err) {
