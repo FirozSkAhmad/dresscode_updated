@@ -97,14 +97,10 @@ router.post('/verifyPayment', jwtHelperObj.verifyAccessToken, async (req, res) =
                 if (!productDoc) {
                     throw new global.DATA.PLUGINS.httperrors.BadRequest("Product or variant not found");
                 }
-                console.log(productDoc.variants[0].color)
+
                 // Check stock and update quantity
-                const variant = productDoc.variants.find(v => {
-                    console.log(v)
-                    console.log(v.color.name === color)
-                    return v.color.name === color
-                });
-                console.log(variant)
+                const variant = productDoc.variants.find(v => v.color.name === color.name);
+
                 const variantSize = variant.variantSizes.find(v => v.size === size);
                 if (!variantSize || variantSize.quantity < quantityOrdered) {
                     throw new global.DATA.PLUGINS.httperrors.BadRequest("Insufficient stock for the variant");
