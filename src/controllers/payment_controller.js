@@ -8,11 +8,30 @@ const router = express.Router();
 const Razorpay = require('razorpay');
 const OrderModel = require('../utils/Models/orderModel.js');
 const mongoose = require('mongoose');
+const UserModel = require('../utils/Models/userModel.js');
+const OrderModel = require('../utils/Models/orderModel');
+const QuoteModel = require('../utils/Models/quoteModel');
+const HealModel = require('../utils/Models/healModel');
+const ShieldModel = require('../utils/Models/shieldModel');
+const EliteModel = require('../utils/Models/eliteModel');
+const TogsModel = require('../utils/Models/togsModel');
+const SpiritsModel = require('../utils/Models/spiritsModel');
+const WorkWearModel = require('../utils/Models/workWearModel');
 
-const instance = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_SECRET,
-});
+// Mapping from group to Product Model
+const modelMap = {
+    "HEAL": HealModel,
+    "SHIELD": ShieldModel,
+    "ELITE": EliteModel,
+    "TOGS": TogsModel,
+    "SPIRIT": SpiritsModel,
+    "WORK WEAR UNIFORMS": WorkWearModel
+};
+
+// const instance = new Razorpay({
+//     key_id: process.env.RAZORPAY_KEY_ID,
+//     key_secret: process.env.RAZORPAY_SECRET,
+// });
 
 router.get("/getkey", (req, res) =>
     res.status(200).json({ key: process.env.RAZORPAY_KEY_ID })
