@@ -7,6 +7,7 @@ const jwtHelperObj = new JwtHelper();
 const router = express.Router();
 const Razorpay = require('razorpay');
 const OrderModel = require('../utils/Models/orderModel.js');
+const mongoose = require('mongoose');
 
 const instance = new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID,
@@ -36,11 +37,10 @@ router.get("/getkey", (req, res) =>
 
 
 router.post('/verifyPayment', jwtHelperObj.verifyAccessToken, async (req, res) => {
-    // Start a session
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
     try {
+        // Start a session
+        const session = await mongoose.startSession();
+        session.startTransaction();
         const { razorpay_order_id, razorpay_payment_id, razorpay_signature, orderId } = req.body;
         const body = `${razorpay_order_id}|${razorpay_payment_id}`;
         const expectedSignature = crypto
