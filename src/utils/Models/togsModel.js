@@ -55,8 +55,7 @@ const variantSchema = new mongoose.Schema({
         },
         sku: {
             type: String,
-            trim: true,
-            unique: true
+            trim: true
         },
     }],
     imageUrls: {
