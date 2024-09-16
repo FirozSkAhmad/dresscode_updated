@@ -99,7 +99,11 @@ router.post('/verifyPayment', jwtHelperObj.verifyAccessToken, async (req, res) =
                 }
                 console.log(productDoc.variants[0].color)
                 // Check stock and update quantity
-                const variant = productDoc.variants.find(v => v.color.name === color);
+                const variant = productDoc.variants.find(v => {
+                    console.log(v)
+                    console.log(v.color.name === color)
+                    return v.color.name === color
+                });
                 console.log(variant)
                 const variantSize = variant.variantSizes.find(v => v.size === size);
                 if (!variantSize || variantSize.quantity < quantityOrdered) {
