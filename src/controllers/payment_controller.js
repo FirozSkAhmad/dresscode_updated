@@ -37,10 +37,10 @@ router.get("/getkey", (req, res) =>
 
 
 router.post('/verifyPayment', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    // Start a session
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-        // Start a session
-        const session = await mongoose.startSession();
-        session.startTransaction();
         const { razorpay_order_id, razorpay_payment_id, razorpay_signature, orderId } = req.body;
         const body = `${razorpay_order_id}|${razorpay_payment_id}`;
         const expectedSignature = crypto
