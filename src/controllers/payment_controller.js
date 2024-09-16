@@ -107,7 +107,6 @@ router.post('/verifyPayment', jwtHelperObj.verifyAccessToken, async (req, res) =
             res.status(200).json({
                 success: true,
                 message: Constants.SUCCESS,
-                paymentId: payment[0]._id, // Include the ID of the newly created payment
             });
         } else {
             // Delete the order by orderId

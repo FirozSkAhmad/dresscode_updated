@@ -38,29 +38,33 @@ class BulkUploadService {
                 .pipe(csv({ mapHeaders: ({ header }) => header.trim() }))
                 .on('data', (data) => {
                     results.push({
-                        group: data.groupName.toUpperCase(),
-                        category: data.categoryName.toUpperCase(),
-                        subCategory: data.subCategoryName.toUpperCase(),
-                        gender: data.gender.toUpperCase(),
-                        productType: data.productType.toUpperCase(),
-                        fit: data.fit.toUpperCase(),
-                        sleeves: data.sleeves.toUpperCase(),
-                        fabric: data.fabric.toUpperCase(),
-                        price: data.price,
-                        productDetails: data.productDetails,
-                        sizeChart: data.sizeChart,
+                        group: data.groupName.trim().toUpperCase(),
+                        category: data.categoryName.trim().toUpperCase(),
+                        subCategory: data.subCategoryName.trim().toUpperCase(),
+                        gender: data.gender.trim().toUpperCase(),
+                        productType: data.productType.trim().toUpperCase(),
+                        fit: data.fit.trim().toUpperCase(),
+                        sleeves: data.sleeves.trim().toUpperCase(),
+                        fabric: data.fabric.trim().toUpperCase(),
+                        price: data.price, // Assuming price is already a number and doesn't need trimming
+                        productDetails: data.productDetails.trim(), // Trimming to ensure no leading/trailing spaces
+                        sizeChart: data.sizeChart.trim(), // Trimming if sizeChart is a string
                         variant: {
-                            color: { name: data.variantColor, hexcode: data.hexcode },
+                            color: {
+                                name: data.variantColor.trim(),
+                                hexcode: data.hexcode.trim() // Trimming to remove any unwanted spaces in hex code
+                            },
                             variantSizes: [
                                 {
-                                    size: data.variantSize.toUpperCase(),
-                                    quantity: parseInt(data.variantQuantity),
-                                    sku: `${data.gender.toUpperCase()}-${data.productType}-${data.variantColor}-${data.variantSize}`,
+                                    size: data.variantSize.trim().toUpperCase(),
+                                    quantity: parseInt(data.variantQuantity), // Assuming quantity is already a valid number
+                                    sku: `${data.gender.trim().toUpperCase()}-${data.productType.trim().toUpperCase()}-${data.variantColor.trim()}-${data.variantSize.trim()}`,
                                 },
                             ],
-                            imageUrls: data.variantImages ? data.variantImages.split(';') : [],
+                            imageUrls: data.variantImages ? data.variantImages.split(';').map(url => url.trim()) : [], // Trimming each URL
                         }
-                    });
+                    }
+                    );
                 })
                 .on('end', () => resolve(results))
                 .on('error', (error) => reject(error));
@@ -344,32 +348,36 @@ class BulkUploadService {
                 .pipe(csv({ mapHeaders: ({ header }) => header.trim() }))
                 .on('data', (data) => {
                     results.push({
-                        group: data.groupName.toUpperCase(),
-                        category: data.categoryName.toUpperCase(),
-                        subCategory: data.subCategoryName.toUpperCase(),
-                        gender: data.gender.toUpperCase(),
-                        productType: data.productType.toUpperCase(),
-                        fit: data.fit.toUpperCase(),
-                        neckline: data.neckline.toUpperCase(),
-                        pattern: data.pattern.toUpperCase(),
-                        cuff: data.cuff.toUpperCase(),
-                        sleeves: data.sleeves.toUpperCase(),
-                        material: data.material.toUpperCase(),
-                        price: data.price,
-                        productDescription: data.productDescription,
-                        sizeChart: data.sizeChart,
+                        group: data.groupName.trim().toUpperCase(),
+                        category: data.categoryName.trim().toUpperCase(),
+                        subCategory: data.subCategoryName.trim().toUpperCase(),
+                        gender: data.gender.trim().toUpperCase(),
+                        productType: data.productType.trim().toUpperCase(),
+                        fit: data.fit.trim().toUpperCase(),
+                        neckline: data.neckline.trim().toUpperCase(),
+                        pattern: data.pattern.trim().toUpperCase(),
+                        cuff: data.cuff.trim().toUpperCase(),
+                        sleeves: data.sleeves.trim().toUpperCase(),
+                        material: data.material.trim().toUpperCase(),
+                        price: data.price, // Assuming price is already a number and doesn't need trimming
+                        productDescription: data.productDescription.trim(), // Trimming to ensure no leading/trailing spaces
+                        sizeChart: data.sizeChart.trim(), // Trimming if sizeChart is a string
                         variant: {
-                            color: { name: data.variantColor, hexcode: data.hexcode },
+                            color: {
+                                name: data.variantColor.trim(),
+                                hexcode: data.hexcode.trim() // Trimming to remove any unwanted spaces in hex code
+                            },
                             variantSizes: [
                                 {
-                                    size: data.variantSize.toUpperCase(),
-                                    quantity: parseInt(data.variantQuantity),
-                                    sku: `${data.gender.toUpperCase()}-${data.productType}-${data.variantColor}-${data.variantSize}`,
+                                    size: data.variantSize.trim().toUpperCase(),
+                                    quantity: parseInt(data.variantQuantity), // Assuming quantity is already a valid number
+                                    sku: `${data.gender.trim().toUpperCase()}-${data.productType.trim().toUpperCase()}-${data.variantColor.trim()}-${data.variantSize.trim()}`,
                                 },
                             ],
-                            imageUrls: data.variantImages ? data.variantImages.split(';') : [],
+                            imageUrls: data.variantImages ? data.variantImages.split(';').map(url => url.trim()) : [], // Trimming each URL
                         }
-                    });
+                    }
+                    );
                 })
                 .on('end', () => resolve(results))
                 .on('error', (error) => reject(error));
@@ -512,40 +520,32 @@ class BulkUploadService {
                 .pipe(csv({ mapHeaders: ({ header }) => header.trim() }))
                 .on('data', (data) => {
                     results.push({
-                        group: {
-                            name: data.groupName.toUpperCase(),
-                            imageUrl: data.groupImageUrl
-                        },
-                        category: {
-                            name: data.categoryName.toUpperCase(),
-                            imageUrl: data.categoryImageUrl
-                        },
-                        subCategory: {
-                            name: data.subCategoryName.toUpperCase(),
-                            imageUrl: data.subCategoryImageUrl
-                        },
-                        gender: data.gender.toUpperCase(),
-                        productType: {
-                            type: data.productType.toUpperCase(),
-                            imageUrl: data.productTypeImageUrl
-                        },
-                        fit: data.fit.toUpperCase(),
+                        group: data.groupName.trim().toUpperCase(),
+                        category: data.categoryName.trim().toUpperCase(),
+                        subCategory: data.subCategoryName.trim().toUpperCase(),
+                        gender: data.gender.trim().toUpperCase(),
+                        productType: data.productType.trim().toUpperCase(),
+                        fit: data.fit.trim().toUpperCase(),
                         neckline: data.neckline.toUpperCase(),
                         pattern: data.pattern.toUpperCase(),
                         sleeves: data.sleeves.toUpperCase(),
                         material: data.material.toUpperCase(),
                         price: data.price,
                         productDescription: data.productDescription,
+                        sizeChart: data.sizeChart.trim(),
                         variant: {
-                            color: { name: data.variantColor, hexcode: colorCodes[data.variantColor.toUpperCase()] ? colorCodes[data.variantColor.toUpperCase()] : null },
+                            color: {
+                                name: data.variantColor.trim(),
+                                hexcode: data.hexcode.trim() // Trimming to remove any unwanted spaces in hex code
+                            },
                             variantSizes: [
                                 {
-                                    size: data.variantSize.toUpperCase(),
-                                    quantity: parseInt(data.variantQuantity),
-                                    sku: `${data.gender.toUpperCase()}-${data.productType.toUpperCase()}-${data.variantColor.toUpperCase()}-${data.variantSize.toUpperCase()}`,
+                                    size: data.variantSize.trim().toUpperCase(),
+                                    quantity: parseInt(data.variantQuantity), // Assuming quantity is already a valid number
+                                    sku: `${data.gender.trim().toUpperCase()}-${data.productType.trim().toUpperCase()}-${data.variantColor.trim()}-${data.variantSize.trim()}`,
                                 },
                             ],
-                            imageUrls: data.variantImages ? data.variantImages.split(';') : [],
+                            imageUrls: data.variantImages ? data.variantImages.split(';').map(url => url.trim()) : [], // Trimming each URL
                         }
                     });
                 })
@@ -562,7 +562,7 @@ class BulkUploadService {
             productData = Array.isArray(productData) ? productData[0] : productData
             if (productData) {
                 let uploadEntry = uploadData.find(entry =>
-                    entry.group === item.group.name &&
+                    entry.group === item.group &&
                     entry.productId?.toString() === item.productId?.toString()
                 );
 
@@ -596,7 +596,7 @@ class BulkUploadService {
                     }
                 } else {
                     uploadData.push({
-                        group: item.group.name,
+                        group: item.group,
                         productId: productData.productId,
                         variants: [{
                             color: item.variant.color,
@@ -616,11 +616,11 @@ class BulkUploadService {
 
     async addTogsVariant(item, session) {
         const existingProduct = await TogsModel.findOne({
-            'group.name': item.group.name,
-            'category.name': item.category.name,
-            'subCategory.name': item.subCategory.name,
+            group: item.group,
+            category: item.category,
+            subCategory: item.subCategory,
             gender: item.gender,
-            'productType.type': item.productType.type,
+            productType: item.productType,
             fit: item.fit,
             neckline: item.neckline,
             pattern: item.pattern,
@@ -659,7 +659,8 @@ class BulkUploadService {
                 sleeves: item.sleeves,
                 material: item.material,
                 price: item.price,
-                productDetails: item.productDetails,
+                productDescription: item.productDescription,
+                sizeChart: item.sizeChart,
                 variants: [item.variant]
             }], { session });
         }
