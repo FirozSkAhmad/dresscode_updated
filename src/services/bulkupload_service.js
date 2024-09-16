@@ -364,7 +364,7 @@ class BulkUploadService {
                         sizeChart: data.sizeChart.trim(), // Trimming if sizeChart is a string
                         variant: {
                             color: {
-                                name: data.variantColor.trim(),
+                                name: data.variantColor.trim().toUpperCase(),
                                 hexcode: data.hexcode.trim() // Trimming to remove any unwanted spaces in hex code
                             },
                             variantSizes: [
@@ -535,7 +535,7 @@ class BulkUploadService {
                         sizeChart: data.sizeChart.trim(),
                         variant: {
                             color: {
-                                name: data.variantColor.trim(),
+                                name: data.variantColor.trim().toUpperCase(),
                                 hexcode: data.hexcode.trim() // Trimming to remove any unwanted spaces in hex code
                             },
                             variantSizes: [
