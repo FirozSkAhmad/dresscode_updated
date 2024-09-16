@@ -69,17 +69,21 @@ class OrderService {
                     discountPercentage = 15;
                 }
 
+                const totalPrice = Math.round(productDoc.price * quantityOrdered);
+
                 // Calculate discount amount
-                const discountAmount = (productDoc.price * quantityOrdered * discountPercentage) / 100;
+                const discountAmount = (totalPrice * discountPercentage) / 100;
 
                 // Calculate total price after discount for this product
-                const totalPrice = productDoc.price * quantityOrdered;
                 const priceAfterDiscount = totalPrice - discountAmount;
+
+                const roundedPriceAfterDiscount = Math.round(priceAfterDiscount);
+                const roundedDiscountAmount = Math.round(discountAmount);
 
                 // Accumulate the total amount, total discount, and total price after discount
                 totalAmount += totalPrice;
-                totalDiscountAmount += discountAmount;
-                totalPriceAfterDiscount += priceAfterDiscount;
+                totalDiscountAmount += roundedDiscountAmount;
+                totalPriceAfterDiscount += roundedPriceAfterDiscount;
 
                 return {
                     group,
