@@ -97,7 +97,7 @@ router.post('/verifyPayment', jwtHelperObj.verifyAccessToken, async (req, res) =
                 if (!productDoc) {
                     throw new global.DATA.PLUGINS.httperrors.BadRequest("Product or variant not found");
                 }
-
+                console.log(productDoc)
                 // Check stock and update quantity
                 const variant = productDoc.variants.find(v => v.color.name === color);
                 const variantSize = variant.variantSizes.find(v => v.size === size);
