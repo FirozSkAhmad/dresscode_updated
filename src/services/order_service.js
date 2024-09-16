@@ -126,7 +126,7 @@ class OrderService {
             });
 
             const options = {
-                amount: Number(totalPriceAfterDiscount),
+                amount: Number(totalPriceAfterDiscount*100),
                 currency: "INR",
             };
             const order = await instance.orders.create(options);
