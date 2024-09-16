@@ -512,40 +512,32 @@ class BulkUploadService {
                 .pipe(csv({ mapHeaders: ({ header }) => header.trim() }))
                 .on('data', (data) => {
                     results.push({
-                        group: {
-                            name: data.groupName.toUpperCase(),
-                            imageUrl: data.groupImageUrl
-                        },
-                        category: {
-                            name: data.categoryName.toUpperCase(),
-                            imageUrl: data.categoryImageUrl
-                        },
-                        subCategory: {
-                            name: data.subCategoryName.toUpperCase(),
-                            imageUrl: data.subCategoryImageUrl
-                        },
-                        gender: data.gender.toUpperCase(),
-                        productType: {
-                            type: data.productType.toUpperCase(),
-                            imageUrl: data.productTypeImageUrl
-                        },
-                        fit: data.fit.toUpperCase(),
+                        group: data.groupName.trim().toUpperCase(),
+                        category: data.categoryName.trim().toUpperCase(),
+                        subCategory: data.subCategoryName.trim().toUpperCase(),
+                        gender: data.gender.trim().toUpperCase(),
+                        productType: data.productType.trim().toUpperCase(),
+                        fit: data.fit.trim().toUpperCase(),
                         neckline: data.neckline.toUpperCase(),
                         pattern: data.pattern.toUpperCase(),
                         sleeves: data.sleeves.toUpperCase(),
                         material: data.material.toUpperCase(),
                         price: data.price,
                         productDescription: data.productDescription,
+                        sizeChart: data.sizeChart.trim(),
                         variant: {
-                            color: { name: data.variantColor, hexcode: colorCodes[data.variantColor.toUpperCase()] ? colorCodes[data.variantColor.toUpperCase()] : null },
+                            color: {
+                                name: data.variantColor.trim().toUpperCase(),
+                                hexcode: data.hexcode.trim() // Trimming to remove any unwanted spaces in hex code
+                            },
                             variantSizes: [
                                 {
-                                    size: data.variantSize.toUpperCase(),
-                                    quantity: parseInt(data.variantQuantity),
-                                    sku: `${data.gender.toUpperCase()}-${data.productType.toUpperCase()}-${data.variantColor.toUpperCase()}-${data.variantSize.toUpperCase()}`,
+                                    size: data.variantSize.trim().toUpperCase(),
+                                    quantity: parseInt(data.variantQuantity), // Assuming quantity is already a valid number
+                                    sku: `${data.gender.trim().toUpperCase()}-${data.productType.trim().toUpperCase()}-${data.variantColor.trim()}-${data.variantSize.trim()}`,
                                 },
                             ],
-                            imageUrls: data.variantImages ? data.variantImages.split(';') : [],
+                            imageUrls: data.variantImages ? data.variantImages.split(';').map(url => url.trim()) : [], // Trimming each URL
                         }
                     });
                 })
@@ -616,11 +608,11 @@ class BulkUploadService {
 
     async addTogsVariant(item, session) {
         const existingProduct = await TogsModel.findOne({
-            'group.name': item.group.name,
-            'category.name': item.category.name,
-            'subCategory.name': item.subCategory.name,
+            group: item.group,
+            category: item.category,
+            subCategory: item.subCategory,
             gender: item.gender,
-            'productType.type': item.productType.type,
+            productType: item.productType,
             fit: item.fit,
             neckline: item.neckline,
             pattern: item.pattern,
