@@ -93,7 +93,7 @@ router.post('/verifyPayment', jwtHelperObj.verifyAccessToken, async (req, res) =
                 }
 
                 // Find the product and specific variant
-                const productDoc = await ProductModel.findOne({ "productId": productId, "variants.color.name": color }).session(session);
+                const productDoc = await ProductModel.findOne({ "productId": productId }).session(session);
                 if (!productDoc) {
                     throw new global.DATA.PLUGINS.httperrors.BadRequest("Product or variant not found");
                 }
