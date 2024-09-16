@@ -126,9 +126,10 @@ class OrderService {
             });
 
             const options = {
-                amount: Number(totalPriceAfterDiscount*100),
+                amount: Math.round(totalPriceAfterDiscount * 100), // Ensures the amount is an integer
                 currency: "INR",
             };
+
             const order = await instance.orders.create(options);
 
             return {
