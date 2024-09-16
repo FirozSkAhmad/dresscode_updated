@@ -20,12 +20,16 @@ router.post('/createOrder/user/:userId/address/:addressId', jwtHelperObj.verifyA
         await session.commitTransaction();
         res.status(201).send({
             message: "Order created successfully",
+            success: true,
             newOrderDetails
         });
     } catch (error) {
         await session.abortTransaction();
         console.error("Failed to create order:", error.message);
-        res.status(500).send({ message: error.message });
+        res.status(500).send({
+            message: error.message,
+            success: false
+        });
     } finally {
         session.endSession();
     }
