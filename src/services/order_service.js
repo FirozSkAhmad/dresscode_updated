@@ -21,7 +21,7 @@ class OrderService {
 
     async createOrder(userId, addressId, orderDetails, session) {
         try {
-            const { paymentId, products: orderProducts, deliveryCharges, TotalAmount, TotalDiscountAmount, TotalPriceAfterDiscount } = orderDetails;
+            const { products: orderProducts } = orderDetails;
 
             // Mapping from group to Product Model
             const modelMap = {
@@ -105,7 +105,7 @@ class OrderService {
                 address: addressId,
                 products: productsProcessed,
                 deliveryCharges: 0,
-                TotalAmount: TotalAmount,
+                TotalAmount: totalAmount,
                 TotalDiscountAmount: totalDiscountAmount,
                 TotalPriceAfterDiscount: totalPriceAfterDiscount
             });

@@ -143,6 +143,4 @@ router.post('/verifyPayment', jwtHelperObj.verifyAccessToken, async (req, res) =
     }
 });
 
-
-
 module.exports = router;
