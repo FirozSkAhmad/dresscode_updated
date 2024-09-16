@@ -100,6 +100,7 @@ router.post('/verifyPayment', jwtHelperObj.verifyAccessToken, async (req, res) =
                 console.log(productDoc)
                 // Check stock and update quantity
                 const variant = productDoc.variants.find(v => v.color.name === color);
+                console.log(variant)
                 const variantSize = variant.variantSizes.find(v => v.size === size);
                 if (!variantSize || variantSize.quantity < quantityOrdered) {
                     throw new global.DATA.PLUGINS.httperrors.BadRequest("Insufficient stock for the variant");
