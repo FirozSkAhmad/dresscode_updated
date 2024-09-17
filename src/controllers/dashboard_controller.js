@@ -480,11 +480,10 @@ router.get('/getOrderDetails/:orderId', jwtHelperObj.verifyAccessToken, async (r
                 orderId: order.orderId,
                 products: products,
                 userDetails: {
-                    firstName: user.firstName,
-                    lastName: user.lastName,
+                    name: user.name,
                     email: user.email,
-                    gender: user.gender,
-                    phoneNumber: user.phoneNumber
+                    gender: user.gender ? user.gender : "N/A",
+                    phoneNumber: user.phoneNumber ? user.phoneNumber : "N/A"
                 },
                 addressDetails: addressDetails,
                 deliveryStatus: order.deliveryStatus,
