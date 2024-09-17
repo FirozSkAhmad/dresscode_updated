@@ -609,14 +609,15 @@ router.get('/getQuotes', jwtHelperObj.verifyAccessToken, async (req, res) => {
         const quotesWithUserDetails = await QuoteModel.find()
             .populate({
                 path: 'user',
-                select: 'firstName lastName phoneNumber -_id'  // Selecting specific user fields
+                select: 'name email phoneNumber -_id'  // Selecting specific user fields
             })
 
         const formattedQuotes = quotesWithUserDetails.map(quote => ({
             quoteID: quote.quoteId,  // Using the custom generated quoteId
             dateOfQuoteRecived: quote.dateOfQuoteRecived,
-            clientName: `${quote.user.firstName} ${quote.user.lastName}`,  // Combining first and last name
-            phoneNo: quote.user.phoneNumber
+            clientName: `${quote.user.name}`,
+            clientEmail: `${quote.user.email}`,
+            clientPhoneNo: quote.user.phoneNumber ? quote.user.phoneNumber : "N/A"
         }));
 
         res.status(200).json(formattedQuotes);
@@ -664,6 +665,7 @@ router.get('/getQuoteDetails/:quoteId', jwtHelperObj.verifyAccessToken, async (r
                 color: quote.color,
                 size: quote.size,
                 quantityRequired: quote.quantityRequired,
+                imgUrl: quote.imgUrl,
                 logoUrl: quote.logoUrl,
                 logoPosition: quote.logoPosition
             },
