@@ -94,20 +94,20 @@ const togsSchema = new mongoose.Schema(
             },
         },
         group: {
-                type: String,
-                required: true,
-                trim: true,
-                default: 'TOGS'
+            type: String,
+            required: true,
+            trim: true,
+            default: 'TOGS'
         },
         category: {
-                type: String,
-                required: true,
-                trim: true
+            type: String,
+            required: true,
+            trim: true
         },
         subCategory: {
-                type: String,
-                required: true,
-                trim: true
+            type: String,
+            required: true,
+            trim: true
         },
         gender: {
             type: String,
@@ -115,9 +115,9 @@ const togsSchema = new mongoose.Schema(
             trim: true
         },
         productType: {
-                type: String,
-                required: true,
-                trim: true
+            type: String,
+            required: true,
+            trim: true
         },
         fit: {
             type: String,
@@ -153,7 +153,12 @@ const togsSchema = new mongoose.Schema(
         productDescription: {
             type: String,
             trim: true,
-            default:null
+            default: null
+        },
+        sizeChart: {
+            type: String,
+            trim: true,
+            default: null
         },
         variants: [variantSchema],
         isDeleted: {
