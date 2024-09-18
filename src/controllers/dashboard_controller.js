@@ -82,9 +82,11 @@ router.post('/dashboardLogin', async (req, res, next) => {
 
         const tokenPayload = `${userData._id}:${userData.roleType}:${userData.name}`;
         const accessToken = await jwtHelperObj.generateAccessToken(tokenPayload);
+        const refreshToken = await jwtHelperObj.generateRefreshToken(tokenPayload);
 
         const data = {
             accessToken: accessToken,
+            refreshToken: refreshToken,
             userId: userData._id,
             name: userData.name,
             roleType: userData.roleType
