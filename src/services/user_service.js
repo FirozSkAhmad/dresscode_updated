@@ -85,9 +85,11 @@ class UserService {
 
             const tokenPayload = userData._id + ":" + userData.name;
             const accessToken = await this.jwtObject.generateAccessToken(tokenPayload);
+            const refreshToken = await this.jwtObject.generateRefreshToken(tokenPayload);
 
             const data = {
                 accessToken: accessToken,
+                refreshToken: refreshToken,
                 userId: userData._id,
                 name: userData.name,
                 email: userData.email,

@@ -4,6 +4,7 @@ const cors = require('cors');
 const IndexRoute = require('./routes');
 const PluginsLoader = require('./utils/Plugins');
 const http = require('http');
+const cookieParser = require('cookie-parser');
 
 
 class App {
@@ -23,6 +24,7 @@ class App {
                 origin: '*'
             }));
             this.app.use(bodyParser.json());
+            this.app.use(cookieParser());
             this.app.use(bodyParser.urlencoded({ extended: true }));
 
             // Middleware to attach io to req

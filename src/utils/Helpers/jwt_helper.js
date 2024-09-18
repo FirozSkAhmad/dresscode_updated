@@ -9,7 +9,7 @@ class JWTHelper {
             const payload = {}
             const secret = process.env.ACCESS_TOKEN_SECRETKEY
             const options = {
-                expiresIn: '1y',
+                expiresIn: '1h',
                 issuer: 'DressCodeApplication',
                 audience: tokenPayload,
             }
@@ -55,8 +55,8 @@ class JWTHelper {
             });
         });
     }
-   
-    
+
+
     verifyAccessToken(req, res, next) {
         if (!req.headers['authorization']) return next(new global.DATA.PLUGINS.httperrors.Unauthorized("Please provide token"))
         const authHeader = req.headers['authorization']
