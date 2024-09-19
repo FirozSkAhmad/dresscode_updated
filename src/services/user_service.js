@@ -66,35 +66,35 @@ class UserService {
     async loginUser(userDetails, session, res) {
         try {
             const userData = await UserModel.findOne({ email: userDetails.email }).session(session);
-    
+
             if (!userData) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("No user exists with given email");
             }
-    
+
             const isValid = await bcrypt.compare(userDetails.password, userData.password);
             if (!isValid) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("Incorrect Password");
             }
-    
+
             // If you need to update last login time or log the login attempt
             await UserModel.updateOne(
                 { _id: userData._id },
                 { $set: { lastLogin: new Date() } },
                 { session: session }
             );
-    
+
             const tokenPayload = userData._id + ":" + userData.name;
             const accessToken = await this.jwtObject.generateAccessToken(tokenPayload);
             const refreshToken = await this.jwtObject.generateRefreshToken(tokenPayload);
-    
+
             // Set the refresh token in an HTTP-only cookie
             res.cookie('refreshToken', refreshToken, {
                 httpOnly: true,    // Prevents JavaScript from accessing the cookie
-                secure: process.env.NODE_ENV === 'production', // Only set secure in production
-                sameSite: 'Lax',
+                secure: true, // Required when sameSite is 'None'
+                sameSite: 'None',
                 path: '/'
             });
-    
+
             const data = {
                 accessToken: accessToken,
                 userId: userData._id,
@@ -102,14 +102,14 @@ class UserService {
                 email: userData.email,
                 phoneNumber: userData.phoneNumber,
             };
-    
+
             return data;
         } catch (err) {
             console.error("Error in loginUser with transaction: ", err.message);
             throw err;
         }
     }
-    
+
 
     async getUserDetails(userId) {
         try {
