@@ -7,6 +7,11 @@ const http = require('http');
 const cookieParser = require('cookie-parser');
 
 
+const allowedOrigins = [
+    'https://1e67-2405-201-c404-293c-d-97dc-2242-ed64.ngrok-free.app',
+    'https://dresscode-dashboard.vercel.app'
+];
+
 class App {
     constructor() {
         this.app = express();
@@ -21,7 +26,13 @@ class App {
             console.log("PLUGINS loaded");
 
             this.app.use(cors({
-                origin: ['https://1e67-2405-201-c404-293c-d-97dc-2242-ed64.ngrok-free.app', 'https://dresscode-dashboard.vercel.app'],
+                origin: function (origin, callback) {
+                    if (allowedOrigins.includes(origin) || !origin) {
+                        callback(null, origin);
+                    } else {
+                        callback(new Error('Not allowed by CORS'));
+                    }
+                },
                 methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed HTTP methods
                 allowedHeaders: ['Content-Type', 'Authorization'], // Allowed headers
                 credentials: true, // Allow cookies and authentication headers

@@ -63,45 +63,52 @@ class UserService {
     }
 
 
-    async loginUser(userDetails, session) {
+    async loginUser(userDetails, session, res) {
         try {
             const userData = await UserModel.findOne({ email: userDetails.email }).session(session);
-
+    
             if (!userData) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("No user exists with given email");
             }
-
+    
             const isValid = await bcrypt.compare(userDetails.password, userData.password);
             if (!isValid) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("Incorrect Password");
             }
-
+    
             // If you need to update last login time or log the login attempt
             await UserModel.updateOne(
                 { _id: userData._id },
                 { $set: { lastLogin: new Date() } },
                 { session: session }
             );
-
+    
             const tokenPayload = userData._id + ":" + userData.name;
             const accessToken = await this.jwtObject.generateAccessToken(tokenPayload);
             const refreshToken = await this.jwtObject.generateRefreshToken(tokenPayload);
-
+    
+            // Set the refresh token in an HTTP-only cookie
+            res.cookie('refreshToken', refreshToken, {
+                httpOnly: true,    // Prevents JavaScript from accessing the cookie
+                secure: true,      // Ensures the cookie is sent only over HTTPS
+                sameSite: 'Strict' // Protects against CSRF
+            });
+    
             const data = {
                 accessToken: accessToken,
-                refreshToken: refreshToken,
                 userId: userData._id,
                 name: userData.name,
                 email: userData.email,
                 phoneNumber: userData.phoneNumber,
             };
-
+    
             return data;
         } catch (err) {
             console.error("Error in loginUser with transaction: ", err.message);
             throw err;
         }
     }
+    
 
     async getUserDetails(userId) {
         try {
