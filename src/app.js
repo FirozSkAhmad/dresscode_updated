@@ -21,7 +21,7 @@ class App {
             console.log("PLUGINS loaded");
 
             this.app.use(cors({
-                origin: ['https://1e67-2405-201-c404-293c-d-97dc-2242-ed64.ngrok-free.app/', 'https://dresscode-dashboard.vercel.app/'],
+                origin: ['https://1e67-2405-201-c404-293c-d-97dc-2242-ed64.ngrok-free.app', 'https://dresscode-dashboard.vercel.app'],
                 methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed HTTP methods
                 allowedHeaders: ['Content-Type', 'Authorization'], // Allowed headers
                 credentials: true, // Allow cookies and authentication headers
