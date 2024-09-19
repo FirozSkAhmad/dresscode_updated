@@ -13,7 +13,7 @@ class JWTHelper {
                 issuer: 'DressCodeApplication',
                 audience: tokenPayload,
             }
-            global.DATA.PLUGINS.jsonwebtoken.sign(tokenPayload, secret, options, (err, token) => {
+            global.DATA.PLUGINS.jsonwebtoken.sign(payload, secret, options, (err, token) => {
                 if (err) {
                     console.log(err.message)
                     reject(new global.DATA.PLUGINS.httperrors.InternalServerError(Constants.JWT_SIGN_ERROR))
