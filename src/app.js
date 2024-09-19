@@ -37,8 +37,8 @@ class App {
                 allowedHeaders: ['Content-Type', 'Authorization'], // Allowed headers
                 credentials: true, // Allow cookies and authentication headers
             }));
-            this.app.use(bodyParser.json());
             this.app.use(cookieParser());
+            this.app.use(bodyParser.json());
             this.app.use(bodyParser.urlencoded({ extended: true }));
 
             // Middleware to attach io to req

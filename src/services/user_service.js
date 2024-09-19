@@ -91,7 +91,7 @@ class UserService {
             res.cookie('refreshToken', refreshToken, {
                 httpOnly: true,    // Prevents JavaScript from accessing the cookie
                 secure: true,      // Ensures the cookie is sent only over HTTPS
-                sameSite: 'Strict' // Protects against CSRF
+                sameSite: 'Strict' // Prote.cts against CSRF
             });
     
             const data = {

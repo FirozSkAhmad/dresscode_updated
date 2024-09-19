@@ -79,7 +79,7 @@ router.post('/login', async (req, res, next) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        const data = await userServiceObj.loginUser(req.body, session);
+        const data = await userServiceObj.loginUser(req.body, session, res);
         await session.commitTransaction();
         res.send({
             "status": 200,
@@ -106,7 +106,7 @@ router.post('/refresh-token', async (req, res, next) => {
     // Start a session for the transaction
     const session = await mongoose.startSession();
     session.startTransaction();
-    
+
     try {
         const jwtObject = new JWTHelper();
         // Generate a new access token within the transaction
@@ -116,7 +116,7 @@ router.post('/refresh-token', async (req, res, next) => {
 
         // Commit the transaction
         await session.commitTransaction();
-        
+
         // Send the new access token as a response
         res.json({ accessToken: newAccessToken });
     } catch (error) {
