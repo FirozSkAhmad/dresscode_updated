@@ -91,7 +91,7 @@ class UserService {
             res.cookie('refreshToken', refreshToken, {
                 httpOnly: true,    // Prevents JavaScript from accessing the cookie
                 secure: process.env.NODE_ENV === 'production', // Only set secure in production
-                sameSite: 'Strict', // Prote.cts against CSRF
+                sameSite: 'Lax',
                 path: '/'
             });
     
