@@ -21,7 +21,10 @@ class App {
             console.log("PLUGINS loaded");
 
             this.app.use(cors({
-                origin: '*'
+                origin: '*',
+                methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed HTTP methods
+                allowedHeaders: ['Content-Type', 'Authorization'], // Allowed headers
+                credentials: true, // Allow cookies and authentication headers
             }));
             this.app.use(bodyParser.json());
             this.app.use(cookieParser());
