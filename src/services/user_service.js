@@ -90,7 +90,7 @@ class UserService {
             // Set the refresh token in an HTTP-only cookie
             res.cookie('refreshToken', refreshToken, {
                 httpOnly: true,    // Prevents JavaScript from accessing the cookie
-                secure: true,      // Ensures the cookie is sent only over HTTPS
+                secure: process.env.NODE_ENV === 'production', // Only set secure in production
                 sameSite: 'Strict' // Prote.cts against CSRF
             });
     
