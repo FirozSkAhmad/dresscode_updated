@@ -7,11 +7,8 @@ const mongoose = require('mongoose');
 const router = express.Router()
 const UploadedHistoryModel = require('../utils/Models/uploadedHistoryModel');
 const HealModel = require('../utils/Models/healModel');
-const ShieldModel = require('../utils/Models/shieldModel');
 const EliteModel = require('../utils/Models/eliteModel');
 const TogsModel = require('../utils/Models/togsModel');
-const SpiritsModel = require('../utils/Models/spiritsModel');
-const WorkWearModel = require('../utils/Models/workWearModel');
 const ReturnOrdersModel = require('../utils/Models/returnOrdersModel');
 const OrderModel = require('../utils/Models/orderModel');
 const QuoteModel = require('../utils/Models/quoteModel');
@@ -26,11 +23,8 @@ require('dotenv').config();  // Make sure to require dotenv if you need access t
 
 const modelMap = {
     "HEAL": HealModel,
-    "SHIELD": ShieldModel,
     "ELITE": EliteModel,
     "TOGS": TogsModel,
-    "SPIRIT": SpiritsModel,
-    "WORK WEAR UNIFORMS": WorkWearModel
 };
 
 router.post('/createDashboardUser', async (req, res) => {

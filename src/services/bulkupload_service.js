@@ -1,465 +1,232 @@
 const HealModel = require('../utils/Models/healModel');
-const ShieldModel = require('../utils/Models/shieldModel');
 const EliteModel = require('../utils/Models/eliteModel');
 const TogsModel = require('../utils/Models/togsModel');
-const SpiritsModel = require('../utils/Models/spiritsModel');
-const WorkWearModel = require('../utils/Models/workWearModel');
 const UploadedHistoryModel = require('../utils/Models/uploadedHistoryModel');
-const colorCodes = require('../utils/Helpers/data');
 const stream = require('stream');
 const csv = require('csv-parser');
 
 const modelMap = {
     "HEAL": HealModel,
-    "SHIELD": ShieldModel,
     "ELITE": EliteModel,
-    "TOGS": TogsModel,
-    "SPIRIT": SpiritsModel,
-    "WORK WEAR UNIFORMS": WorkWearModel
+    "TOGS": TogsModel
 };
+
 
 class BulkUploadService {
     constructor() { }
 
-    async processHealsCsvFile(buffer, session) {
-        const data = await this.parseHealCsv(buffer);
-        const uploadResults = await this.bulkHealInsertOrUpdate(data, session);  // Processing each entry
-        await this.recordUpload(uploadResults, session);
-        return { status: 200, message: "Data processed successfully." };
-    }
+    validateData(group, data, rowNumber) {
+        // Common required fields
+        const commonFields = ['groupName', 'categoryName', 'subCategoryName', 'gender', 'productType', 'variantColor', 'variantSize', 'variantQuantity', 'price', 'productDescription', 'sizeChart', 'hexcode', 'variantImages'];
+        const groupSpecificFields = {
+            'HEAL': ['fit', 'sleeves', 'fabric'],
+            'ELITE': ['fit', 'neckline', 'pattern', 'cuff', 'sleeves', 'material'],
+            'TOGS': ['fit', 'neckline', 'pattern', 'sleeves', 'material']
+        };
 
-    parseHealCsv(buffer) {
-        return new Promise((resolve, reject) => {
-            const results = [];
-            const bufferStream = new stream.PassThrough();
-            bufferStream.end(buffer);
+        const requiredFields = commonFields.concat(groupSpecificFields[group] || []);
 
-            bufferStream
-                .pipe(csv({ mapHeaders: ({ header }) => header.trim() }))
-                .on('data', (data) => {
-                    results.push({
-                        group: data.groupName.trim().toUpperCase(),
-                        category: data.categoryName.trim().toUpperCase(),
-                        subCategory: data.subCategoryName.trim().toUpperCase(),
-                        gender: data.gender.trim().toUpperCase(),
-                        productType: data.productType.trim().toUpperCase(),
-                        fit: data.fit.trim().toUpperCase(),
-                        sleeves: data.sleeves.trim().toUpperCase(),
-                        fabric: data.fabric.trim().toUpperCase(),
-                        price: data.price, // Assuming price is already a number and doesn't need trimming
-                        productDetails: data.productDetails.trim(), // Trimming to ensure no leading/trailing spaces
-                        sizeChart: data.sizeChart.trim(), // Trimming if sizeChart is a string
-                        variant: {
-                            color: {
-                                name: data.variantColor.trim(),
-                                hexcode: data.hexcode.trim() // Trimming to remove any unwanted spaces in hex code
-                            },
-                            variantSizes: [
-                                {
-                                    size: data.variantSize.trim().toUpperCase(),
-                                    quantity: parseInt(data.variantQuantity), // Assuming quantity is already a valid number
-                                    sku: `${data.gender.trim().toUpperCase()}-${data.productType.trim().toUpperCase()}-${data.variantColor.trim()}-${data.variantSize.trim()}`,
-                                },
-                            ],
-                            imageUrls: data.variantImages ? data.variantImages.split(';').map(url => url.trim()) : [], // Trimming each URL
-                        }
-                    }
-                    );
-                })
-                .on('end', () => resolve(results))
-                .on('error', (error) => reject(error));
-        });
-    }
-
-    async bulkHealInsertOrUpdate(data, session) {
-        let uploadData = [];
-
-        for (const item of data) {
-            let productData = await this.addHealVariant(item, session); // Include session in function call
-            productData = Array.isArray(productData) ? productData[0] : productData
-            if (productData) {
-                let uploadEntry = uploadData.find(entry =>
-                    entry.group === productData.group &&
-                    entry.productId?.toString() === item.productId?.toString()
-                );
-
-                let existingVariants = productData.variants.find(vs => vs.color.name === item.variant.color.name);
-                let existingSizeEntry = existingVariants.variantSizes.find(vs => vs.size === item.variant.variantSizes[0].size)
-
-                if (uploadEntry) {
-                    let variantEntry = uploadEntry.variants.find(v => v.color.name === item.variant.color.name);
-                    if (variantEntry) {
-                        let sizeEntry = variantEntry.variantSizes.find(vs => vs.size === item.variant.variantSizes[0].size);
-                        if (sizeEntry) {
-                            sizeEntry.quantityOfUpload += item.variant.variantSizes[0].quantity;
-                        } else {
-                            variantEntry.variantSizes.push({
-                                size: item.variant.variantSizes[0].size,
-                                quantityOfUpload: item.variant.variantSizes[0].quantity,
-                                styleCoat: existingSizeEntry.styleCoat,
-                                sku: item.variant.variantSizes[0].sku
-                            });
-                        }
-                    } else {
-                        uploadEntry.variants.push({
-                            color: item.variant.color,
-                            variantSizes: item.variant.variantSizes.map(vs => ({
-                                size: vs.size,
-                                quantityOfUpload: vs.quantity,
-                                styleCoat: existingSizeEntry.styleCoat,
-                                sku: vs.sku,
-                            }))
-                        });
-                    }
-                } else {
-                    uploadData.push({
-                        group: item.group,
-                        productId: productData.productId,
-                        variants: [{
-                            color: item.variant.color,
-                            variantSizes: item.variant.variantSizes.map(vs => ({
-                                size: vs.size,
-                                quantityOfUpload: vs.quantity,
-                                styleCoat: existingSizeEntry.styleCoat,
-                                sku: vs.sku,
-                            }))
-                        }]
-                    });
-                }
+        for (let field of requiredFields) {
+            if (!data[field]) {
+                throw new Error(`Missing required field:${field} in CSV file at row ${rowNumber}.`);
             }
         }
-        return uploadData;
     }
 
-    async addHealVariant(item, session) {
-        const existingProduct = await HealModel.findOne({
-            group: item.group,
-            category: item.category,
-            subCategory: item.subCategory,
-            gender: item.gender,
-            productType: item.productType,
-            fit: item.fit,
-            sleeves: item.sleeves,
-            fabric: item.fabric
-        }, null, { session });
-
-        if (existingProduct) {
-            const variant = existingProduct.variants.find(v => v.color.name === item.variant.color.name);
-            if (variant) {
-                // Update existing variant's details or add new size details
-                const sizeDetail = variant.variantSizes.find(v => v.size === item.variant.variantSizes[0].size);
-                if (sizeDetail) {
-                    sizeDetail.quantity += item.variant.variantSizes[0].quantity;
-                } else {
-                    variant.variantSizes.push(item.variant.variantSizes[0]);
-                }
-                await existingProduct.save({ session });  // Save updates
-            } else {
-                // Push new variant if color does not exist
-                existingProduct.variants.push(item.variant);
-                await existingProduct.save({ session });
+    assembleValidatedData(group, data) {
+        const baseData = {
+            group: data.groupName.trim().toUpperCase(),
+            category: data.categoryName.trim().toUpperCase(),
+            subCategory: data.subCategoryName.trim().toUpperCase(),
+            gender: data.gender.trim().toUpperCase(),
+            productType: data.productType.trim().toUpperCase(),
+            price: parseFloat(data.price),
+            productDescription: data.productDescription.trim(),
+            sizeChart: data.sizeChart.trim(),
+            variant: {
+                color: {
+                    name: data.variantColor.trim().toUpperCase(),
+                    hexcode: data.hexcode.trim()
+                },
+                variantSizes: [{
+                    size: data.variantSize.trim().toUpperCase(),
+                    quantity: parseInt(data.variantQuantity),
+                    sku: `${data.gender.trim().toUpperCase()}-${data.productType.trim().toUpperCase()}-${data.variantColor.trim()}-${data.variantSize.trim()}`
+                }],
+                imageUrls: data.variantImages ? data.variantImages.split(';').map(url => url.trim()) : []
             }
-            return existingProduct;
-        } else {
-            // Create new product if it does not exist
-            return await HealModel.create([{
-                group: item.group,
-                category: item.category,
-                subCategory: item.subCategory,
-                gender: item.gender,
-                productType: item.productType,
-                fit: item.fit,
-                sleeves: item.sleeves,
-                fabric: item.fabric,
-                price: item.price,
-                productDescription: item.productDescription,
-                sizeChart: item.sizeChart,
-                variants: [item.variant]
-            }], { session });
+        };
+
+        // Add group-specific fields
+        switch (group) {
+            case 'HEAL':
+                baseData.fit = data.fit.trim().toUpperCase();
+                baseData.sleeves = data.sleeves.trim().toUpperCase();
+                baseData.fabric = data.fabric.trim().toUpperCase();
+                break;
+            case 'ELITE':
+                baseData.fit = data.fit.trim().toUpperCase();
+                baseData.neckline = data.neckline.trim().toUpperCase();
+                baseData.pattern = data.pattern.trim().toUpperCase();
+                baseData.cuff = data.cuff.trim().toUpperCase();
+                baseData.sleeves = data.sleeves.trim().toUpperCase();
+                baseData.material = data.material.trim().toUpperCase();
+                break;
+            case 'TOGS':
+                baseData.fit = data.fit.trim().toUpperCase();
+                baseData.neckline = data.neckline.trim().toUpperCase();
+                baseData.pattern = data.pattern.trim().toUpperCase();
+                baseData.sleeves = data.sleeves.trim().toUpperCase();
+                baseData.material = data.material.trim().toUpperCase();
+                break;
         }
+
+        return baseData;
     }
 
-    async processShieldsCsvFile(buffer, session) {
-        const data = await this.parseShieldCsv(buffer);
-        const uploadResults = await this.bulkShieldInsertOrUpdate(data, session);  // Processing each entry
-        await this.recordUpload(uploadResults, session);
-        return { status: 200, message: "Data processed successfully." };
-    }
-
-    parseShieldCsv(buffer) {
-        return new Promise((resolve, reject) => {
-            const results = [];
-            const bufferStream = new stream.PassThrough();
-            bufferStream.end(buffer);
-
-            bufferStream
-                .pipe(csv({ mapHeaders: ({ header }) => header.trim() }))
-                .on('data', (data) => {
-                    results.push({
-                        group: {
-                            name: data.groupName,
-                            imageUrl: data.groupImageUrl
-                        },
-                        category: {
-                            name: data.categoryName,
-                            imageUrl: data.categoryImageUrl
-                        },
-                        subCategory: {
-                            name: data.subCategoryName,
-                            imageUrl: data.subCategoryImageUrl
-                        },
-                        gender: data.gender,
-                        productType: {
-                            type: data.productType,
-                            imageUrl: data.productTypeImageUrl
-                        },
-                        fit: data.fit ? data.fit : "CLASSIC FITS",
-                        fabric: data.fabric ? data.fabric : "POLY COTTON",
-                        price: data.price,
-                        productDetails: data.productDetails,
-                        variant: {
-                            color: { name: data.variantColor, hexcode: colorCodes[data.variantColor] ? colorCodes[data.variantColor] : null },
-                            variantSizes: [
-                                {
-                                    size: data.variantSize,
-                                    quantity: parseInt(data.variantQuantity),
-                                }
-                            ],
-                            imageUrls: data.variantImages ? data.variantImages.split(';') : [],
-                        }
-                    });
-                })
-                .on('end', () => resolve(results))
-                .on('error', (error) => reject(error));
-        });
-    }
-
-    async bulkShieldInsertOrUpdate(data) {
-        // First, update existing products to add variants if they do not exist
-        // for (const item of data) {
-        //     await this.addShieldVariant(item);
-        // }
-        let uploadData = [];
-        for (const item of data) {
-            const productData = await this.addShieldVariant(item, session); // Include session in function call
-            productData = Array.isArray(productData) ? productData[0] : productData
-            if (productData) {
-                let uploadEntry = uploadData.find(entry =>
-                    entry.group === item.group.name &&
-                    entry.productId?.toString() === productData.productId?.toString()
-                );
-
-                if (uploadEntry) {
-                    let variantEntry = uploadEntry.variants.find(v => v.color.name === item.variant.color.name);
-                    if (variantEntry) {
-                        let sizeEntry = variantEntry.variantSizes.find(vs => vs.size === item.variant.variantSizes[0].size);
-                        if (sizeEntry) {
-                            sizeEntry.quantityOfUpload += item.variant.variantSizes[0].quantity;
-                        } else {
-                            variantEntry.variantSizes.push({
-                                size: item.variant.variantSizes[0].size,
-                                quantityOfUpload: item.variant.variantSizes[0].quantity
-                            });
-                        }
-                    } else {
-                        uploadEntry.variants.push({
-                            color: item.variant.color,
-                            variantSizes: item.variant.variantSizes.map(vs => ({
-                                size: vs.size,
-                                quantityOfUpload: vs.quantity
-                            }))
-                        });
-                    }
-                } else {
-                    uploadData.push({
-                        group: item.group.name,
-                        productId: productData.productId,
-                        variants: [{
-                            color: item.variant.color,
-                            variantSizes: item.variant.variantSizes.map(vs => ({
-                                size: vs.size,
-                                quantityOfUpload: vs.quantity
-                            }))
-                        }]
-                    });
-                }
-            }
-        }
-        return uploadData;
-    }
-
-    async addShieldVariant(item, session) {
-        const existingProduct = await ShieldModel.findOne({
-            'group.name': item.group.name,
-            'category.name': item.category.name,
-            'subCategory.name': item.subCategory.name,
-            gender: item.gender,
-            'productType.type': item.productType.type,
-            fit: item.fit ? item.fit : "CLASSIC FITS",
-            fabric: item.fabric ? item.fabric : "POLY COTTON",
-        }, null, { session });
-
-        if (existingProduct) {
-            const variant = existingProduct.variants.find(v => v.color.name === item.variant.color.name);
-            if (variant) {
-                // Update existing variant's details or add new size details
-                const sizeDetail = variant.variantSizes.find(v => v.size === item.variant.variantSizes[0].size);
-                if (sizeDetail) {
-                    sizeDetail.quantity += item.variant.variantSizes[0].quantity;
-                } else {
-                    variant.variantSizes.push(item.variant.variantSizes[0]);
-                }
-                await existingProduct.save({ session });  // Save updates
-            } else {
-                // Push new variant if color does not exist
-                existingProduct.variants.push(item.variant);
-                await existingProduct.save({ session });
-            }
-            return existingProduct;
-        } else {
-            // Create new product if it does not exist
-            return await ShieldModel.create([{
-                group: item.group,
-                category: item.category,
-                subCategory: item.subCategory,
-                gender: item.gender,
-                productType: item.productType,
-                fit: item.fit,
-                fabric: item.fabric,
-                variants: [item.variant]
-            }], { session });
-        }
-    }
-
-    async processEliteCsvFile(buffer, session) {
-        const data = await this.parseEliteCsv(buffer);
-        const uploadResults = await this.bulkEliteInsertOrUpdate(data, session);  // Processing each entry within the transaction
-        await this.recordUpload(uploadResults, session);
-        return { status: 200, message: "Data processed successfully." };
-    }
-
-    parseEliteCsv(buffer) {
-        return new Promise((resolve, reject) => {
-            const results = [];
-            const bufferStream = new stream.PassThrough();
-            bufferStream.end(buffer);
-
-            bufferStream
-                .pipe(csv({ mapHeaders: ({ header }) => header.trim() }))
-                .on('data', (data) => {
-                    results.push({
-                        group: data.groupName.trim().toUpperCase(),
-                        category: data.categoryName.trim().toUpperCase(),
-                        subCategory: data.subCategoryName.trim().toUpperCase(),
-                        gender: data.gender.trim().toUpperCase(),
-                        productType: data.productType.trim().toUpperCase(),
-                        fit: data.fit.trim().toUpperCase(),
-                        neckline: data.neckline.trim().toUpperCase(),
-                        pattern: data.pattern.trim().toUpperCase(),
-                        cuff: data.cuff.trim().toUpperCase(),
-                        sleeves: data.sleeves.trim().toUpperCase(),
-                        material: data.material.trim().toUpperCase(),
-                        price: data.price, // Assuming price is already a number and doesn't need trimming
-                        productDescription: data.productDescription.trim(), // Trimming to ensure no leading/trailing spaces
-                        sizeChart: data.sizeChart.trim(), // Trimming if sizeChart is a string
-                        variant: {
-                            color: {
-                                name: data.variantColor.trim().toUpperCase(),
-                                hexcode: data.hexcode.trim() // Trimming to remove any unwanted spaces in hex code
-                            },
-                            variantSizes: [
-                                {
-                                    size: data.variantSize.trim().toUpperCase(),
-                                    quantity: parseInt(data.variantQuantity), // Assuming quantity is already a valid number
-                                    sku: `${data.gender.trim().toUpperCase()}-${data.productType.trim().toUpperCase()}-${data.variantColor.trim()}-${data.variantSize.trim()}`,
-                                },
-                            ],
-                            imageUrls: data.variantImages ? data.variantImages.split(';').map(url => url.trim()) : [], // Trimming each URL
-                        }
-                    }
-                    );
-                })
-                .on('end', () => resolve(results))
-                .on('error', (error) => reject(error));
-        });
-    }
-
-    async bulkEliteInsertOrUpdate(data, session) {
-        let uploadData = [];
-
-        for (const item of data) {
-            let productData = await this.addEliteVariant(item, session); // Include session in function call
-            productData = Array.isArray(productData) ? productData[0] : productData
-
-            if (productData) {
-                let uploadEntry = uploadData.find(entry =>
-                    entry.group === productData.group &&
-                    entry.productId?.toString() === item.productId?.toString()
-                );
-
-                let existingVariants = productData.variants.find(vs => vs.color.name === item.variant.color.name);
-                let existingSizeEntry = existingVariants.variantSizes.find(vs => vs.size === item.variant.variantSizes[0].size)
-
-                if (uploadEntry) {
-                    let variantEntry = uploadEntry.variants.find(v => v.color.name === item.variant.color.name);
-                    if (variantEntry) {
-                        let sizeEntry = variantEntry.variantSizes.find(vs => vs.size === item.variant.variantSizes[0].size);
-                        if (sizeEntry) {
-                            sizeEntry.quantityOfUpload += item.variant.variantSizes[0].quantity;
-                        } else {
-                            variantEntry.variantSizes.push({
-                                size: item.variant.variantSizes[0].size,
-                                quantityOfUpload: item.variant.variantSizes[0].quantity,
-                                styleCoat: existingSizeEntry.styleCoat,
-                                sku: item.variant.variantSizes[0].sku
-                            });
-                        }
-                    } else {
-                        uploadEntry.variants.push({
-                            color: item.variant.color,
-                            variantSizes: item.variant.variantSizes.map(vs => ({
-                                size: vs.size,
-                                quantityOfUpload: vs.quantity,
-                                styleCoat: existingSizeEntry.styleCoat,
-                                sku: vs.sku,
-                            }))
-                        });
-                    }
-                } else {
-                    uploadData.push({
-                        group: item.group,
-                        productId: productData.productId,
-                        variants: [{
-                            color: item.variant.color,
-                            variantSizes: item.variant.variantSizes.map(vs => ({
-                                size: vs.size,
-                                quantityOfUpload: vs.quantity,
-                                styleCoat: existingSizeEntry.styleCoat,
-                                sku: vs.sku,
-                            }))
-                        }]
-                    });
-                }
-            }
-        }
-        return uploadData;
-    }
-
-    async addEliteVariant(item, session) {
+    async processCsvFile(group, buffer, session) {
         try {
-            const existingProduct = await EliteModel.findOne({
+            const data = await this.parseCsv(group, buffer);
+            const uploadResults = await this.bulkInsertOrUpdate(group, data, session);  // Processing each entry
+            await this.recordUpload(uploadResults, session);
+            return { status: 200, message: "Data processed successfully." };
+        } catch (error) {
+            throw new Error(error.message);
+        }
+    }
+
+    parseCsv(group, buffer) {
+        return new Promise((resolve, reject) => {
+            const results = [];
+            const bufferStream = new stream.PassThrough();
+            bufferStream.end(buffer);
+            let errorOccurred = false;
+            let rowNumber = 1; // Initialize row counter
+
+            bufferStream
+                .pipe(csv({ mapHeaders: ({ header }) => header.trim() }))
+                .on('data', (data) => {
+                    if (errorOccurred) return; // Early return if an error has already occurred
+                    rowNumber++; // Increment row counter for each row processed
+
+                    try {
+                        this.validateData(group, data, rowNumber);
+                        const validatedData = this.assembleValidatedData(group, data);
+                        results.push(validatedData);
+                    } catch (error) {
+                        errorOccurred = true; // Flag that an error occurred
+                        bufferStream.unpipe(); // Optionally unpipe to stop processing
+                        reject(error);
+                    }
+                })
+                .on('end', () => {
+                    if (!errorOccurred) {
+                        resolve(results);
+                    }
+                })
+                .on('error', (error) => {
+                    console.error(`Stream error: ${error.message}`);
+                    reject(error);
+                });
+        });
+    }
+
+
+    async bulkInsertOrUpdate(group, data, session) {
+        let uploadData = [];
+
+        try {
+            for (const item of data) {
+                let productData = await this.addVariant(group, item, session); // Call the specific function based on the group
+                productData = Array.isArray(productData) ? productData[0] : productData;
+
+                if (productData) {
+                    let uploadEntry = uploadData.find(entry =>
+                        entry.group === productData.group &&
+                        entry.productId?.toString() === item.productId?.toString()
+                    );
+
+                    let existingVariants = productData.variants.find(vs => vs.color.name === item.variant.color.name);
+                    let existingSizeEntry = existingVariants.variantSizes.find(vs => vs.size === item.variant.variantSizes[0].size);
+
+                    if (uploadEntry) {
+                        let variantEntry = uploadEntry.variants.find(v => v.color.name === item.variant.color.name);
+                        if (variantEntry) {
+                            let sizeEntry = variantEntry.variantSizes.find(vs => vs.size === item.variant.variantSizes[0].size);
+                            if (sizeEntry) {
+                                sizeEntry.quantityOfUpload += item.variant.variantSizes[0].quantity;
+                            } else {
+                                variantEntry.variantSizes.push({
+                                    size: item.variant.variantSizes[0].size,
+                                    quantityOfUpload: item.variant.variantSizes[0].quantity,
+                                    styleCoat: existingSizeEntry ? existingSizeEntry.styleCoat : undefined,
+                                    sku: item.variant.variantSizes[0].sku
+                                });
+                            }
+                        } else {
+                            uploadEntry.variants.push({
+                                color: item.variant.color,
+                                variantSizes: item.variant.variantSizes.map(vs => ({
+                                    size: vs.size,
+                                    quantityOfUpload: vs.quantity,
+                                    styleCoat: existingSizeEntry ? existingSizeEntry.styleCoat : undefined,
+                                    sku: vs.sku,
+                                }))
+                            });
+                        }
+                    } else {
+                        uploadData.push({
+                            group: item.group,
+                            productId: productData.productId,
+                            variants: [{
+                                color: item.variant.color,
+                                variantSizes: item.variant.variantSizes.map(vs => ({
+                                    size: vs.size,
+                                    quantityOfUpload: vs.quantity,
+                                    styleCoat: existingSizeEntry ? existingSizeEntry.styleCoat : undefined,
+                                    sku: vs.sku,
+                                }))
+                            }]
+                        });
+                    }
+                }
+            }
+            return uploadData;
+        } catch (error) {
+            console.error("Bulk insert/update error:", error);
+            throw new Error(`Failed to process bulk insert/update for ${group}: ${error.message}`);
+        }
+    }
+
+    async addVariant(group, item, session) {
+        // Define specifics for different groups
+        const schemaMap = {
+            'HEAL': { additionalFields: ['sleeves', 'fabric'] },
+            'ELITE': { additionalFields: ['neckline', 'pattern', 'cuff', 'sleeves', 'material'] },
+            'TOGS': { additionalFields: ['neckline', 'pattern', 'sleeves', 'material'] }
+        };
+
+        const Model = modelMap[group];
+        const schemaDetails = schemaMap[group];
+
+        try {
+            // Construct the query object dynamically based on schema details
+            const query = {
                 group: item.group,
                 category: item.category,
                 subCategory: item.subCategory,
                 gender: item.gender,
                 productType: item.productType,
                 fit: item.fit,
-                neckline: item.neckline,
-                pattern: item.pattern,
-                cuff: item.cuff,
-                sleeves: item.sleeves,
-                material: item.material,
-            }, null, { session });
+                ...item
+            };
+
+            // Add additional fields dynamically to the query
+            schemaDetails.additionalFields.forEach(field => {
+                query[field] = item[field];
+            });
+
+            const existingProduct = await Model.findOne(query, null, { session });
 
             if (existingProduct) {
                 const variant = existingProduct.variants.find(v => v.color.name === item.variant.color.name);
@@ -477,19 +244,8 @@ class BulkUploadService {
                 }
                 return existingProduct;
             } else {
-                // Create new product if it does not exist
-                return await EliteModel.create([{
-                    group: item.group,
-                    category: item.category,
-                    subCategory: item.subCategory,
-                    gender: item.gender,
-                    productType: item.productType,
-                    fit: item.fit,
-                    neckline: item.neckline,
-                    pattern: item.pattern,
-                    cuff: item.cuff,
-                    sleeves: item.sleeves,
-                    material: item.material,
+                return await Model.create([{
+                    ...query,
                     price: item.price,
                     productDescription: item.productDescription,
                     sizeChart: item.sizeChart,
@@ -497,479 +253,34 @@ class BulkUploadService {
                 }], { session });
             }
         } catch (error) {
-            console.error("Error adding variant to Elite product:", error.message);
-            throw new Error("Failed to add or update variant"); // Rethrow the error to handle it in upper layers if necessary
-        }
-    }
-
-
-    async processTogsCsvFile(buffer, session) {
-        const data = await this.parseTogsCsv(buffer);
-        const uploadResults = await this.bulkTogsInsertOrUpdate(data, session);
-        await this.recordUpload(uploadResults, session);
-        return { status: 200, message: "Data processed successfully." };
-    }
-
-    parseTogsCsv(buffer) {
-        return new Promise((resolve, reject) => {
-            const results = [];
-            const bufferStream = new stream.PassThrough();
-            bufferStream.end(buffer);
-
-            bufferStream
-                .pipe(csv({ mapHeaders: ({ header }) => header.trim() }))
-                .on('data', (data) => {
-                    results.push({
-                        group: data.groupName.trim().toUpperCase(),
-                        category: data.categoryName.trim().toUpperCase(),
-                        subCategory: data.subCategoryName.trim().toUpperCase(),
-                        gender: data.gender.trim().toUpperCase(),
-                        productType: data.productType.trim().toUpperCase(),
-                        fit: data.fit.trim().toUpperCase(),
-                        neckline: data.neckline.toUpperCase(),
-                        pattern: data.pattern.toUpperCase(),
-                        sleeves: data.sleeves.toUpperCase(),
-                        material: data.material.toUpperCase(),
-                        price: data.price,
-                        productDescription: data.productDescription,
-                        sizeChart: data.sizeChart.trim(),
-                        variant: {
-                            color: {
-                                name: data.variantColor.trim().toUpperCase(),
-                                hexcode: data.hexcode.trim() // Trimming to remove any unwanted spaces in hex code
-                            },
-                            variantSizes: [
-                                {
-                                    size: data.variantSize.trim().toUpperCase(),
-                                    quantity: parseInt(data.variantQuantity), // Assuming quantity is already a valid number
-                                    sku: `${data.gender.trim().toUpperCase()}-${data.productType.trim().toUpperCase()}-${data.variantColor.trim()}-${data.variantSize.trim()}`,
-                                },
-                            ],
-                            imageUrls: data.variantImages ? data.variantImages.split(';').map(url => url.trim()) : [], // Trimming each URL
-                        }
-                    });
-                })
-                .on('end', () => resolve(results))
-                .on('error', (error) => reject(error));
-        });
-    }
-
-    async bulkTogsInsertOrUpdate(data, session) {
-        let uploadData = [];
-
-        for (const item of data) {
-            let productData = await this.addTogsVariant(item, session); // Include session in function call
-            productData = Array.isArray(productData) ? productData[0] : productData
-            if (productData) {
-                let uploadEntry = uploadData.find(entry =>
-                    entry.group === item.group &&
-                    entry.productId?.toString() === item.productId?.toString()
-                );
-
-                let existingVariants = productData.variants.find(vs => vs.color.name === item.variant.color.name);
-                let existingSizeEntry = existingVariants.variantSizes.find(vs => vs.size === item.variant.variantSizes[0].size)
-
-                if (uploadEntry) {
-                    let variantEntry = uploadEntry.variants.find(v => v.color.name === item.variant.color.name);
-                    if (variantEntry) {
-                        let sizeEntry = variantEntry.variantSizes.find(vs => vs.size === item.variant.variantSizes[0].size);
-                        if (sizeEntry) {
-                            sizeEntry.quantityOfUpload += item.variant.variantSizes[0].quantity;
-                        } else {
-                            variantEntry.variantSizes.push({
-                                size: item.variant.variantSizes[0].size,
-                                quantityOfUpload: item.variant.variantSizes[0].quantity,
-                                styleCoat: existingSizeEntry.styleCoat,
-                                sku: item.variant.variantSizes[0].sku
-                            });
-                        }
-                    } else {
-                        uploadEntry.variants.push({
-                            color: item.variant.color,
-                            variantSizes: item.variant.variantSizes.map(vs => ({
-                                size: vs.size,
-                                quantityOfUpload: vs.quantity,
-                                styleCoat: existingSizeEntry.styleCoat,
-                                sku: vs.sku,
-                            }))
-                        });
-                    }
-                } else {
-                    uploadData.push({
-                        group: item.group,
-                        productId: productData.productId,
-                        variants: [{
-                            color: item.variant.color,
-                            variantSizes: item.variant.variantSizes.map(vs => ({
-                                size: vs.size,
-                                quantityOfUpload: vs.quantity,
-                                styleCoat: existingSizeEntry.styleCoat,
-                                sku: vs.sku,
-                            }))
-                        }]
-                    });
-                }
-            }
-        }
-        return uploadData;
-    }
-
-    async addTogsVariant(item, session) {
-        const existingProduct = await TogsModel.findOne({
-            group: item.group,
-            category: item.category,
-            subCategory: item.subCategory,
-            gender: item.gender,
-            productType: item.productType,
-            fit: item.fit,
-            neckline: item.neckline,
-            pattern: item.pattern,
-            sleeves: item.sleeves,
-            material: item.material
-        }, null, { session });
-
-        if (existingProduct) {
-            const variant = existingProduct.variants.find(v => v.color.name === item.variant.color.name);
-            if (variant) {
-                // Update existing variant's details or add new size details
-                const sizeDetail = variant.variantSizes.find(v => v.size === item.variant.variantSizes[0].size);
-                if (sizeDetail) {
-                    sizeDetail.quantity += item.variant.variantSizes[0].quantity;
-                } else {
-                    variant.variantSizes.push(item.variant.variantSizes[0]);
-                }
-                await existingProduct.save({ session });  // Save updates
-            } else {
-                // Push new variant if color does not exist
-                existingProduct.variants.push(item.variant);
-                await existingProduct.save({ session });
-            }
-            return existingProduct;
-        } else {
-            // Create new product if it does not exist
-            return await TogsModel.create([{
-                group: item.group,
-                category: item.category,
-                subCategory: item.subCategory,
-                gender: item.gender,
-                productType: item.productType,
-                fit: item.fit,
-                neckline: item.neckline,
-                pattern: item.pattern,
-                sleeves: item.sleeves,
-                material: item.material,
-                price: item.price,
-                productDescription: item.productDescription,
-                sizeChart: item.sizeChart,
-                variants: [item.variant]
-            }], { session });
-        }
-    }
-
-    async processSpiritsCsvFile(buffer, session) {
-        const data = await this.parseSpiritsCsv(buffer);
-        const uploadResults = await this.bulkSpiritsInsertOrUpdate(data, session);  // Processing each entry
-        await this.recordUpload(uploadResults, session);
-        return { status: 200, message: "Data processed successfully." };
-    }
-
-    parseSpiritsCsv(buffer) {
-        return new Promise((resolve, reject) => {
-            const results = [];
-            const bufferStream = new stream.PassThrough();
-            bufferStream.end(buffer);
-
-            bufferStream
-                .pipe(csv({ mapHeaders: ({ header }) => header.trim() }))
-                .on('data', (data) => {
-                    results.push({
-                        group: {
-                            name: data.groupName,
-                            imageUrl: data.groupImageUrl
-                        },
-                        category: {
-                            name: data.categoryName,
-                            imageUrl: data.categoryImageUrl
-                        },
-                        gender: data.gender,
-                        productType: {
-                            type: data.productType,
-                            imageUrl: data.productTypeImageUrl
-                        },
-                        neckline: data.neckline ? data.neckline : null,
-                        sleeves: data.sleeves ? data.sleeves : null,
-                        variant: {
-                            color: { name: data.variantColor ? data.variantColor : 'SPIRITS COLOR', hexcode: colorCodes[data.variantColor] ? colorCodes[data.variantColor] : null },
-                            variantSizes: [
-                                {
-                                    size: data.variantSize,
-                                    quantity: parseInt(data.variantQuantity),
-                                }
-                            ],
-                            imageUrls: data.variantImages ? data.variantImages.split(';') : [],
-                        }
-                    });
-                })
-                .on('end', () => resolve(results))
-                .on('error', (error) => reject(error));
-        });
-    }
-
-    async bulkSpiritsInsertOrUpdate(data) {
-        // First, update existing products to add variants if they do not exist
-        // for (const item of data) {
-        //     await this.addSpiritsVariant(item);
-        // }
-        let uploadData = [];
-        for (const item of data) {
-            const productData = await this.addEliteVariant(item, session); // Include session in function call
-            productData = Array.isArray(productData) ? productData[0] : productData
-            if (productData) {
-                let uploadEntry = uploadData.find(entry =>
-                    entry.group === item.group.name &&
-                    entry.productId.toString() === productData.productId.toString()
-                );
-
-                if (uploadEntry) {
-                    let variantEntry = uploadEntry.variants.find(v => v.color.name === item.variant.color.name);
-                    if (variantEntry) {
-                        let sizeEntry = variantEntry.variantSizes.find(vs => vs.size === item.variant.variantSizes[0].size);
-                        if (sizeEntry) {
-                            sizeEntry.quantityOfUpload += item.variant.variantSizes[0].quantity;
-                        } else {
-                            variantEntry.variantSizes.push({
-                                size: item.variant.variantSizes[0].size,
-                                quantityOfUpload: item.variant.variantSizes[0].quantity
-                            });
-                        }
-                    } else {
-                        uploadEntry.variants.push({
-                            color: item.variant.color,
-                            variantSizes: item.variant.variantSizes.map(vs => ({
-                                size: vs.size,
-                                quantityOfUpload: vs.quantity
-                            }))
-                        });
-                    }
-                } else {
-                    uploadData.push({
-                        group: item.group.name,
-                        productId: productData._id,
-                        variants: [{
-                            color: item.variant.color,
-                            variantSizes: item.variant.variantSizes.map(vs => ({
-                                size: vs.size,
-                                quantityOfUpload: vs.quantity
-                            }))
-                        }]
-                    });
-                }
-            }
-        }
-        return uploadData;
-    }
-
-    async addSpiritsVariant(item) {
-        const existingProduct = await SpiritsModel.findOne({
-            'group.name': item.group.name,
-            'category.name': item.category.name,
-            gender: item.gender,
-            'productType.type': item.productType.type,
-            neckline: item.neckline ? item.neckline : null,
-            sleeves: item.sleeves ? item.sleeves : null,
-        }, null, { session });
-
-        if (existingProduct) {
-            const variant = existingProduct.variants.find(v => v.color.name === item.variant.color.name);
-            if (variant) {
-                const sizeDetail = variant.variantSizes.find(v => v.size === item.variant.variantSizes[0].size);
-                if (sizeDetail) {
-                    sizeDetail.quantity += item.variant.variantSizes[0].quantity;
-                } else {
-                    variant.variantSizes.push(item.variant.variantSizes[0]);
-                }
-                await existingProduct.save({ session });
-            } else {
-                existingProduct.variants.push(item.variant);
-                await existingProduct.save({ session });
-            }
-            return existingProduct;
-        } else {
-            // Create new product if it does not exist
-            return await SpiritsModel.create([{
-                group: item.group,
-                category: item.category,
-                gender: item.gender,
-                productType: item.productType,
-                neckline: item.neckline ? item.neckline : null,
-                sleeves: item.sleeves ? item.sleeves : null,
-                variants: [item.variant]
-            }], { session });
-        }
-    }
-
-    async processWorkWearCsvFile(buffer, session) {
-        const data = await this.parseWorkWearCsv(buffer);
-        const uploadResults = await this.bulkWorkWearInsertOrUpdate(data, session);  // Processing each entry
-        await this.recordUpload(uploadResults, session);
-        return { status: 200, message: "Data processed successfully." };
-    }
-
-    parseWorkWearCsv(buffer) {
-        return new Promise((resolve, reject) => {
-            const results = [];
-            const bufferStream = new stream.PassThrough();
-            bufferStream.end(buffer);
-
-            bufferStream
-                .pipe(csv({ mapHeaders: ({ header }) => header.trim() }))
-                .on('data', (data) => {
-                    results.push({
-                        group: {
-                            name: data.groupName,
-                            imageUrl: data.groupImageUrl
-                        },
-                        category: {
-                            name: data.categoryName,
-                            imageUrl: data.categoryImageUrl
-                        },
-                        gender: data.gender,
-                        productType: {
-                            type: data.productType,
-                            imageUrl: data.productTypeImageUrl
-                        },
-                        fit: data.fit,
-                        price: data.price,
-                        productDetails: data.productDetails,
-                        variant: {
-                            color: { name: data.data.variantColor ? data.variantColor : "WORK WEAR COLOR", hexcode: colorCodes[data.variantColor] ? colorCodes[data.variantColor] : null },
-                            variantSizes: [
-                                {
-                                    size: data.variantSize,
-                                    quantity: parseInt(data.variantQuantity),
-                                }
-                            ],
-                            imageUrls: data.variantImages ? data.variantImages.split(';') : [],
-                        }
-                    });
-                })
-                .on('end', () => resolve(results))
-                .on('error', (error) => reject(error));
-        });
-    }
-
-    async bulkWorkWearInsertOrUpdate(data, session) {
-        // First, update existing products to add variants if they do not exist
-        // for (const item of data) {
-        //     await this.addWorkWearVariant(item);
-        // }
-
-        let uploadData = [];
-        for (const item of data) {
-            const productData = await this.addWorkWearVariant(item, session); // Include session in function call
-            productData = Array.isArray(productData) ? productData[0] : productData
-            if (productData) {
-                let uploadEntry = uploadData.find(entry =>
-                    entry.group === item.group.name &&
-                    entry.productId?.toString() === productData.productId?.toString()
-                );
-
-                if (uploadEntry) {
-                    let variantEntry = uploadEntry.variants.find(v => v.color.name === item.variant.color.name);
-                    if (variantEntry) {
-                        let sizeEntry = variantEntry.variantSizes.find(vs => vs.size === item.variant.variantSizes[0].size);
-                        if (sizeEntry) {
-                            sizeEntry.quantityOfUpload += item.variant.variantSizes[0].quantity;
-                        } else {
-                            variantEntry.variantSizes.push({
-                                size: item.variant.variantSizes[0].size,
-                                quantityOfUpload: item.variant.variantSizes[0].quantity
-                            });
-                        }
-                    } else {
-                        uploadEntry.variants.push({
-                            color: item.variant.color,
-                            variantSizes: item.variant.variantSizes.map(vs => ({
-                                size: vs.size,
-                                quantityOfUpload: vs.quantity
-                            }))
-                        });
-                    }
-                } else {
-                    uploadData.push({
-                        group: item.group.name,
-                        productId: productData.productId,
-                        variants: [{
-                            color: item.variant.color,
-                            variantSizes: item.variant.variantSizes.map(vs => ({
-                                size: vs.size,
-                                quantityOfUpload: vs.quantity
-                            }))
-                        }]
-                    });
-                }
-            }
-        }
-        return uploadData;
-    }
-
-    async addWorkWearVariant(item, session) {
-        const existingProduct = await WorkWearModel.findOne({
-            'group.name': item.group.name,
-            'category.name': item.category.name,
-            gender: item.gender,
-            'productType.type': item.productType.type,
-            fit: item.fit
-        }, null, { session });
-
-        if (existingProduct) {
-            const variant = existingProduct.variants.find(v => v.color.name === item.variant.color.name);
-            if (variant) {
-                // Update existing variant's details or add new size details
-                const sizeDetail = variant.variantSizes.find(v => v.size === item.variant.variantSizes[0].size);
-                if (sizeDetail) {
-                    sizeDetail.quantity += item.variant.variantSizes[0].quantity;
-                } else {
-                    variant.variantSizes.push(item.variant.variantSizes[0]);
-                }
-                await existingProduct.save({ session });  // Save updates
-            } else {
-                // Push new variant if color does not exist
-                existingProduct.variants.push(item.variant);
-                await existingProduct.save({ session });
-            }
-            return existingProduct;
-        } else {
-            // Create new product if it does not exist
-            return await WorkWearModel.create([{
-                group: item.group,
-                category: item.category,
-                gender: item.gender,
-                productType: item.productType,
-                fit: item.fit,
-                variants: [item.variant]
-            }], { session });
+            console.error(`Error adding variant to ${group} product:`, error.message);
+            throw new Error(`Failed to add or update ${group} variant`);
         }
     }
 
     async recordUpload(uploadData, session) {
-        let totalAmountOfUploaded = 0;
-        for (const product of uploadData) {
-            const ProductModel = modelMap[product.group]
-            const productDetails = await ProductModel.findOne({ productId: product.productId }, null, { session });
+        try {
+            let totalAmountOfUploaded = 0;
+            for (const product of uploadData) {
+                const ProductModel = modelMap[product.group]
+                const productDetails = await ProductModel.findOne({ productId: product.productId }, null, { session });
 
-            for (const variant of product.variants) {
-                const variantTotal = variant.variantSizes.reduce((sizeTotal, size) => {
-                    return sizeTotal + (size.quantityOfUpload * productDetails.price);
-                }, 0);
-                totalAmountOfUploaded += variantTotal;
+                for (const variant of product.variants) {
+                    const variantTotal = variant.variantSizes.reduce((sizeTotal, size) => {
+                        return sizeTotal + (size.quantityOfUpload * productDetails.price);
+                    }, 0);
+                    totalAmountOfUploaded += variantTotal;
+                }
             }
-        }
 
-        return UploadedHistoryModel.create([{
-            totalAmountOfUploaded,
-            products: uploadData
-        }], { session });
+            return UploadedHistoryModel.create([{
+                totalAmountOfUploaded,
+                products: uploadData
+            }], { session });
+        } catch (error) {
+            console.error("Failed to record upload data:", error.message);
+            throw new Error(`Failed to record upload`);
+        }
     }
 }
 

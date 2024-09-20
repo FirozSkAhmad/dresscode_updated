@@ -36,7 +36,7 @@ router.post("/bulkUploadElites", jwtHelperObj.verifyAccessToken, upload.single('
         }
 
         const bulkUploadServiceObj = new BulkUploadService();
-        const result = await bulkUploadServiceObj.processEliteCsvFile(req.file.buffer, session); // Pass session to service methods
+        const result = await bulkUploadServiceObj.processCsvFile("ELITE",req.file.buffer, session); // Pass session to service methods
         await session.commitTransaction();
         session.endSession();
         res.json(result);
@@ -44,73 +44,6 @@ router.post("/bulkUploadElites", jwtHelperObj.verifyAccessToken, upload.single('
         await session.abortTransaction();
         session.endSession();
         console.error("Error while uploading the ELITE data:", err.message);
-        next(err);
-    }
-});
-
-router.post("/bulkUploadWorkWears", jwtHelperObj.verifyAccessToken, upload.single('file'), async (req, res, next) => {
-    const session = await mongoose.startSession();  // Start a session for the transaction
-    session.startTransaction();  // Begin the transaction
-
-    try {
-        const roleType = req.aud.split(":")[1]; // Middleware decodes JWT and adds it to req
-        if (roleType !== "WAREHOUSE MANAGER") {
-            await session.abortTransaction();
-            session.endSession();
-            return res.status(401).json({
-                status: 401,
-                message: "Unauthorized access. Only Warehouse Manager can upload data."
-            });
-        }
-
-        if (!req.file || !isCsvFile(req.file)) {
-            await session.abortTransaction();
-            session.endSession();
-            return res.status(400).json({ status: 400, message: "Invalid file format. Please upload a CSV file." });
-        }
-
-        const bulkUploadServiceObj = new BulkUploadService();
-        const result = await bulkUploadServiceObj.processWorkWearCsvFile(req.file.buffer, session);
-        await session.commitTransaction();
-        session.endSession();
-        res.json(result);
-    } catch (err) {
-        await session.abortTransaction();
-        session.endSession();
-        console.error("Error while uploading the data:", err.message);
-        next(err);
-    }
-});
-
-router.post("/bulkUploadSpirits", jwtHelperObj.verifyAccessToken, upload.single('file'), async (req, res, next) => {// jwtHelperObj.verifyAccessToken,
-    const session = await mongoose.startSession();  // Start a session for the transaction
-    session.startTransaction();  // Begin the transaction
-    try {
-        const roleType = req.aud.split(":")[1]; // Middleware decodes JWT and adds it to req
-        if (roleType !== "WAREHOUSE MANAGER") {
-            await session.abortTransaction();
-            session.endSession();
-            return res.status(401).json({
-                status: 401,
-                message: "Unauthorized access. Only Warehouse Manager can upload data."
-            });
-        }
-
-        if (!req.file || !isCsvFile(req.file)) {
-            await session.abortTransaction();
-            session.endSession();
-            return res.status(400).json({ status: 400, message: "Invalid file format. Please upload a CSV file." });
-        }
-
-        const bulkUploadServiceObj = new BulkUploadService();
-        const result = await bulkUploadServiceObj.processSpiritsCsvFile(req.file.buffer, session);
-        await session.commitTransaction();
-        session.endSession();
-        res.json(result);
-    } catch (err) {
-        await session.abortTransaction();
-        session.endSession();
-        console.error("Error while uploading the data:", err.message);
         next(err);
     }
 });
@@ -136,40 +69,7 @@ router.post("/bulkUploadTogs", jwtHelperObj.verifyAccessToken, upload.single('fi
         }
 
         const bulkUploadServiceObj = new BulkUploadService();
-        const result = await bulkUploadServiceObj.processTogsCsvFile(req.file.buffer, session);
-        await session.commitTransaction();
-        session.endSession();
-        res.json(result);
-    } catch (err) {
-        await session.abortTransaction();
-        session.endSession();
-        console.error("Error while uploading the data:", err.message);
-        next(err);
-    }
-});
-
-router.post("/bulkUploadShields", jwtHelperObj.verifyAccessToken, upload.single('file'), async (req, res, next) => {// jwtHelperObj.verifyAccessToken,
-    const session = await mongoose.startSession();  // Start a session for the transaction
-    session.startTransaction();  // Begin the transaction
-    try {
-        const roleType = req.aud.split(":")[1]; // Middleware decodes JWT and adds it to req
-        if (roleType !== "WAREHOUSE MANAGER") {
-            await session.abortTransaction();
-            session.endSession();
-            return res.status(401).json({
-                status: 401,
-                message: "Unauthorized access. Only Warehouse Manager can upload data."
-            });
-        }
-
-        if (!req.file || !isCsvFile(req.file)) {
-            await session.abortTransaction();
-            session.endSession();
-            return res.status(400).json({ status: 400, message: "Invalid file format. Please upload a CSV file." });
-        }
-
-        const bulkUploadServiceObj = new BulkUploadService();
-        const result = await bulkUploadServiceObj.processShieldsCsvFile(req.file.buffer, session);
+        const result = await bulkUploadServiceObj.processCsvFile("TOGS",req.file.buffer, session);
         await session.commitTransaction();
         session.endSession();
         res.json(result);
@@ -202,7 +102,7 @@ router.post("/bulkUploadHeals", jwtHelperObj.verifyAccessToken, upload.single('f
         }
 
         const bulkUploadServiceObj = new BulkUploadService();
-        const result = await bulkUploadServiceObj.processHealsCsvFile(req.file.buffer, session);
+        const result = await bulkUploadServiceObj.processCsvFile("HEAL",req.file.buffer, session);
         await session.commitTransaction();
         session.endSession();
         res.json(result);

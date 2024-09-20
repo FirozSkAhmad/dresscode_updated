@@ -2,16 +2,18 @@ const UserModel = require('../utils/Models/userModel');
 const OrderModel = require('../utils/Models/orderModel');
 const QuoteModel = require('../utils/Models/quoteModel');
 const HealModel = require('../utils/Models/healModel');
-const ShieldModel = require('../utils/Models/shieldModel');
 const EliteModel = require('../utils/Models/eliteModel');
 const TogsModel = require('../utils/Models/togsModel');
-const SpiritsModel = require('../utils/Models/spiritsModel');
-const WorkWearModel = require('../utils/Models/workWearModel');
 const mongoose = require('mongoose');
 const JWTHelper = require('../utils/Helpers/jwt_helper')
 const bcrypt = require('bcrypt');
 const colorCodes = require('../utils/Helpers/data');
 const Razorpay = require('razorpay')
+const modelMap = {
+    "HEAL": HealModel,
+    "ELITE": EliteModel,
+    "TOGS": TogsModel,
+};
 
 class OrderService {
     constructor() {
@@ -22,16 +24,6 @@ class OrderService {
     async createOrder(userId, addressId, orderDetails, session) {
         try {
             const { products: orderProducts } = orderDetails;
-
-            // Mapping from group to Product Model
-            const modelMap = {
-                "HEAL": HealModel,
-                "SHIELD": ShieldModel,
-                "ELITE": EliteModel,
-                "TOGS": TogsModel,
-                "SPIRIT": SpiritsModel,
-                "WORK WEAR UNIFORMS": WorkWearModel
-            };
 
             let totalDiscountAmount = 0; // Initialize total discount amount
             let totalPriceAfterDiscount = 0; // Initialize total price after discount
@@ -149,14 +141,6 @@ class OrderService {
     async createQuote(userId, quoteDetails) {
         const { group, productId, color, size } = quoteDetails;
         try {
-            const modelMap = {
-                "HEAL": HealModel,
-                "SHIELD": ShieldModel,
-                "ELITE": EliteModel,
-                "TOGS": TogsModel,
-                "SPIRIT": SpiritsModel,
-                "WORK WEAR UNIFORMS": WorkWearModel
-            };
 
             const ProductModel = modelMap[group];
             if (!ProductModel) {

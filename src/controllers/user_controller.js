@@ -9,21 +9,15 @@ const mongoose = require('mongoose');
 const OrderModel = require('../utils/Models/orderModel');
 const ReturnOrdersModel = require('../utils/Models/returnOrdersModel');
 const HealModel = require('../utils/Models/healModel');
-const ShieldModel = require('../utils/Models/shieldModel');
 const EliteModel = require('../utils/Models/eliteModel');
 const TogsModel = require('../utils/Models/togsModel');
-const SpiritsModel = require('../utils/Models/spiritsModel');
-const WorkWearModel = require('../utils/Models/workWearModel');
 const UserModel = require('../utils/Models/userModel');
 const bcrypt = require('bcrypt');
 
 const modelMap = {
     "HEAL": HealModel,
-    "SHIELD": ShieldModel,
     "ELITE": EliteModel,
     "TOGS": TogsModel,
-    "SPIRIT": SpiritsModel,
-    "WORK WEAR UNIFORMS": WorkWearModel
 };
 
 router.post('/createUser', async (req, res, next) => {

@@ -1,12 +1,14 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const HealModel = require('../utils/Models/healModel');
-const ShieldModel = require('../utils/Models/shieldModel');
 const EliteModel = require('../utils/Models/eliteModel');
 const TogsModel = require('../utils/Models/togsModel');
-const SpiritsModel = require('../utils/Models/spiritsModel');
-const WorkWearModel = require('../utils/Models/workWearModel');
 const UploadedHistoryModel = require('../utils/Models/uploadedHistoryModel');
+const modelMap = {
+    "HEAL": HealModel,
+    "ELITE": EliteModel,
+    "TOGS": TogsModel,
+};
 
 
 class EComService {
@@ -16,14 +18,11 @@ class EComService {
     async getGroups() {
         const models = {
             HEAL: HealModel,
-            SHIELD: ShieldModel,
             ELITE: EliteModel,
             TOGS: TogsModel,
-            SPIRIT: SpiritsModel,
-            WORK_WEAR_UNIFORMS: WorkWearModel
         };
 
-        const groups = ["HEAL", "SHIELD", "ELITE", "TOGS", "SPIRIT", "WORK WEAR UNIFORMS"];
+        const groups = ["HEAL", "ELITE", "TOGS"];
         const groupDetails = [];
 
         try {
@@ -232,14 +231,6 @@ class EComService {
 
 
     async getProductFilters(groupName, category, subCategory, gender, productType) {
-        const modelMap = {
-            "HEAL": HealModel,
-            "SHIELD": ShieldModel,
-            "ELITE": EliteModel,
-            "TOGS": TogsModel,
-            "SPIRIT": SpiritsModel,
-            "WORK WEAR UNIFORMS": WorkWearModel
-        };
 
         const modelToUse = modelMap[groupName];
 
@@ -350,12 +341,6 @@ class EComService {
 
     async getFiltersByGroup(groupName) {
         try {
-            const modelMap = {
-                "HEAL": HealModel,
-                "ELITE": EliteModel,
-                "TOGS": TogsModel,
-            };
-
             const modelToUse = modelMap[groupName];
 
             const filters = await modelToUse.aggregate([
@@ -728,14 +713,6 @@ class EComService {
     }
 
     async getProductsByFilters(groupName, category, subCategory, gender, productType, fit, color, size, neckline, sleeves) {
-        const modelMap = {
-            "HEAL": HealModel,
-            "SHIELD": ShieldModel,
-            "ELITE": EliteModel,
-            "TOGS": TogsModel,
-            "SPIRIT": SpiritsModel,
-            "WORK WEAR UNIFORMS": WorkWearModel
-        };
 
         const colorMap = {
             "BLACK": "#000000",
@@ -887,15 +864,6 @@ class EComService {
     }
 
     async getProductsByGroup(groupName, color, size) {
-        const modelMap = {
-            "HEAL": HealModel,
-            "SHIELD": ShieldModel,
-            "ELITE": EliteModel,
-            "TOGS": TogsModel,
-            "SPIRIT": SpiritsModel,
-            "WORK WEAR UNIFORMS": WorkWearModel
-        };
-
         const sizeAndColorConfig = {
             "ELITE": {
                 allColors: [],
@@ -1065,14 +1033,6 @@ class EComService {
 
 
     async getProductVariantAvaColors(groupName, productId) {
-        const modelMap = {
-            "HEAL": HealModel,
-            "SHIELD": ShieldModel,
-            "ELITE": EliteModel,
-            "TOGS": TogsModel,
-            "SPIRIT": SpiritsModel,
-            "WORK WEAR UNIFORMS": WorkWearModel
-        };
 
         const modelToUse = modelMap[groupName];
 
@@ -1111,15 +1071,6 @@ class EComService {
     }
 
     async getAvaSizesByColor(groupName, productId, color) {
-        const modelMap = {
-            "HEAL": HealModel,
-            "SHIELD": ShieldModel,
-            "ELITE": EliteModel,
-            "TOGS": TogsModel,
-            "SPIRIT": SpiritsModel,
-            "WORK WEAR UNIFORMS": WorkWearModel
-        };
-
         const modelToUse = modelMap[groupName];
 
         if (!modelToUse) {
@@ -1161,14 +1112,6 @@ class EComService {
 
 
     async getProductDetailsWithSpecificVariant(groupName, productId, size, color) {
-        const modelMap = {
-            "HEAL": HealModel,
-            "SHIELD": ShieldModel,
-            "ELITE": EliteModel,
-            "TOGS": TogsModel,
-            "SPIRIT": SpiritsModel,
-            "WORK WEAR UNIFORMS": WorkWearModel
-        };
 
         const sizeAndColorConfig = {
             "ELITE": {
@@ -1285,14 +1228,6 @@ class EComService {
     }
 
     async getProductFilters(groupName, category, subCategory, gender, productType) {
-        const modelMap = {
-            "HEAL": HealModel,
-            "SHIELD": ShieldModel,
-            "ELITE": EliteModel,
-            "TOGS": TogsModel,
-            "SPIRIT": SpiritsModel,
-            "WORK WEAR UNIFORMS": WorkWearModel
-        };
 
         const modelToUse = modelMap[groupName];
 
@@ -1402,15 +1337,6 @@ class EComService {
     }
 
     async getProductFilters(groupName) {
-        const modelMap = {
-            "HEAL": HealModel,
-            "SHIELD": ShieldModel,
-            "ELITE": EliteModel,
-            "TOGS": TogsModel,
-            "SPIRIT": SpiritsModel,
-            "WORK WEAR UNIFORMS": WorkWearModel
-        };
-
         const modelToUse = modelMap[groupName];
 
         const query = {
@@ -1830,15 +1756,6 @@ class EComService {
     }
 
     async getProductsByFilters(groupName, category, subCategory, gender, productType, fit, color, size, neckline, sleeves) {
-        const modelMap = {
-            "HEAL": HealModel,
-            "SHIELD": ShieldModel,
-            "ELITE": EliteModel,
-            "TOGS": TogsModel,
-            "SPIRIT": SpiritsModel,
-            "WORK WEAR UNIFORMS": WorkWearModel
-        };
-
         const colorMap = {
             "BLACK": "#000000",
             "SAGE GREEN": "#B2AC88",
@@ -1989,14 +1906,6 @@ class EComService {
     }
 
     async getProductVariantAvaColors(groupName, productId) {
-        const modelMap = {
-            "HEAL": HealModel,
-            "SHIELD": ShieldModel,
-            "ELITE": EliteModel,
-            "TOGS": TogsModel,
-            "SPIRIT": SpiritsModel,
-            "WORK WEAR UNIFORMS": WorkWearModel
-        };
 
         const modelToUse = modelMap[groupName];
 
@@ -2035,15 +1944,6 @@ class EComService {
     }
 
     async getAvaSizesByColor(groupName, productId, color) {
-        const modelMap = {
-            "HEAL": HealModel,
-            "SHIELD": ShieldModel,
-            "ELITE": EliteModel,
-            "TOGS": TogsModel,
-            "SPIRIT": SpiritsModel,
-            "WORK WEAR UNIFORMS": WorkWearModel
-        };
-
         const modelToUse = modelMap[groupName];
 
         if (!modelToUse) {
@@ -2085,14 +1985,6 @@ class EComService {
 
 
     async getProductDetailsWithSpecificVariant(groupName, productId, size, color) {
-        const modelMap = {
-            "HEAL": HealModel,
-            "SHIELD": ShieldModel,
-            "ELITE": EliteModel,
-            "TOGS": TogsModel,
-            "SPIRIT": SpiritsModel,
-            "WORK WEAR UNIFORMS": WorkWearModel
-        };
 
         const sizeAndColorConfig = {
             "ELITE": {

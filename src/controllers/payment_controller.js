@@ -9,20 +9,14 @@ const Razorpay = require('razorpay');
 const OrderModel = require('../utils/Models/orderModel.js');
 const mongoose = require('mongoose');
 const HealModel = require('../utils/Models/healModel');
-const ShieldModel = require('../utils/Models/shieldModel');
 const EliteModel = require('../utils/Models/eliteModel');
 const TogsModel = require('../utils/Models/togsModel');
-const SpiritsModel = require('../utils/Models/spiritsModel');
-const WorkWearModel = require('../utils/Models/workWearModel');
 
 // Mapping from group to Product Model
 const modelMap = {
     "HEAL": HealModel,
-    "SHIELD": ShieldModel,
     "ELITE": EliteModel,
     "TOGS": TogsModel,
-    "SPIRIT": SpiritsModel,
-    "WORK WEAR UNIFORMS": WorkWearModel
 };
 
 // const instance = new Razorpay({

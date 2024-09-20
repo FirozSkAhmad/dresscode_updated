@@ -1,15 +1,17 @@
 const UserModel = require('../utils/Models/userModel');
 const OrderModel = require('../utils/Models/orderModel');
 const HealModel = require('../utils/Models/healModel');
-const ShieldModel = require('../utils/Models/shieldModel');
 const EliteModel = require('../utils/Models/eliteModel');
 const TogsModel = require('../utils/Models/togsModel');
-const SpiritsModel = require('../utils/Models/spiritsModel');
-const WorkWearModel = require('../utils/Models/workWearModel');
 const mongoose = require('mongoose');
 const JWTHelper = require('../utils/Helpers/jwt_helper')
 const bcrypt = require('bcrypt');
 const colorCodes = require('../utils/Helpers/data');
+const modelMap = {
+    "HEAL": HealModel,
+    "ELITE": EliteModel,
+    "TOGS": TogsModel,
+};
 
 class UserService {
     constructor() {
@@ -307,14 +309,6 @@ class UserService {
     }
 
     async enhanceOrderWithProductDetails(order) {
-        const modelMap = {
-            "HEAL": HealModel,
-            "SHIELD": ShieldModel,
-            "ELITE": EliteModel,
-            "TOGS": TogsModel,
-            "SPIRIT": SpiritsModel,
-            "WORK WEAR UNIFORMS": WorkWearModel
-        };
 
         const productsWithDetails = await Promise.all(order.products.map(async (product) => {
             const ProductModel = modelMap[product.group];
@@ -452,15 +446,6 @@ class UserService {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
             }
 
-            const modelMap = {
-                "HEAL": HealModel,
-                "SHIELD": ShieldModel,
-                "ELITE": EliteModel,
-                "TOGS": TogsModel,
-                "SPIRIT": SpiritsModel,
-                "WORK WEAR UNIFORMS": WorkWearModel
-            };
-
             // For each order, find the product details from the respective model
             const quotesWithDetails = await Promise.all(user.quotes.map(async (quote) => {
                 const ProductModel = modelMap[quote.group];
@@ -553,15 +538,6 @@ class UserService {
             // Return only the item affected
             const addedOrUpdatedCartItem = existingItem || user.cart[user.cart.length - 1];
 
-            const modelMap = {
-                "HEAL": HealModel,
-                "SHIELD": ShieldModel,
-                "ELITE": EliteModel,
-                "TOGS": TogsModel,
-                "SPIRIT": SpiritsModel,
-                "WORK WEAR UNIFORMS": WorkWearModel
-            };
-
             const ProductModel = modelMap[cartItem.group];
             if (!ProductModel) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid product group");
@@ -631,15 +607,6 @@ class UserService {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
             }
 
-            const modelMap = {
-                "HEAL": HealModel,
-                "SHIELD": ShieldModel,
-                "ELITE": EliteModel,
-                "TOGS": TogsModel,
-                "SPIRIT": SpiritsModel,
-                "WORK WEAR UNIFORMS": WorkWearModel
-            };
-
             // For each cart item, find the product details from the respective model
             const cartWithDetails = await Promise.all(user.cart.map(async (cartItem) => {
                 const ProductModel = modelMap[cartItem.group];
@@ -694,15 +661,6 @@ class UserService {
 
             const { group, productId, color, size, quantityRequired } = productDetails
 
-            const modelMap = {
-                "HEAL": HealModel,
-                "SHIELD": ShieldModel,
-                "ELITE": EliteModel,
-                "TOGS": TogsModel,
-                "SPIRIT": SpiritsModel,
-                "WORK WEAR UNIFORMS": WorkWearModel
-            };
-
             const ProductModel = modelMap[group];
             if (!ProductModel) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid product group");
@@ -727,14 +685,6 @@ class UserService {
 
     async updateCartItemQuantity(userId, cartItemId, quantityNeedToChange, session) {
         try {
-            const modelMap = {
-                "HEAL": HealModel,
-                "SHIELD": ShieldModel,
-                "ELITE": EliteModel,
-                "TOGS": TogsModel,
-                "SPIRIT": SpiritsModel,
-                "WORK WEAR UNIFORMS": WorkWearModel
-            };
 
             const user = await UserModel.findById(userId).session(session);
             if (!user) {
@@ -852,15 +802,6 @@ class UserService {
                 user.wishlist.push(wishItem);
                 await user.save({ session });
 
-                const modelMap = {
-                    "HEAL": HealModel,
-                    "SHIELD": ShieldModel,
-                    "ELITE": EliteModel,
-                    "TOGS": TogsModel,
-                    "SPIRIT": SpiritsModel,
-                    "WORK WEAR UNIFORMS": WorkWearModel
-                };
-
                 const ProductModel = modelMap[wishItem.group];
                 const productDetails = await ProductModel.findOne({ productId: wishItem.productId }).select('-variants -reviews -isDeleted -createdAt -updatedAt -__v');
 
@@ -881,15 +822,6 @@ class UserService {
             if (!user) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
             }
-
-            const modelMap = {
-                "HEAL": HealModel,
-                "SHIELD": ShieldModel,
-                "ELITE": EliteModel,
-                "TOGS": TogsModel,
-                "SPIRIT": SpiritsModel,
-                "WORK WEAR UNIFORMS": WorkWearModel
-            };
 
             // For each cart item, find the product details from the respective model
             const wishlistWithDetails = await Promise.all(user.wishlist.map(async (wishlistItem) => {
@@ -936,14 +868,6 @@ class UserService {
     }
 
     async addProductReview(group, productId, reviewData, session) {
-        const modelMap = {
-            "HEAL": HealModel,
-            "SHIELD": ShieldModel,
-            "ELITE": EliteModel,
-            "TOGS": TogsModel,
-            "SPIRIT": SpiritsModel,
-            "WORK WEAR UNIFORMS": WorkWearModel
-        };
 
         const ProductModel = modelMap[group];
         if (!ProductModel) {
@@ -962,14 +886,6 @@ class UserService {
     }
 
     async getProductReviews(group, productId) {
-        const modelMap = {
-            "HEAL": HealModel,
-            "SHIELD": ShieldModel,
-            "ELITE": EliteModel,
-            "TOGS": TogsModel,
-            "SPIRIT": SpiritsModel,
-            "WORK WEAR UNIFORMS": WorkWearModel
-        };
 
         const ProductModel = modelMap[group];
         if (!ProductModel) {
