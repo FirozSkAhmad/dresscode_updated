@@ -24,7 +24,8 @@ class OrderService {
     async createOrder(userId, addressId, orderDetails, session) {
         try {
             const { products: orderProducts } = orderDetails;
-
+            console.log("orderDetails:", orderDetails)
+            console.log("orderProducts:", orderProducts)
             let totalDiscountAmount = 0; // Initialize total discount amount
             let totalPriceAfterDiscount = 0; // Initialize total price after discount
             let totalAmount = 0; // Initialize total amount without discount
