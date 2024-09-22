@@ -24,8 +24,6 @@ class OrderService {
     async createOrder(userId, addressId, orderDetails, session) {
         try {
             const { products: orderProducts } = orderDetails;
-            console.log("orderDetails:", orderDetails)
-            console.log("orderProducts:", orderProducts)
             let totalDiscountAmount = 0; // Initialize total discount amount
             let totalPriceAfterDiscount = 0; // Initialize total price after discount
             let totalAmount = 0; // Initialize total amount without discount
@@ -33,7 +31,7 @@ class OrderService {
             // Process each product in the order
             const productsProcessed = await Promise.all(orderProducts.map(async (product) => {
                 const { group, productId, color, size, quantityOrdered } = product;
-                const ProductModel = modelMap[group];
+                const ProductModel = modelMap[group.trim().toUpperCase()];
                 if (!ProductModel) {
                     throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid product group");
                 }
