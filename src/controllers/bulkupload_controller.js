@@ -36,7 +36,7 @@ router.post("/bulkUploadElites", jwtHelperObj.verifyAccessToken, upload.single('
         }
 
         const bulkUploadServiceObj = new BulkUploadService();
-        const result = await bulkUploadServiceObj.processCsvFile("ELITE",req.file.buffer, session); // Pass session to service methods
+        const result = await bulkUploadServiceObj.processCsvFile("ELITE", req.file.buffer, session); // Pass session to service methods
         await session.commitTransaction();
         session.endSession();
         res.json(result);
@@ -62,6 +62,17 @@ router.post("/bulkUploadTogs", jwtHelperObj.verifyAccessToken, upload.single('fi
             });
         }
 
+        // Extract the schoolName from form-data
+        const schoolName = req.body.schoolName;
+        if (!schoolName) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(400).json({
+                status: 400,
+                message: "schoolName is required in the form-data."
+            });
+        }
+
         if (!req.file || !isCsvFile(req.file)) {
             await session.abortTransaction();
             session.endSession();
@@ -69,7 +80,7 @@ router.post("/bulkUploadTogs", jwtHelperObj.verifyAccessToken, upload.single('fi
         }
 
         const bulkUploadServiceObj = new BulkUploadService();
-        const result = await bulkUploadServiceObj.processCsvFile("TOGS",req.file.buffer, session);
+        const result = await bulkUploadServiceObj.processCsvFile("TOGS", req.file.buffer, session, schoolName);
         await session.commitTransaction();
         session.endSession();
         res.json(result);
@@ -102,7 +113,7 @@ router.post("/bulkUploadHeals", jwtHelperObj.verifyAccessToken, upload.single('f
         }
 
         const bulkUploadServiceObj = new BulkUploadService();
-        const result = await bulkUploadServiceObj.processCsvFile("HEAL",req.file.buffer, session);
+        const result = await bulkUploadServiceObj.processCsvFile("HEAL", req.file.buffer, session);
         await session.commitTransaction();
         session.endSession();
         res.json(result);

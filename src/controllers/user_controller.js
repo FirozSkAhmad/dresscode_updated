@@ -699,25 +699,34 @@ router.post('/order/cancel/:orderId', jwtHelperObj.verifyAccessToken, async (req
     const { orderId } = req.params;
 
     try {
-        // Call Shiprocket cancel API
-        const response = await axios.post(`https://apiv2.shiprocket.in/v1/external/orders/cancel`, req.body, {
-            headers: {
-                'Authorization': `Bearer ${process.env.SHIPROCKET_API_TOKEN}`
-            }
-        });
+        // Find the order by orderId
+        const order = await OrderModel.findOne({ orderId: orderId });
 
-        // If the Shiprocket API call is successful, update the order's deliveryStatus
-        await OrderModel.findOneAndUpdate(
-            { orderId: orderId },  // Find the order by orderId (assuming it's passed in req.body)
-            { deliveryStatus: 'Canceled' },  // Update the deliveryStatus to Canceled
-            { refund_payment_status: 'Pending' },  // Update the refund_payment_status to Pending
+        if (!order) {
+            return res.status(404).json({ message: "Order not found" });
+        }
+
+        // Check if shiprocket_order_id is null
+        if (order.shiprocket_order_id !== null) {
+            return res.status(400).json({ 
+                message: "Order cannot be canceled, as it's already processed for delivery."
+            });
+        }
+
+        // Update the order's deliveryStatus and refund_payment_status if shiprocket_order_id is null
+        const updatedOrder = await OrderModel.findOneAndUpdate(
+            { orderId: orderId },
+            {
+                deliveryStatus: 'Canceled',
+                refund_payment_status: 'Pending'
+            },
             { new: true }  // Return the updated document
         );
 
-        // Respond with the Shiprocket API response
+        // Respond with a success message
         res.status(200).json({
             message: "Order canceled successfully",
-            shiprocketResponse: response.data
+            updatedOrder
         });
 
     } catch (error) {
@@ -725,6 +734,7 @@ router.post('/order/cancel/:orderId', jwtHelperObj.verifyAccessToken, async (req
         res.status(500).send({ message: "Failed to cancel order", error: error.message });
     }
 });
+
 
 router.post('/order/return', jwtHelperObj.verifyAccessToken, async (req, res) => {
 

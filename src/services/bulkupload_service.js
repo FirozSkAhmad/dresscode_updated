@@ -33,7 +33,7 @@ class BulkUploadService {
         }
     }
 
-    assembleValidatedData(group, data) {
+    assembleValidatedData(group, data, schoolName) {
         const baseData = {
             group: data.groupName.trim().toUpperCase(),
             category: data.categoryName.trim().toUpperCase(),
@@ -78,15 +78,23 @@ class BulkUploadService {
                 baseData.pattern = data.pattern.trim().toUpperCase();
                 baseData.sleeves = data.sleeves.trim().toUpperCase();
                 baseData.material = data.material.trim().toUpperCase();
+                baseData.schoolName = schoolName.trim().toUpperCase();  // Conditionally add schoolName
                 break;
         }
 
         return baseData;
     }
 
-    async processCsvFile(group, buffer, session) {
+    async processCsvFile(group, buffer, session, schoolName) {
         try {
-            const data = await this.parseCsv(group, buffer);
+            let data;
+
+            // Conditionally pass schoolName to parseCsv if group is 'TOGS'
+            if (group === "TOGS") {
+                data = await this.parseCsv(group, buffer, schoolName);  // Pass schoolName when group is TOGS
+            } else {
+                data = await this.parseCsv(group, buffer);  // No schoolName for other groups
+            }
             const uploadResults = await this.bulkInsertOrUpdate(group, data, session);  // Processing each entry
             await this.recordUpload(uploadResults, session);
             return { status: 200, message: "Data processed successfully." };
@@ -95,7 +103,7 @@ class BulkUploadService {
         }
     }
 
-    parseCsv(group, buffer) {
+    parseCsv(group, buffer, schoolName) {
         return new Promise((resolve, reject) => {
             const results = [];
             const bufferStream = new stream.PassThrough();
@@ -111,7 +119,7 @@ class BulkUploadService {
 
                     try {
                         this.validateData(group, data, rowNumber);
-                        const validatedData = this.assembleValidatedData(group, data);
+                        const validatedData = this.assembleValidatedData(group, data, schoolName);
                         results.push(validatedData);
                     } catch (error) {
                         errorOccurred = true; // Flag that an error occurred
@@ -203,7 +211,7 @@ class BulkUploadService {
         const schemaMap = {
             'HEAL': { additionalFields: ['sleeves', 'fabric'] },
             'ELITE': { additionalFields: ['neckline', 'pattern', 'cuff', 'sleeves', 'material'] },
-            'TOGS': { additionalFields: ['neckline', 'pattern', 'sleeves', 'material'] }
+            'TOGS': { additionalFields: ['neckline', 'pattern', 'sleeves', 'material', 'schoolName'] }
         };
 
         const Model = modelMap[group];
