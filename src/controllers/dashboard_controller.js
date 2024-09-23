@@ -600,6 +600,69 @@ router.get('/getOders', jwtHelperObj.verifyAccessToken, async (req, res) => {
     }
 });
 
+router.get('/getCanceledOrders', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    try {
+        // Find orders where deliveryStatus is "Canceled"
+        const orders = await OrderModel.find(
+            { deliveryStatus: 'Canceled', order_created: { $ne: false }, refund_payment_status: 'Pending' },
+            'orderId dateOfOrder status -_id'
+        ).exec();
+
+        res.status(200).send({
+            message: "Canceled orders retrieved successfully",
+            orders: orders
+        });
+    } catch (error) {
+        console.error("Failed to retrieve canceled orders:", error);
+        res.status(500).send({ message: "Failed to retrieve canceled orders", error: error.message });
+    }
+});
+
+router.post('/updateRefundStatus/:orderId', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const { status } = req.body; // Expecting 'status' in the request body
+
+        // Validate the status
+        const validStatuses = ['Pending', 'Completed'];
+        if (!validStatuses.includes(status)) {
+            return res.status(400).send({ message: `Invalid refund status: ${status}` });
+        }
+
+        const result = await orderServiceObj.updateRefundStatus(orderId, status);
+
+        if (result.success) {
+            res.status(200).send({
+                message: `Refund payment status updated to ${status}`,
+                order: result.order
+            });
+        } else {
+            res.status(result.statusCode).send({ message: result.message });
+        }
+    } catch (error) {
+        console.error("Error updating refund payment status:", error.message);
+        res.status(500).send({ message: "Failed to update refund payment status", error: error.message });
+    }
+});
+
+router.get('/getRefundedOrders', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    try {
+        // Find orders where deliveryStatus is "Canceled"
+        const orders = await OrderModel.find(
+            { deliveryStatus: 'Canceled', order_created: { $ne: false }, refund_payment_status: 'Completed' },
+            'orderId dateOfOrder status -_id'
+        ).exec();
+
+        res.status(200).send({
+            message: "Canceled Refunded retrieved successfully",
+            orders: orders
+        });
+    } catch (error) {
+        console.error("Failed to retrieve canceled orders:", error);
+        res.status(500).send({ message: "Failed to retrieve canceled orders", error: error.message });
+    }
+});
+
 router.get('/getQuotes', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
         const quotesWithUserDetails = await QuoteModel.find()
@@ -688,7 +751,6 @@ router.get('/predefined/boxes', async (req, res) => {
         res.status(500).json({ message: 'Error fetching boxes' });
     }
 });
-
 
 router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, async (req, res) => {
     const session = await startSession();

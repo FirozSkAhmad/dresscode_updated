@@ -364,6 +364,93 @@ class UserService {
         }
     }
 
+    async cancelOrder(orderId) {
+        const session = await mongoose.startSession();
+        try {
+            session.startTransaction();
+
+            // Find the order by orderId within the session
+            const order = await OrderModel.findOne({ orderId: orderId }).session(session);
+
+            if (!order) {
+                await session.abortTransaction();
+                session.endSession();
+                return { success: false, statusCode: 404, message: "Order not found" };
+            }
+
+            // Check if shiprocket_order_id is null
+            if (order.shiprocket_order_id !== null) {
+                await session.abortTransaction();
+                session.endSession();
+                return {
+                    success: false,
+                    statusCode: 400,
+                    message: "Order cannot be canceled, as it's already processed for delivery."
+                };
+            }
+
+            // Update the order's deliveryStatus, refund_payment_status, and dateOfCanceled
+            order.deliveryStatus = 'Canceled';
+            order.refund_payment_status = 'Pending';
+            order.dateOfCanceled = new Date();
+
+            // Save the updated order within the session
+            await order.save({ session });
+
+            // Loop through each product in the order
+            await Promise.all(order.products.map(async (product) => {
+                const ProductModel = modelMap[product.group];
+                if (!ProductModel) {
+                    console.error(`No model found for group ${product.group}`);
+                    return;
+                }
+
+                // Find the product document within the session
+                const productDoc = await ProductModel.findOne({ productId: product.productId }).session(session);
+                if (!productDoc) {
+                    console.error(`Product with productId ${product.productId} not found`);
+                    return;
+                }
+
+                // Find the variant by color
+                const variant = productDoc.variants.find(v => v.color.name === product.color.name);
+                if (!variant) {
+                    console.error(`Variant with color ${product.color.name} not found for product ${product.productId}`);
+                    return;
+                }
+
+                // Find the variant size
+                const variantSize = variant.variantSizes.find(vs => vs.size === product.size);
+                if (!variantSize) {
+                    console.error(`Size ${product.size} not found for product ${product.productId}`);
+                    return;
+                }
+
+                // Add the quantity back
+                variantSize.quantity += product.quantityOrdered;
+
+                // Save the updated product document within the session
+                await productDoc.save({ session });
+            }));
+
+            // Commit the transaction and end the session
+            await session.commitTransaction();
+            session.endSession();
+
+            return { success: true, order: order.toObject() };
+
+        } catch (error) {
+            // If any error occurred, abort the transaction
+            if (session.inTransaction()) {
+                await session.abortTransaction();
+            }
+            session.endSession();
+
+            console.error("Error in canceling the order:", error.message);
+            // Re-throw the error to be handled by the controller
+            throw error;
+        }
+    }
 
     async getUserCanceledOrdersWithProductDetails(userId) {
         try {
@@ -371,7 +458,7 @@ class UserService {
             const user = await UserModel.findById(userId)
                 .populate({
                     path: 'orders',
-                    match: { deliveryStatus: 'Canceled' }  // Filter to only "Canceled" orders
+                    match: { deliveryStatus: 'Canceled', order_created: { $ne: false } }  // Filter to only "Canceled" orders
                 });
 
             if (!user) {

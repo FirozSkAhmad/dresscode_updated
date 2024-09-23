@@ -91,8 +91,11 @@ const orderSchema = new mongoose.Schema({
     },
     refund_payment_status: {
         type: String,
+        enum: ['Pending', 'Completed', null],
         default: null
     },
+    dateOfCanceled: { type: Date, default: null },
+    dateOfRefunded: { type: Date, default: null },
     dateOfDelivery: { type: Date, default: null },
     estimatedDelivery: { type: Date, default: null },
     status: {

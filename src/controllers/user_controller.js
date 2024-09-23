@@ -285,27 +285,6 @@ router.get('/:userId/getOrders', jwtHelperObj.verifyAccessToken, async (req, res
     }
 });
 
-router.get('/:userId/getCanceleOrders', jwtHelperObj.verifyAccessToken, async (req, res) => {
-    try {
-        const { userId } = req.params;
-
-        const cancledOrders = await userServiceObj.getUserCanceledOrdersWithProductDetails(userId);
-
-        if (cancledOrders.length === 0) {
-            return res.status(404).send({ message: 'No canceled orders found for this user.' });
-        }
-
-        res.status(200).send({
-            message: "Cancled Orders retrieved successfully",
-            cancledOrders: cancledOrders
-        });
-    } catch (error) {
-        console.error("Failed to retrieve orders:", error.message);
-        res.status(500).send({ message: error.message });
-    }
-});
-
-
 router.get('/:userId/getReturnOrders', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
         const { userId } = req.params;
@@ -694,44 +673,51 @@ router.get('/:group/:productId/getProductReviews', jwtHelperObj.verifyAccessToke
     }
 });
 
-router.post('/order/cancel/:orderId', jwtHelperObj.verifyAccessToken, async (req, res) => {
-
-    const { orderId } = req.params;
-
+router.post('/:userId/cancelOrder/:orderId', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
-        // Find the order by orderId
-        const order = await OrderModel.findOne({ orderId: orderId });
-
-        if (!order) {
-            return res.status(404).json({ message: "Order not found" });
-        }
-
-        // Check if shiprocket_order_id is null
-        if (order.shiprocket_order_id !== null) {
-            return res.status(400).json({ 
-                message: "Order cannot be canceled, as it's already processed for delivery."
+        const { userId, orderId } = req.params;
+        const aubUserId = req.aud.split(":")[0]; // Middleware decodes JWT and adds it to req
+        // Check if the user is authorized to cancel this order
+        if (userId !== aubUserId) {
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access."
             });
         }
 
-        // Update the order's deliveryStatus and refund_payment_status if shiprocket_order_id is null
-        const updatedOrder = await OrderModel.findOneAndUpdate(
-            { orderId: orderId },
-            {
-                deliveryStatus: 'Canceled',
-                refund_payment_status: 'Pending'
-            },
-            { new: true }  // Return the updated document
-        );
+        const result = await userServiceObj.cancelOrder(orderId);
 
-        // Respond with a success message
-        res.status(200).json({
-            message: "Order canceled successfully",
-            updatedOrder
-        });
-
+        if (result.success) {
+            res.status(200).send({
+                message: "Order canceled successfully",
+                order: result.order
+            });
+        } else {
+            res.status(result.statusCode).send({ message: result.message });
+        }
     } catch (error) {
-        console.error("Error in canceling the order: ", error.message);
+        console.error("Error in canceling the order:", error.message);
         res.status(500).send({ message: "Failed to cancel order", error: error.message });
+    }
+});
+
+router.get('/:userId/getCanceledOrders', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        const canceledOrders = await userServiceObj.getUserCanceledOrdersWithProductDetails(userId);
+
+        if (canceledOrders.length === 0) {
+            return res.status(404).send({ message: 'No canceled orders found for this user.' });
+        }
+
+        res.status(200).send({
+            message: "Canceled orders retrieved successfully",
+            orders: canceledOrders
+        });
+    } catch (error) {
+        console.error("Failed to retrieve canceled orders:", error.message);
+        res.status(500).send({ message: error.message });
     }
 });
 
