@@ -9,7 +9,7 @@ const cookieParser = require('cookie-parser');
 
 const allowedOrigins = [
     'https://36b4-2405-201-c404-293c-6d5e-1655-9360-f1b5.ngrok-free.app',
-    'https://f576-2405-201-c404-293c-f83c-ffc1-d478-2f84.ngrok-free.app',
+    'https://70ab-2405-201-c404-293c-915e-d47e-6830-dd33.ngrok-free.app',
     'https://dresscode-dashboard.vercel.app'
 ];
 
