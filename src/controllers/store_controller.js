@@ -59,12 +59,42 @@ const validateStoreData = (data) => {
 };
 
 // Define the route to get all store names
-router.get('/store-names', async (req, res) => {
+router.get('/store-names', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
+        const roleType = req.aud.split(":")[1]; // Middleware decodes JWT and adds it to req
+        if (roleType !== "WAREHOUSE MANAGER") {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access. Only Warehouse Manager can upload data."
+            });
+        }
         const storeNames = await storeServiceObj.getAllStoreNames();
         res.status(200).json(storeNames);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+    } catch (err) {
+        console.error("Error while get store names:", err.message);
+        next(err);
+    }
+});
+
+router.post('/store-login', async (req, res, next) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        const data = await storeServiceObj.loginUser(req.body, session, res);
+        await session.commitTransaction();
+        res.send({
+            "status": 200,
+            "message": Constants.SUCCESS,
+            "data": data
+        });
+    } catch (err) {
+        await session.abortTransaction();
+        console.error("Transaction aborted due to an error:", err.message);
+        next(err);
+    } finally {
+        session.endSession();
     }
 });
 

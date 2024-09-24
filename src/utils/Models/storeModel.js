@@ -201,7 +201,7 @@ const storeSchema = new mongoose.Schema({
     roleType:{
         type:String,
         required:true,
-        default:""
+        default:'STORE MANAGER'
     },
     products: [productsSechma]
 }, {
