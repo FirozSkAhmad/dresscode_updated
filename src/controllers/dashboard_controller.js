@@ -14,7 +14,7 @@ const OrderModel = require('../utils/Models/orderModel');
 const QuoteModel = require('../utils/Models/quoteModel');
 const dimensionsModel = require('../utils/Models/dimensionsModel');
 const DashboardUserModel = require('../utils/Models/dashboardUserModel');
-const { createObjectCsvWriter } = require('csv-writer');
+const csvWriter = require('csv-writer').createObjectCsvStringifier; // Import csv-writer
 const ExcelJS = require('exceljs');
 const bwipjs = require('bwip-js');
 const axios = require('axios');
@@ -1280,122 +1280,116 @@ function getFormattedDate() {
 }
 
 
-router.get('/:uploadedId/generateBarcodes', async (req, res) => {
+router.get('/downloadInventory/:storeName', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
-        const { uploadedId } = req.params;
-
-        const history = await UploadedHistoryModel.findOne({ uploadedId });
-        if (!history) {
-            return res.status(404).send({ message: "Upload history not found" });
+        const roleType = req.aud.split(":")[1]; // Middleware decodes JWT and adds it to req
+        if (roleType !== "WAREHOUSE MANAGER") {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access. Only Warehouse Manager can upload data."
+            });
         }
 
-        // Retrieve product details for each product in the history
-        const productsDetails = await Promise.all(history.products.map(async (product) => {
-            const ProductModel = modelMap[product.group];
-            if (!ProductModel) {
-                throw new Error(`No model found for group: ${product.group}`);
+        const { storeName } = req.params;
+
+        // Fetch products from the 'Togs' collection where 'schoolName' matches 'storeName'
+        const products = await TogsModel.find({ schoolName: storeName, isDeleted: false })
+            .select('-reviews') // Exclude 'reviews' if not needed
+            .lean(); // Use lean() for plain JavaScript objects
+
+        if (!products || products.length === 0) {
+            return res.status(404).send({ message: "No products found for the specified school name" });
+        }
+
+        // Define headers for the CSV file
+        const csvStringifier = csvWriter({
+            header: [
+                { id: 'productId', title: 'productId' },
+                { id: 'groupName', title: 'groupName' },
+                { id: 'categoryName', title: 'categoryName' },
+                { id: 'subCategoryName', title: 'subCategoryName' },
+                { id: 'schoolName', title: 'schoolName' },
+                { id: 'gender', title: 'gender' },
+                { id: 'productType', title: 'productType' },
+                { id: 'fit', title: 'fit' },
+                { id: 'neckline', title: 'neckline' },
+                { id: 'pattern', title: 'pattern' },
+                { id: 'sleeves', title: 'sleeves' },
+                { id: 'material', title: 'material' },
+                { id: 'price', title: 'price' },
+                { id: 'productDescription', title: 'productDescription' },
+                { id: 'sizeChart', title: 'sizeChart' },
+                { id: 'variantId', title: 'variantId' },
+                { id: 'variantColor', title: 'variantColor' },
+                { id: 'hexcode', title: 'hexcode' },
+                { id: 'variantSize', title: 'variantSize' },
+                { id: 'variantImages', title: 'variantImages' },
+                { id: 'styleCoat', title: 'styleCoat' },
+                { id: 'sku', title: 'sku' },
+                { id: 'variantQuantity', title: 'variantQuantity' },
+            ]
+        });
+
+        // Prepare records
+        const records = [];
+
+        for (const product of products) {
+            const productDetails = product; // Since we fetched the products directly
+
+            // Iterate over variants
+            for (const variant of product.variants) {
+                // Iterate over variantSizes
+                for (const variantSize of variant.variantSizes) {
+                    const row = {
+                        productId: productDetails.productId,
+                        groupName: productDetails.group,
+                        categoryName: productDetails.category,
+                        subCategoryName: productDetails.subCategory,
+                        schoolName: productDetails.schoolName,
+                        gender: productDetails.gender,
+                        productType: productDetails.productType,
+                        fit: productDetails.fit || "N/A",
+                        neckline: productDetails.neckline || "N/A",
+                        pattern: productDetails.pattern || "N/A",
+                        sleeves: productDetails.sleeves || "N/A",
+                        material: productDetails.material || "N/A",
+                        price: productDetails.price,
+                        productDescription: productDetails.productDescription || "N/A",
+                        sizeChart: productDetails.sizeChart || "N/A",
+                        variantId: variant.variantId,
+                        variantColor: variant.color.name,
+                        hexcode: variant.color.hexcode,
+                        variantSize: variantSize.size,
+                        variantImages: variant.imageUrls ? variant.imageUrls.join(', ') : "N/A",
+                        styleCoat: variantSize.styleCoat,
+                        sku: variantSize.sku,
+                        variantQuantity: variantSize.quantity,
+                    };
+                    records.push(row);
+                }
             }
-            const productDetails = await ProductModel.findOne({ productId: product.productId })
-                .select('-variants -reviews -_id');
-
-            return { ...product.toObject(), productDetails };
-        }));
-
-        // Fetch data from MongoDB
-        // const data = await EliteModel.find({}).select('group category subCategory gender productType fit neckline pattern cuff sleeves material price variants -_id').lean();
-
-        // Create a new workbook and add a worksheet
-        const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet('Product Variants');
-
-        // Define headers for the Excel file
-        worksheet.columns = [
-            { header: 'productId', key: 'productId', width: 20 },
-            { header: 'groupName', key: 'groupName', width: 20 },
-            { header: 'categoryName', key: 'categoryName', width: 20 },
-            { header: 'subCategoryName', key: 'subCategoryName', width: 20 },
-            { header: 'gender', key: 'gender', width: 10 },
-            { header: 'productType', key: 'productType', width: 15 },
-            { header: 'fit', key: 'fit', width: 10 },
-            { header: 'neckline', key: 'neckline', width: 15 },
-            { header: 'pattern', key: 'pattern', width: 15 },
-            { header: 'cuff', key: 'cuff', width: 10 },
-            { header: 'sleeves', key: 'sleeves', width: 15 },
-            { header: 'material', key: 'material', width: 15 },
-            { header: 'price', key: 'price', width: 10 },
-            { header: 'variantSize', key: 'variantSize', width: 12 },
-            { header: 'variantColor', key: 'variantColor', width: 15 },
-            { header: 'variantQuantity', key: 'variantQuantity', width: 18 },
-            // { header: 'variantImage', key: 'variantImage', width: 30 },
-            { header: 'styleCoat', key: 'styleCoat', width: 20 },
-            { header: 'sku', key: 'sku', width: 30 },
-            { header: 'Barcode', key: 'barcode', width: 30, height: 20 } // Placeholder for barcode images
-        ];
-
-        let barcodeIds = [];
-        let rowIndex = 2;
-        for (const item of productsDetails) {
-
-            // Generate a barcode for each styleCoat
-            const barcodeBuffer = await bwipjs.toBuffer({
-                bcid: 'code128',    // Use Code 128 barcode type
-                text: item.variants[0].variantSizes[0].styleCoat, // Use styleCoat as the barcode text
-                scale: 3,           // 3x scaling factor
-                height: 10,         // Bar height, in millimeters
-                includetext: true,  // Include human-readable text
-            });
-
-            const barcodeImageId = workbook.addImage({
-                buffer: barcodeBuffer,
-                extension: 'png',
-            });
-
-            barcodeIds.push(barcodeImageId);
-
-            const rowValues = {
-                productId: item.productDetails.productId,
-                groupName: item.productDetails.group,
-                categoryName: item.productDetails.category,
-                subCategoryName: item.productDetails.subCategory,
-                gender: item.productDetails.gender,
-                productType: item.productDetails.productType,
-                fit: item.productDetails.fit,
-                neckline: item.productDetails.neckline ? item.productDetails.neckline : "N/A",
-                pattern: item.productDetails.pattern ? item.productDetails.pattern : "N/A",
-                cuff: item.productDetails.cuff ? item.productDetails.cuff : "N/A",
-                sleeves: item.productDetails.sleeves ? item.productDetails.sleeves : "N/A",
-                material: item.productDetails.material ? item.productDetails.material : "N/A",
-                price: item.productDetails.price,
-                variantSize: item.variants[0].variantSizes[0].size,
-                variantColor: item.variants[0].color.name,
-                variantQuantity: item.variants[0].variantSizes[0].quantityOfUpload,
-                // variantImage: item.variants[0].variantSizes[0].quantityOfUpload,
-                styleCoat: item.variants[0].variantSizes[0].styleCoat,
-                sku: item.variants[0].variantSizes[0].sku,
-            };
-            worksheet.addRow(rowValues);
-            worksheet.getRow(rowIndex).height = 50; // Set the row height to accommodate the barcode image
-            // worksheet.addImage(barcodeImageId, `V${rowIndex}:V${rowIndex}`);
-
-            rowIndex++;
         }
 
-        // Now add barcode images using a separate loop
-        let addBarcodesCount = rowIndex - 2; // Calculate how many barcodes we need to add
-        for (let i = 0; i < addBarcodesCount; i++) {
-            let barcodeRow = i + 2; // Adjust the row index to start from the first data row
-            worksheet.addImage(barcodeIds[i], `R${barcodeRow}:R${barcodeRow}`);
+        if (records.length === 0) {
+            return res.status(404).send({ message: "No variant data available for the specified school name" });
         }
+
+        // Generate CSV content
+        const header = csvStringifier.getHeaderString();
+        const csvContent = csvStringifier.stringifyRecords(records);
 
         // Set headers for file download
-        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', 'attachment; filename="ProductVariants.xlsx"');
-        await workbook.xlsx.write(res);
-        res.end();
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename="ProductVariants_${storeName}.csv"`);
+
+        // Send the CSV content
+        res.send(header + csvContent);
 
     } catch (error) {
-        console.error(error);
-        res.status(500).send('Failed to generate Excel file');
+        console.error("Error generating CSV file:", error);
+        res.status(500).send('Failed to generate CSV file');
     }
 });
 
