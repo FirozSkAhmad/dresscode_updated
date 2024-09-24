@@ -91,13 +91,13 @@ class StoreService {
     }
 
     // Method to get all store names
-    async getAllStoreNames() {
+    async getAllStoreNameAndIds() {
         try {
             // Use Mongoose to find all stores and select only the storeName field
-            const stores = await Store.find({}, 'storeName').lean();
+            const stores = await Store.find({}, 'storeName storeId').lean();
             // Extract the store names into an array of strings
-            const storeNames = stores.map(store => store.storeName);
-            return storeNames;
+            const storeNameandIds = stores.map(store => { store.storeName, store.storeId });
+            return storeNameandIds;
         } catch (error) {
             // Handle and rethrow the error for the controller to catch
             throw new Error('Error fetching store names: ' + error.message);

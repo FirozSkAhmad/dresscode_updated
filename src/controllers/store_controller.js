@@ -70,8 +70,8 @@ router.get('/store-names', jwtHelperObj.verifyAccessToken, async (req, res) => {
                 message: "Unauthorized access. Only Warehouse Manager can upload data."
             });
         }
-        const storeNames = await storeServiceObj.getAllStoreNames();
-        res.status(200).json(storeNames);
+        const StoreNameAndIds = await storeServiceObj.getAllStoreNameAndIds();
+        res.status(200).json({ message: "store name and Ids retrived successfully", StoreNameAndIds });
     } catch (err) {
         console.error("Error while get store names:", err.message);
         next(err);

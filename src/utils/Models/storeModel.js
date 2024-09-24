@@ -154,6 +154,7 @@ const storeSchema = new mongoose.Schema({
     storeName: {
         type: String,
         required: true,
+        unique: true,
     },
     storeAddress: {
         type: String,
@@ -198,10 +199,10 @@ const storeSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    roleType:{
-        type:String,
-        required:true,
-        default:'STORE MANAGER'
+    roleType: {
+        type: String,
+        required: true,
+        default: 'STORE MANAGER'
     },
     products: [productsSechma]
 }, {
@@ -209,6 +210,6 @@ const storeSchema = new mongoose.Schema({
 });
 
 // Indexes for optimized querying
-storeSchema.index({ storeName: 1 });
+storeSchema.index({ storeId: 1, storeName: 1 });
 
 module.exports = mongoose.model('Store', storeSchema);
