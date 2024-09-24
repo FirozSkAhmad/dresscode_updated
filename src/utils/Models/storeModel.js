@@ -21,15 +21,11 @@ const variantSchema = new mongoose.Schema({
         quantity: {
             type: Number,
             required: true,
-            default: 100,
         },
         styleCoat: {
             type: String,
             trim: true,
             unique: true,
-            default: () => {
-                return crypto.randomBytes(3).toString("hex").toUpperCase().slice(0, 6);
-            },
         },
         sku: {
             type: String,
@@ -47,12 +43,7 @@ const variantSchema = new mongoose.Schema({
     variantId: {
         type: String,
         required: true,
-        unique: true, // Ensure unique variantId for each variant
-        default: () => {
-            // Generate a random 6 character alphanumeric string with a prefix (optional)
-            const prefix = "VAR-"; // You can customize the prefix here
-            return `${prefix}${crypto.randomBytes(3).toString("hex").toUpperCase().slice(0, 6)}`;
-        },
+        unique: true,
     },
 });
 
@@ -65,11 +56,7 @@ const productsSechma = new mongoose.Schema(
         productId: {
             type: String,
             trim: true,
-            unique: true,
-            default: () => {
-                // Generate a random 6 character alphanumeric string
-                return crypto.randomBytes(3).toString('hex').toUpperCase().slice(0, 6);
-            },
+            unique: true
         },
         group: {
             type: String,
@@ -148,8 +135,7 @@ const productsSechma = new mongoose.Schema(
             type: Boolean,
             required: true,
             default: false,
-        },
-        reviews: [reviewSchema]
+        }
     },
     {
         timestamps: true,
@@ -160,10 +146,7 @@ const storeSchema = new mongoose.Schema({
     storeId: {
         type: String,
         trim: true,
-        unique: true,
-        default: () => {
-            return crypto.randomBytes(3).toString("hex").toUpperCase().slice(0, 6);
-        },
+        unique: true
     },
     storeName: {
         type: String,

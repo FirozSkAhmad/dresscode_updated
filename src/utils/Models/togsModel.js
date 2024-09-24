@@ -43,7 +43,6 @@ const variantSchema = new mongoose.Schema({
         quantity: {
             type: Number,
             required: true,
-            default: 100,
         },
         styleCoat: {
             type: String,

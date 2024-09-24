@@ -154,6 +154,7 @@ router.get('/getOverview', async (req, res) => {
         let totalAmount = 0;
         let totalQuantity = 0;
         let totalOrders = 0;
+        let canceledOrders = 0;
 
         // Loop through each upload history and calculate group-wise stock quantity and amount
         for (const history of uploadHistories) {
@@ -211,11 +212,18 @@ router.get('/getOverview', async (req, res) => {
                     stock[product.group] = { amount: 0, quantity: 0, orders: 0 };
                 }
                 stock[product.group].orders += 1;  // Increment the order count for the group
+
+                // Check if the order is canceled
+                if (order.dateOfCanceled) {
+                    canceledOrders += 1;  // Increment canceled orders count
+                }
             });
         });
 
         // Include the total amount, quantity, and orders in the stock object
-        stock.total = { amount: totalAmount, quantity: totalQuantity, orders: totalOrders };
+        stock.total = {
+            amount: totalAmount, quantity: totalQuantity, orders: totalOrders, canceledOrders: canceledOrders
+        };
 
         // Send the response
         res.status(200).send(stock);
