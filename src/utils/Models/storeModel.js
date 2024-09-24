@@ -198,6 +198,11 @@ const storeSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    roleType:{
+        type:String,
+        required:true,
+        default:""
+    },
     products: [productsSechma]
 }, {
     timestamps: true,
