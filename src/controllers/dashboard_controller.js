@@ -398,7 +398,7 @@ router.get('/getOrders', jwtHelperObj.verifyAccessToken, async (req, res) => {
 router.get('/getCancledOrders', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
         // Find orders where deliveryStatus is "Canceled"
-        const orders = await OrderModel.find({ deliveryStatus: 'Canceled' }, 'orderId dateOfOrder dateOfCanceled status -_id').exec();
+        const orders = await OrderModel.find({ deliveryStatus: 'Canceled', refund_payment_status: null, order_created: { $ne: false } }, 'orderId dateOfOrder dateOfCanceled status -_id').exec();
 
         res.status(200).send({
             message: "Cancled Orders retrieved successfully",
