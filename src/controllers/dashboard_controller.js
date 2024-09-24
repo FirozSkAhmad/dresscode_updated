@@ -154,7 +154,7 @@ router.get('/getOverview', async (req, res) => {
         let totalAmount = 0;
         let totalQuantity = 0;
         let totalOrders = 0;
-        let canceledOrders = 0;
+        let totalCanceledOrders = 0;
 
         // Loop through each upload history and calculate group-wise stock quantity and amount
         for (const history of uploadHistories) {
@@ -188,7 +188,7 @@ router.get('/getOverview', async (req, res) => {
 
                 // Update the stock for the group (amount, quantity)
                 if (!stock[product.group]) {
-                    stock[product.group] = { amount: 0, quantity: 0, orders: 0 };
+                    stock[product.group] = { amount: 0, quantity: 0, orders: 0, canceledOrders: 0 };
                 }
                 stock[product.group].amount += groupTotalAmount;
                 stock[product.group].quantity += groupTotalQuantity;
@@ -209,20 +209,21 @@ router.get('/getOverview', async (req, res) => {
 
             order.products.forEach(product => {
                 if (!stock[product.group]) {
-                    stock[product.group] = { amount: 0, quantity: 0, orders: 0 };
+                    stock[product.group] = { amount: 0, quantity: 0, orders: 0, canceledOrders: 0 };
                 }
                 stock[product.group].orders += 1;  // Increment the order count for the group
 
                 // Check if the order is canceled
                 if (order.dateOfCanceled) {
-                    canceledOrders += 1;  // Increment canceled orders count
+                    totalCanceledOrders += 1;
+                    stock[product.group].canceledOrders += 1;  // Increment canceled orders count
                 }
             });
         });
 
         // Include the total amount, quantity, and orders in the stock object
         stock.total = {
-            amount: totalAmount, quantity: totalQuantity, orders: totalOrders, canceledOrders: canceledOrders
+            amount: totalAmount, quantity: totalQuantity, orders: totalOrders, canceledOrders: totalCanceledOrders
         };
 
         // Send the response
