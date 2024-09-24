@@ -395,20 +395,6 @@ router.get('/getOrders', jwtHelperObj.verifyAccessToken, async (req, res) => {
     }
 });
 
-router.get('/getCancledOrders', jwtHelperObj.verifyAccessToken, async (req, res) => {
-    try {
-        // Find orders where deliveryStatus is "Canceled"
-        const orders = await OrderModel.find({ deliveryStatus: 'Canceled', refund_payment_status: null, order_created: { $ne: false } }, 'orderId dateOfOrder dateOfCanceled status -_id').exec();
-
-        res.status(200).send({
-            message: "Cancled Orders retrieved successfully",
-            canceled_orders: orders
-        });
-    } catch (error) {
-        console.error("Failed to retrieve orders:", error);
-        res.status(500).send({ message: "Failed to retrieve orders", error: error.message });
-    }
-});
 
 router.get('/getReturnOders', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
@@ -678,7 +664,7 @@ router.get('/getRefundedOrders', jwtHelperObj.verifyAccessToken, async (req, res
         // Find orders where deliveryStatus is "Canceled"
         const orders = await OrderModel.find(
             { deliveryStatus: 'Canceled', order_created: { $ne: false }, refund_payment_status: 'Completed' },
-            'orderId dateOfOrder status -_id'
+            'orderId dateOfOrder dateOfRefunded status -_id'
         ).exec();
 
         res.status(200).send({
@@ -688,6 +674,22 @@ router.get('/getRefundedOrders', jwtHelperObj.verifyAccessToken, async (req, res
     } catch (error) {
         console.error("Failed to retrieve canceled orders:", error);
         res.status(500).send({ message: "Failed to retrieve canceled orders", error: error.message });
+    }
+});
+
+
+router.get('/getCanceledOrders', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    try {
+        // Find orders where deliveryStatus is "Canceled"
+        const orders = await OrderModel.find({ deliveryStatus: 'Canceled', refund_payment_status: null, order_created: { $ne: false } }, 'orderId dateOfOrder dateOfCanceled status -_id').exec();
+
+        res.status(200).send({
+            message: "Cancled Orders retrieved successfully",
+            canceled_orders: orders
+        });
+    } catch (error) {
+        console.error("Failed to retrieve orders:", error);
+        res.status(500).send({ message: "Failed to retrieve orders", error: error.message });
     }
 });
 
