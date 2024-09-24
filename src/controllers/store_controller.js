@@ -58,4 +58,15 @@ const validateStoreData = (data) => {
     return errors;
 };
 
+// Define the route to get all store names
+router.get('/store-names', async (req, res) => {
+    try {
+        const storeNames = await storeServiceObj.getAllStoreNames();
+        res.status(200).json(storeNames);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
 module.exports = router;

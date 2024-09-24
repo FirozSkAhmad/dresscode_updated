@@ -631,27 +631,43 @@ router.get('/getCanceledOrders', jwtHelperObj.verifyAccessToken, async (req, res
 });
 
 router.patch('/updateRefundStatus/:orderId', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    const session = await mongoose.startSession();
     try {
+        session.startTransaction();
+
         const { orderId } = req.params;
-        const { status } = req.body; // Expecting 'status' in the request body
 
-        // Validate the status
-        const validStatuses = ['Pending', 'Completed'];
-        if (!validStatuses.includes(status)) {
-            return res.status(400).send({ message: `Invalid refund status: ${status}` });
+
+        // Find the order by orderId within the session
+        const order = await OrderModel.findOne({ orderId: orderId }).session(session);
+
+        if (!order) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(404).json({ message: "Order not found" });
         }
 
-        const result = await orderServiceObj.updateRefundStatus(orderId, status);
+        // Update the refund_payment_status
+        order.refund_payment_status = 'Completed';
 
-        if (result.success) {
-            res.status(200).send({
-                message: `Refund payment status updated to ${status}`,
-                order: result.order
-            });
-        } else {
-            res.status(result.statusCode).send({ message: result.message });
-        }
+        order.dateOfRefunded = new Date();
+
+        // Save the updated order within the session
+        await order.save({ session });
+
+        // Commit the transaction
+        await session.commitTransaction();
+        session.endSession();
+
+        res.status(200).send({
+            message: `Refund payment status updated to ${status}`,
+        });
+
     } catch (error) {
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
+        session.endSession();
         console.error("Error updating refund payment status:", error.message);
         res.status(500).send({ message: "Failed to update refund payment status", error: error.message });
     }
@@ -1260,6 +1276,126 @@ function getFormattedDate() {
 
     return `${year}-${month}-${day}`;
 }
+
+
+router.get('/:uploadedId/generateBarcodes', async (req, res) => {
+    try {
+        const { uploadedId } = req.params;
+
+        const history = await UploadedHistoryModel.findOne({ uploadedId });
+        if (!history) {
+            return res.status(404).send({ message: "Upload history not found" });
+        }
+
+        // Retrieve product details for each product in the history
+        const productsDetails = await Promise.all(history.products.map(async (product) => {
+            const ProductModel = modelMap[product.group];
+            if (!ProductModel) {
+                throw new Error(`No model found for group: ${product.group}`);
+            }
+            const productDetails = await ProductModel.findOne({ productId: product.productId })
+                .select('-variants -reviews -_id');
+
+            return { ...product.toObject(), productDetails };
+        }));
+
+        // Fetch data from MongoDB
+        // const data = await EliteModel.find({}).select('group category subCategory gender productType fit neckline pattern cuff sleeves material price variants -_id').lean();
+
+        // Create a new workbook and add a worksheet
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Product Variants');
+
+        // Define headers for the Excel file
+        worksheet.columns = [
+            { header: 'productId', key: 'productId', width: 20 },
+            { header: 'groupName', key: 'groupName', width: 20 },
+            { header: 'categoryName', key: 'categoryName', width: 20 },
+            { header: 'subCategoryName', key: 'subCategoryName', width: 20 },
+            { header: 'gender', key: 'gender', width: 10 },
+            { header: 'productType', key: 'productType', width: 15 },
+            { header: 'fit', key: 'fit', width: 10 },
+            { header: 'neckline', key: 'neckline', width: 15 },
+            { header: 'pattern', key: 'pattern', width: 15 },
+            { header: 'cuff', key: 'cuff', width: 10 },
+            { header: 'sleeves', key: 'sleeves', width: 15 },
+            { header: 'material', key: 'material', width: 15 },
+            { header: 'price', key: 'price', width: 10 },
+            { header: 'variantSize', key: 'variantSize', width: 12 },
+            { header: 'variantColor', key: 'variantColor', width: 15 },
+            { header: 'variantQuantity', key: 'variantQuantity', width: 18 },
+            // { header: 'variantImage', key: 'variantImage', width: 30 },
+            { header: 'styleCoat', key: 'styleCoat', width: 20 },
+            { header: 'sku', key: 'sku', width: 30 },
+            { header: 'Barcode', key: 'barcode', width: 30, height: 20 } // Placeholder for barcode images
+        ];
+
+        let barcodeIds = [];
+        let rowIndex = 2;
+        for (const item of productsDetails) {
+
+            // Generate a barcode for each styleCoat
+            const barcodeBuffer = await bwipjs.toBuffer({
+                bcid: 'code128',    // Use Code 128 barcode type
+                text: item.variants[0].variantSizes[0].styleCoat, // Use styleCoat as the barcode text
+                scale: 3,           // 3x scaling factor
+                height: 10,         // Bar height, in millimeters
+                includetext: true,  // Include human-readable text
+            });
+
+            const barcodeImageId = workbook.addImage({
+                buffer: barcodeBuffer,
+                extension: 'png',
+            });
+
+            barcodeIds.push(barcodeImageId);
+
+            const rowValues = {
+                productId: item.productDetails.productId,
+                groupName: item.productDetails.group,
+                categoryName: item.productDetails.category,
+                subCategoryName: item.productDetails.subCategory,
+                gender: item.productDetails.gender,
+                productType: item.productDetails.productType,
+                fit: item.productDetails.fit,
+                neckline: item.productDetails.neckline ? item.productDetails.neckline : "N/A",
+                pattern: item.productDetails.pattern ? item.productDetails.pattern : "N/A",
+                cuff: item.productDetails.cuff ? item.productDetails.cuff : "N/A",
+                sleeves: item.productDetails.sleeves ? item.productDetails.sleeves : "N/A",
+                material: item.productDetails.material ? item.productDetails.material : "N/A",
+                price: item.productDetails.price,
+                variantSize: item.variants[0].variantSizes[0].size,
+                variantColor: item.variants[0].color.name,
+                variantQuantity: item.variants[0].variantSizes[0].quantityOfUpload,
+                // variantImage: item.variants[0].variantSizes[0].quantityOfUpload,
+                styleCoat: item.variants[0].variantSizes[0].styleCoat,
+                sku: item.variants[0].variantSizes[0].sku,
+            };
+            worksheet.addRow(rowValues);
+            worksheet.getRow(rowIndex).height = 50; // Set the row height to accommodate the barcode image
+            // worksheet.addImage(barcodeImageId, `V${rowIndex}:V${rowIndex}`);
+
+            rowIndex++;
+        }
+
+        // Now add barcode images using a separate loop
+        let addBarcodesCount = rowIndex - 2; // Calculate how many barcodes we need to add
+        for (let i = 0; i < addBarcodesCount; i++) {
+            let barcodeRow = i + 2; // Adjust the row index to start from the first data row
+            worksheet.addImage(barcodeIds[i], `R${barcodeRow}:R${barcodeRow}`);
+        }
+
+        // Set headers for file download
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename="ProductVariants.xlsx"');
+        await workbook.xlsx.write(res);
+        res.end();
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).send('Failed to generate Excel file');
+    }
+});
 
 
 module.exports = router;
