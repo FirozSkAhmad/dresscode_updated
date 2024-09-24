@@ -12,6 +12,17 @@ const storeServiceObj = new StoreService();
 // Create Store Controller
 router.post('/create-store', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
+
+        const roleType = req.aud.split(":")[1]; // Middleware decodes JWT and adds it to req
+        if (roleType !== "WAREHOUSE MANAGER") {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access. Only Warehouse Manager can upload data."
+            });
+        }
+
         const storeData = req.body;
         // Validate request data
         const validationErrors = validateStoreData(storeData);
@@ -46,3 +57,5 @@ const validateStoreData = (data) => {
 
     return errors;
 };
+
+module.exports = router;

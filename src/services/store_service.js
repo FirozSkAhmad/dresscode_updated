@@ -1,18 +1,17 @@
-const storeModelModel = require('../utils/Models/storeModel');
+const storeModel = require('../utils/Models/storeModel');
 const mongoose = require('mongoose');
 const JWTHelper = require('../utils/Helpers/jwt_helper')
 const bcrypt = require('bcrypt');
 
 class StoreService {
     constructor() {
-        this.UserModel = UserModel;
         this.jwtObject = new JWTHelper();
     }
 
     // Create Store Service
     async createStore(storeData) {
         // Check if userName, phoneNo, or emailID already exists
-        const existingStore = await Store.findOne({
+        const existingStore = await storeModel.findOne({
             $or: [
                 { userName: storeData.userName },
                 { phoneNo: storeData.phoneNo },
