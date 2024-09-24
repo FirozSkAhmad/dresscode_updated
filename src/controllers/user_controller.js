@@ -673,7 +673,7 @@ router.get('/:group/:productId/getProductReviews', jwtHelperObj.verifyAccessToke
     }
 });
 
-router.post('/:userId/cancelOrder/:orderId', jwtHelperObj.verifyAccessToken, async (req, res) => {
+router.patch('/:userId/cancelOrder/:orderId', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
         const { userId, orderId } = req.params;
         const aubUserId = req.aud.split(":")[0]; // Middleware decodes JWT and adds it to req

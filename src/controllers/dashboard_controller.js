@@ -618,7 +618,7 @@ router.get('/getCanceledOrders', jwtHelperObj.verifyAccessToken, async (req, res
     }
 });
 
-router.post('/updateRefundStatus/:orderId', jwtHelperObj.verifyAccessToken, async (req, res) => {
+router.patch('/updateRefundStatus/:orderId', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
         const { orderId } = req.params;
         const { status } = req.body; // Expecting 'status' in the request body
