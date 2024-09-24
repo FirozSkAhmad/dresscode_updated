@@ -646,7 +646,7 @@ router.patch('/updateRefundStatus/:orderId', jwtHelperObj.verifyAccessToken, asy
         session.endSession();
 
         res.status(200).send({
-            message: `Refund payment status updated to ${status}`,
+            message: `Refund payment status updated successfully.`,
         });
 
     } catch (error) {
