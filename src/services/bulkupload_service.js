@@ -167,7 +167,7 @@ class BulkUploadService {
                                 variantEntry.variantSizes.push({
                                     size: item.variant.variantSizes[0].size,
                                     quantityOfUpload: item.variant.variantSizes[0].quantity,
-                                    styleCoat: existingSizeEntry ? existingSizeEntry.styleCoat : undefined,
+                                    styleCoat: existingSizeEntry.styleCoat,
                                     sku: item.variant.variantSizes[0].sku
                                 });
                             }
@@ -177,7 +177,7 @@ class BulkUploadService {
                                 variantSizes: item.variant.variantSizes.map(vs => ({
                                     size: vs.size,
                                     quantityOfUpload: vs.quantity,
-                                    styleCoat: existingSizeEntry ? existingSizeEntry.styleCoat : undefined,
+                                    styleCoat: existingSizeEntry.styleCoat,
                                     sku: vs.sku,
                                 }))
                             });
@@ -191,7 +191,7 @@ class BulkUploadService {
                                 variantSizes: item.variant.variantSizes.map(vs => ({
                                     size: vs.size,
                                     quantityOfUpload: vs.quantity,
-                                    styleCoat: existingSizeEntry ? existingSizeEntry.styleCoat : undefined,
+                                    styleCoat: existingSizeEntry.styleCoat,
                                     sku: vs.sku,
                                 }))
                             }]
@@ -225,14 +225,15 @@ class BulkUploadService {
                 subCategory: item.subCategory,
                 gender: item.gender,
                 productType: item.productType,
-                fit: item.fit,
-                ...item
+                fit: item.fit
             };
 
             // Add additional fields dynamically to the query
             schemaDetails.additionalFields.forEach(field => {
                 query[field] = item[field];
             });
+
+            console.log(query)
 
             const existingProduct = await Model.findOne(query, null, { session });
 
