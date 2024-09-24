@@ -24,7 +24,7 @@ class StoreService {
         }
 
         // Hash the password before saving
-        const hashedPassword = await bcrypt.hash(storeData.password, 10);
+        // const hashedPassword = await bcrypt.hash(storeData.password, 10);
 
         // Create the store object
         const newStore = new Store({
@@ -37,7 +37,7 @@ class StoreService {
             userName: storeData.userName,
             phoneNo: storeData.phoneNo,
             emailID: storeData.emailID,
-            password: hashedPassword
+            password: storeData.password
         });
 
         // Save the store in the database
