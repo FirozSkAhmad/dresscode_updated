@@ -198,5 +198,14 @@ const storeSchema = new mongoose.Schema({
 
 // Indexes for optimized querying
 storeSchema.index({ storeId: 1, storeName: 1 });
+storeSchema.pre('save', function(next) {
+    if (this.storeName) {
+        this.storeName = this.storeName.toUpperCase();
+    }
+    if (this.userName) {
+        this.userName = this.userName.toUpperCase();
+    }
+    next();
+});
 
 module.exports = mongoose.model('Store', storeSchema);

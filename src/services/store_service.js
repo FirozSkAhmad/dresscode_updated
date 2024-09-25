@@ -30,7 +30,7 @@ class StoreService {
 
         // Create the store object
         const newStore = new Store({
-            storeName: storeData.storeName,
+            storeName: storeData.storeName.toUpperCase(),
             storeAddress: storeData.storeAddress,
             city: storeData.city,
             pincode: storeData.pincode,
@@ -602,16 +602,18 @@ class StoreService {
 
     async getRaisedInventoryRequests() {
         try {
-            const assignedInventories = await RaisedInventory.find({}, 'raisedInventoryId assignedDate receivedDate status totalAmountOfAssigned')
+            const raisedInventories = await RaisedInventory.find({}, 'raisedInventoryId assignedDate receivedDate status totalAmountOfAssigned')
                 .exec();
 
-            if (assignedInventories.length === 0) {
+            if (raisedInventories.length === 0) {
                 throw new Error('No assigned inventories found for the given storeId.');
             }
 
-            const formattedData = assignedInventories.map(inv => ({
-                assignedInventoryId: inv.assignedInventoryId,
-                assignedDate: inv.assignedDate,
+            const formattedData = raisedInventories.map(inv => ({
+                raisedInventoryId: inv.raisedInventoryId,
+                raisedDate: inv.raisedDate,
+                approvedDate: inv.approvedDate,
+                rejectedDate: inv.rejectedDate,
                 receivedDate: inv.receivedDate,
                 status: inv.status,
                 totalAmountOfAssigned: inv.totalAmountOfAssigned
