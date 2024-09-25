@@ -150,7 +150,6 @@ router.patch('/receive-inventory/:assignedInventoryId', jwtHelperObj.verifyAcces
 
         const userStoreId = req.aud.split(":")[0];
 
-        // Process the CSV file and assign inventory
         const result = await storeServiceObj.receiveInventory(assignedInventoryId, roleType, userStoreId);
         res.json(result);
     } catch (err) {

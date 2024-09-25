@@ -55,8 +55,7 @@ const productsSechma = new mongoose.Schema(
     {
         productId: {
             type: String,
-            trim: true,
-            unique: true
+            trim: true
         },
         group: {
             type: String,
