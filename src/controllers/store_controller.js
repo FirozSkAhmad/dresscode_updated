@@ -212,14 +212,17 @@ router.get('/assigned-inventories/:storeId', jwtHelperObj.verifyAccessToken, asy
 
         // Process the request and get store details
         const result = await storeServiceObj.getAssignedInventories(storeId);
-        res.json(result);
+        res.json({
+            "message": "assigned inventories retrived successfully",
+            "assignedInventories": result
+        });
     } catch (err) {
         console.error("Error while retrieving store details:", err.message);
         next(err);
     }
 });
 
-router.patch('/assigned-inventory-details/:assignedInventoryId', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+router.get('/assigned-inventory-details/:assignedInventoryId', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
         const { assignedInventoryId } = req.params;
 
@@ -335,7 +338,7 @@ router.post('/raise-inventory-request', jwtHelperObj.verifyAccessToken, upload.s
         }
 
         // Process the CSV file and assign inventory
-        const result = await storeServiceObj.processCsvFile(req.file.buffer, storeId, storeName,"RAISE");
+        const result = await storeServiceObj.processCsvFile(req.file.buffer, storeId, storeName, "RAISE");
         res.json(result);
     } catch (err) {
         console.error("Error while rasing inventory request:", err.message);
@@ -359,7 +362,7 @@ router.get('/raised-inventory-requests', jwtHelperObj.verifyAccessToken, async (
         if (!['STORE MANAGER', 'WAREHOUSE MANAGER'].includes(roleType)) {
             return res.status(401).json({
                 status: 401,
-                message: "Unauthorized access. Only WAREHOUSE MANAGER AND STORE MANAGER can access assigned inventories."
+                message: "Unauthorized access. Only WAREHOUSE MANAGER AND STORE MANAGER can access raised inventory requests."
             });
         }
 
@@ -367,7 +370,65 @@ router.get('/raised-inventory-requests', jwtHelperObj.verifyAccessToken, async (
         const result = await storeServiceObj.getRaisedInventoryRequests();
         res.json(result);
     } catch (err) {
-        console.error("Error while retrieving store details:", err.message);
+        console.error("Error while retrieving raised inventory requests:", err.message);
+        next(err);
+    }
+});
+
+router.get('/raised-inventory-details/:raisedInventoryId', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+        const { raisedInventoryId } = req.params;
+
+        // Validate that storeId is provided
+        if (!raisedInventoryId) {
+            return res.status(400).json({
+                status: 400,
+                message: "raisedInventoryId is required."
+            });
+        }
+
+        // Extract the role type from the JWT token added to req by the middleware
+        const roleType = req.aud.split(":")[1];
+        if (!['WAREHOUSE MANAGER', 'STORE MANAGER'].includes(roleType)) {
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access. Only WAREHOUSE MANAGER AND STORE MANAGER can access raised inventory details."
+            });
+        }
+
+        const result = await storeServiceObj.getRaisedInventoryDetails(raisedInventoryId);
+        res.json(result);
+    } catch (err) {
+        console.error("Error while assigning inventory:", err.message);
+        next(err);
+    }
+});
+
+router.get('/get-products/:storeId', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+        const { storeId } = req.params;
+
+        // Validate that storeId is provided
+        if (!storeId) {
+            return res.status(400).json({
+                status: 400,
+                message: "storeId is required."
+            });
+        }
+
+        // Extract the role type from the JWT token added to req by the middleware
+        const roleType = req.aud.split(":")[1];
+        if (!['WAREHOUSE MANAGER', 'STORE MANAGER'].includes(roleType)) {
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access. Only WAREHOUSE MANAGER AND STORE MANAGER can access raised inventory details."
+            });
+        }
+
+        const result = await storeServiceObj.getproducts(storeId);
+        res.json(result);
+    } catch (err) {
+        console.error("Error while assigning inventory:", err.message);
         next(err);
     }
 });

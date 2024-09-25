@@ -158,7 +158,7 @@ const raisedInventorySchema = new mongoose.Schema({
         default: Date.now,
         immutable: true
     },
-    approvedDate: {
+    approvedDate: { 
         type: String,
         default: null
     },
@@ -170,7 +170,7 @@ const raisedInventorySchema = new mongoose.Schema({
         type: String,
         default: null
     },
-    totalAmountOfAssigned: {
+    totalAmountRaised: {
         type: Number,
         required: true
     },

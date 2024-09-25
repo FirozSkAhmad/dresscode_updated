@@ -282,11 +282,25 @@ class StoreService {
 
     async createRaisedInventory(storeId, storeName, products) {
         try {
+            // Calculate total amount assigned
+            let totalAmount = products.reduce((sum, product) => {
+                let productTotal = product.variants.reduce((variantSum, variant) => {
+                    let variantTotal = variant.variantSizes.reduce((sizeSum, size) => {
+                        const quantity = size.quantity || 0;
+                        const price = product.price || 0;
+                        return sizeSum + (quantity * price);
+                    }, 0);
+                    return variantSum + variantTotal;
+                }, 0);
+                return sum + productTotal;
+            }, 0);
+
             // Prepare the assignedInventory data
             const raisedInventoryData = {
                 storeId: storeId,
                 storeName: storeName,
                 raisedDate: new Date(),
+                totalAmountRaised: totalAmount,
                 status: 'PENDING',
                 products: products
             };
@@ -432,7 +446,8 @@ class StoreService {
                 .exec();
 
             if (assignedInventories.length === 0) {
-                throw new Error('No assigned inventories found for the given storeId.');
+                console.log('No assigned inventories found for the given storeId.');
+                return []
             }
 
             const formattedData = assignedInventories.map(inv => ({
@@ -455,10 +470,8 @@ class StoreService {
         }
     }
 
-    async getAssignedInventoryDetails() {
+    async getAssignedInventoryDetails(assignedInventoryId) {
         try {
-            const { assignedInventoryId } = req.params;
-
             const assignedInventory = await AssignedInventory.findOne({ assignedInventoryId })
                 .populate({
                     path: 'products',
@@ -615,19 +628,126 @@ class StoreService {
                 approvedDate: inv.approvedDate,
                 rejectedDate: inv.rejectedDate,
                 receivedDate: inv.receivedDate,
-                status: inv.status,
-                totalAmountOfAssigned: inv.totalAmountOfAssigned
+                status: inv.status
             }));
-
-            await session.commitTransaction();
-            session.endSession();
 
             return formattedData
         } catch (error) {
-            await session.abortTransaction();
-            session.endSession();
             console.error("Error while retrieving assigned inventories:", error.message);
             throw new Error("Server error");
+        }
+    }
+
+    async getRaisedInventoryDetails(raisedInventoryId) {
+        try {
+            const raisedInventory = await RaisedInventory.findOne({ raisedInventoryId })
+                .populate({
+                    path: 'products',
+                    populate: {
+                        path: 'variants'
+                    }
+                })
+                .exec();
+
+            if (!raisedInventory) {
+                throw new Error('Assigned inventory not found');
+            }
+
+            const productsData = raisedInventory.products.map(product => ({
+                productId: product.productId,
+                group: product.group,
+                category: product.category,
+                subCategory: product.subCategory,
+                gender: product.gender,
+                productType: product.productType,
+                fit: product.fit,
+                neckline: product.neckline,
+                pattern: product.pattern,
+                sleeves: product.sleeves,
+                material: product.material,
+                price: product.price,
+                productDescription: product.productDescription,
+                sizeChart: product.sizeChart,
+                variants: product.variants.map(variant => ({
+                    color: variant.color.name,
+                    variantSizes: variant.variantSizes.map(v => ({
+                        size: v.size,
+                        quantity: v.quantity,
+                        styleCoat: v.styleCoat,
+                        sku: v.sku
+                    })),
+                    imageUrls: variant.imageUrls,
+                    variantId: variant.variantId
+                }))
+            }));
+
+            const responseData = {
+                raisedInventoryId: raisedInventoryId.assignedInventoryId,
+                storeId: raisedInventoryId.storeId,
+                storeName: raisedInventoryId.storeName,
+                receivedDate: raisedInventoryId.raisedDate,
+                approvedDate: raisedInventoryId.approvedDate,
+                rejectedDate: raisedInventoryId.rejectedDate,
+                receivedDate: raisedInventoryId.receivedDate,
+                totalAmountRaised: raisedInventoryId.totalAmountRaised,
+                Status: raisedInventoryId.status,
+                products: productsData
+            };
+
+            return responseData
+        } catch (error) {
+            console.error("Error while retrieving raised inventory details:", error.message);
+            throw new Error("Server error.");
+        }
+    }
+
+    async getproducts(storeId) {
+        try {
+            const store = await Store.find({ storeId })
+                .populate({
+                    path: 'products',
+                    populate: {
+                        path: 'variants'
+                    }
+                })
+                .exec();
+
+            if (!store) {
+                throw new Error('Store not found');
+            }
+
+            const productsData = store.products.map(product => ({
+                productId: product.productId,
+                group: product.group,
+                category: product.category,
+                subCategory: product.subCategory,
+                gender: product.gender,
+                productType: product.productType,
+                fit: product.fit,
+                neckline: product.neckline,
+                pattern: product.pattern,
+                sleeves: product.sleeves,
+                material: product.material,
+                price: product.price,
+                productDescription: product.productDescription,
+                sizeChart: product.sizeChart,
+                variants: product.variants.map(variant => ({
+                    color: variant.color.name,
+                    variantSizes: variant.variantSizes.map(v => ({
+                        size: v.size,
+                        quantity: v.quantity,
+                        styleCoat: v.styleCoat,
+                        sku: v.sku
+                    })),
+                    imageUrls: variant.imageUrls,
+                    variantId: variant.variantId
+                }))
+            }));
+
+            return productsData
+        } catch (error) {
+            console.error("Error while retrieving raised inventory details:", error.message);
+            throw new Error("Server error.");
         }
     }
 }
