@@ -217,7 +217,7 @@ router.get('/assigned-inventories/:storeId', jwtHelperObj.verifyAccessToken, asy
             "assignedInventories": result
         });
     } catch (err) {
-        console.error("Error while retrieving store details:", err.message);
+        console.error("Error while retrieving assigned inventories:", err.message);
         next(err);
     }
 });
