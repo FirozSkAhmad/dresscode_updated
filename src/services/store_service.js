@@ -4,6 +4,8 @@ const RaisedInventory = require('../utils/Models/raisedInventoryModel');
 const mongoose = require('mongoose');
 const JWTHelper = require('../utils/Helpers/jwt_helper')
 const bcrypt = require('bcrypt');
+const stream = require('stream');
+const csv = require('csv-parser');
 
 class StoreService {
     constructor() {
@@ -148,7 +150,8 @@ class StoreService {
                     sku: data.sku.trim(),
                     styleCoat: data.styleCoat.trim(),
                 }],
-                imageUrls: data.variantImages ? data.variantImages.split(';').map(url => url.trim()) : []
+                imageUrls: data.variantImages ? data.variantImages.split(';').map(url => url.trim()) : [],
+                variantId: data.variantId
             }
         };
         return baseData;
@@ -158,7 +161,7 @@ class StoreService {
         try {
 
             // Check if the store exists
-            const existingStore = await Store.findById(storeId);
+            const existingStore = await Store.findOne({ storeId });
             if (!existingStore) {
                 throw new Error("Store not found. Please provide a valid store ID.")
             }

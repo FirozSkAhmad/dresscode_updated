@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const crypto = require('crypto'); // Use crypto module for random string generation
 
 const variantSchema = new mongoose.Schema({
     color: {
@@ -24,7 +25,6 @@ const variantSchema = new mongoose.Schema({
         styleCoat: {
             type: String,
             trim: true,
-            unique: true,
         },
         sku: {
             type: String,
@@ -42,7 +42,6 @@ const variantSchema = new mongoose.Schema({
     variantId: {
         type: String,
         required: true,
-        unique: true,
     },
 });
 
@@ -54,8 +53,7 @@ const productsSechma = new mongoose.Schema(
     {
         productId: {
             type: String,
-            trim: true,
-            unique: true
+            trim: true
         },
         group: {
             type: String,
