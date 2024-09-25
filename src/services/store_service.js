@@ -424,7 +424,7 @@ class StoreService {
         }
     }
 
-    async getAssignedInventories() {
+    async getAssignedInventories(storeId) {
         const session = await mongoose.startSession();
         session.startTransaction();
         try {
@@ -596,6 +596,35 @@ class StoreService {
 
         } catch (error) {
             console.error("Error generating CSV file:", error.message);
+            throw new Error("Server error");
+        }
+    }
+
+    async getRaisedInventoryRequests() {
+        try {
+            const assignedInventories = await RaisedInventory.find({}, 'raisedInventoryId assignedDate receivedDate status totalAmountOfAssigned')
+                .exec();
+
+            if (assignedInventories.length === 0) {
+                throw new Error('No assigned inventories found for the given storeId.');
+            }
+
+            const formattedData = assignedInventories.map(inv => ({
+                assignedInventoryId: inv.assignedInventoryId,
+                assignedDate: inv.assignedDate,
+                receivedDate: inv.receivedDate,
+                status: inv.status,
+                totalAmountOfAssigned: inv.totalAmountOfAssigned
+            }));
+
+            await session.commitTransaction();
+            session.endSession();
+
+            return formattedData
+        } catch (error) {
+            await session.abortTransaction();
+            session.endSession();
+            console.error("Error while retrieving assigned inventories:", error.message);
             throw new Error("Server error");
         }
     }

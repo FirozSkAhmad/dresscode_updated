@@ -211,7 +211,7 @@ router.get('/assigned-inventories/:storeId', jwtHelperObj.verifyAccessToken, asy
         }
 
         // Process the request and get store details
-        const result = await storeServiceObj.getAssignedInventories();
+        const result = await storeServiceObj.getAssignedInventories(storeId);
         res.json(result);
     } catch (err) {
         console.error("Error while retrieving store details:", err.message);
@@ -338,7 +338,36 @@ router.post('/raise-inventory-request', jwtHelperObj.verifyAccessToken, upload.s
         const result = await storeServiceObj.processCsvFile(req.file.buffer, storeId, storeName,"RAISE");
         res.json(result);
     } catch (err) {
-        console.error("Error while assigning inventory:", err.message);
+        console.error("Error while rasing inventory request:", err.message);
+        next(err);
+    }
+});
+
+router.get('/raised-inventory-requests', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+
+        // Validate that storeId is provided
+        if (!storeId) {
+            return res.status(400).json({
+                status: 400,
+                message: "storeId is required."
+            });
+        }
+
+        // Extract the role type from the JWT token added to req by the middleware
+        const roleType = req.aud.split(":")[1];
+        if (!['STORE MANAGER', 'WAREHOUSE MANAGER'].includes(roleType)) {
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access. Only WAREHOUSE MANAGER AND STORE MANAGER can access assigned inventories."
+            });
+        }
+
+        // Process the request and get store details
+        const result = await storeServiceObj.getRaisedInventoryRequests();
+        res.json(result);
+    } catch (err) {
+        console.error("Error while retrieving store details:", err.message);
         next(err);
     }
 });
