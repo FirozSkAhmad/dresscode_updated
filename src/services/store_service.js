@@ -1,6 +1,7 @@
 const Store = require('../utils/Models/storeModel');
 const AssignedInventory = require('../utils/Models/assignedInventoryModel');
 const RaisedInventory = require('../utils/Models/raisedInventoryModel');
+const Togs = require('../utils/Models/togsModel');
 const mongoose = require('mongoose');
 const JWTHelper = require('../utils/Helpers/jwt_helper')
 const bcrypt = require('bcrypt');
@@ -641,7 +642,7 @@ class StoreService {
         }
     }
 
-    async getRaisedInventoryDetails(raisedInventoryId) {
+    async getRaisedInventoryDetails(raisedInventoryId, roleType) {
         try {
             const raisedInventory = await RaisedInventory.findOne({ raisedInventoryId })
                 .populate({
@@ -656,51 +657,224 @@ class StoreService {
                 throw new Error('Assigned inventory not found');
             }
 
-            const productsData = raisedInventory.products.map(product => ({
-                productId: product.productId,
-                group: product.group,
-                category: product.category,
-                subCategory: product.subCategory,
-                gender: product.gender,
-                productType: product.productType,
-                fit: product.fit,
-                neckline: product.neckline,
-                pattern: product.pattern,
-                sleeves: product.sleeves,
-                material: product.material,
-                price: product.price,
-                productDescription: product.productDescription,
-                sizeChart: product.sizeChart,
-                variants: product.variants.map(variant => ({
-                    color: variant.color.name,
-                    variantSizes: variant.variantSizes.map(v => ({
-                        size: v.size,
-                        quantity: v.quantity,
-                        styleCoat: v.styleCoat,
-                        sku: v.sku
-                    })),
-                    imageUrls: variant.imageUrls,
-                    variantId: variant.variantId
-                }))
+            const productsData = await Promise.all(raisedInventory.products.map(async product => {
+                const togsProduct = roleType === 'WAREHOUSE MANAGER' ? await Togs.findOne({ productId: product.productId }).exec() : null;
+                const togsVariantsMap = togsProduct ? togsProduct.variants.reduce((map, variant) => {
+                    map[variant.variantId] = variant; // Assuming `variantId` is the linking key
+                    return map;
+                }, {}) : {};
+
+                return {
+                    productId: product.productId,
+                    group: product.group,
+                    category: product.category,
+                    subCategory: product.subCategory,
+                    gender: product.gender,
+                    productType: product.productType,
+                    fit: product.fit,
+                    neckline: product.neckline,
+                    pattern: product.pattern,
+                    sleeves: product.sleeves,
+                    material: product.material,
+                    price: product.price,
+                    productDescription: product.productDescription,
+                    sizeChart: product.sizeChart,
+                    variants: product.variants.map(variant => {
+                        const togsVariant = togsVariantsMap[variant.variantId]; // Get matching Togs variant
+                        return {
+                            color: variant.color.name,
+                            variantSizes: variant.variantSizes.map(v => {
+                                const quantityInWarehouse = togsVariant && roleType === 'WAREHOUSE MANAGER' ? togsVariant.variantSizes.find(tv => tv.size === v.size)?.quantity : 0;
+                                return {
+                                    size: v.size,
+                                    quantity: v.quantity,
+                                    quantityInWarehouse: roleType === 'WAREHOUSE MANAGER' ? quantityInWarehouse : undefined,
+                                    styleCoat: v.styleCoat,
+                                    sku: v.sku
+                                };
+                            }),
+                            imageUrls: variant.imageUrls,
+                            variantId: variant.variantId
+                        };
+                    })
+                };
             }));
 
             const responseData = {
-                raisedInventoryId: raisedInventoryId.assignedInventoryId,
-                storeId: raisedInventoryId.storeId,
-                storeName: raisedInventoryId.storeName,
-                receivedDate: raisedInventoryId.raisedDate,
-                approvedDate: raisedInventoryId.approvedDate,
-                rejectedDate: raisedInventoryId.rejectedDate,
-                receivedDate: raisedInventoryId.receivedDate,
-                totalAmountRaised: raisedInventoryId.totalAmountRaised,
-                Status: raisedInventoryId.status,
+                raisedInventoryId: raisedInventory.raisedInventoryId,
+                storeId: raisedInventory.storeId,
+                storeName: raisedInventory.storeName,
+                receivedDate: raisedInventory.raisedDate,
+                approvedDate: raisedInventory.approvedDate,
+                rejectedDate: raisedInventory.rejectedDate,
+                receivedDate: raisedInventory.receivedDate,
+                totalAmountRaised: raisedInventory.totalAmountRaised,
+                Status: raisedInventory.status,
                 products: productsData
             };
 
-            return responseData
+            return responseData;
         } catch (error) {
             console.error("Error while retrieving raised inventory details:", error.message);
             throw new Error("Server error.");
+        }
+    }
+
+    async approveInventory(raisedInventoryId, roleType) {
+        try {
+            // Fetch the raised inventory details
+            const raisedInventory = await RaisedInventory.findOne({ raisedInventoryId }).populate({
+                path: 'products',
+                populate: {
+                    path: 'variants'
+                }
+            }).exec();
+    
+            if (!raisedInventory) {
+                return res.status(404).json({
+                    status: 404,
+                    message: "Raised Inventory request not found."
+                });
+            }
+    
+            // Check if the inventory can be approved and prepare updates for Togs
+            const updates = [];
+            const canBeApproved = await Promise.all(raisedInventory.products.map(async product => {
+                const togsProduct = await Togs.findOne({ productId: product.productId }).exec();
+                if (!togsProduct) return false;
+    
+                return product.variants.every(variant => {
+                    const togsVariant = togsProduct.variants.find(tv => tv.variantId === variant.variantId);
+                    if (!togsVariant) return false;
+    
+                    return variant.variantSizes.every(v => {
+                        const togsSize = togsVariant.variantSizes.find(tv => tv.size === v.size);
+                        if (!togsSize || togsSize.quantity < v.quantity) return false;
+    
+                        // Prepare updates
+                        updates.push({
+                            togsProduct,
+                            togsVariant,
+                            togsSize,
+                            quantityToDeduct: v.quantity
+                        });
+                        return true;
+                    });
+                });
+            }));
+    
+            if (canBeApproved.every(status => status)) {
+                // Deduct quantities from Togs
+                for (let update of updates) {
+                    update.togsSize.quantity -= update.quantityToDeduct;
+                    await update.togsProduct.save();
+                }
+    
+                // Update RaisedInventory status and approved date
+                raisedInventory.status = 'APPROVED';
+                raisedInventory.approvedDate = new Date().toISOString(); // Setting the approved date
+                await raisedInventory.save();
+    
+                res.status(200).json({
+                    status: 200,
+                    message: "Inventory successfully approved and quantities updated in warehouse."
+                });
+            } else {
+                res.status(409).json({
+                    status: 409,
+                    message: "Cannot approve inventory as not all variant quantities are available in warehouse."
+                });
+            }
+        } catch (error) {
+            console.error("Error while approving inventory:", error.message);
+            next(error);
+        }
+    }
+
+    async receiveInventoryReq(raisedInventoryId, roleType, userStoreId) {
+        const session = await mongoose.startSession();
+        session.startTransaction();
+        try {
+
+            // Get the assigned inventory using assignedInventoryId
+            const raisedInventory = await RaisedInventory.findOne({ raisedInventoryId }).session(session);
+
+            if (!raisedInventory) {
+                throw new Error("Raised Inventory not found.");
+            }
+
+            // If the user is a STORE MANAGER, ensure they are associated with the correct store
+            if (roleType === 'STORE MANAGER' && raisedInventory.storeId !== userStoreId) {
+                throw new Error("Forbidden. You are not authorized to receive this inventory.");
+            }
+
+            // Check if the inventory has already been received
+            if (raisedInventory.status === 'RECEIVED') {
+                throw new Error("Inventory has already been received.");
+            }
+
+            // Update assignedInventory status and receivedDate
+            raisedInventory.status = 'RECEIVED';
+            raisedInventory.receivedDate = new Date();
+            await raisedInventory.save({ session });
+
+            // Get the store
+            const store = await Store.findOne({ storeId: raisedInventory.storeId }).session(session);
+
+            if (!store) {
+                throw new Error("Store not found.");
+            }
+
+            // Update store's products
+            for (let raisedProduct of raisedInventory.products) {
+                // Find the product in store's products
+                let storeProduct = store.products.find(p => p.productId === raisedProduct.productId);
+
+                if (storeProduct) {
+                    // Product exists, update variants
+                    for (let raisedVariant of raisedProduct.variants) {
+                        let storeVariant = storeProduct.variants.find(v => v.color.name === raisedVariant.color.name);
+
+                        if (storeVariant) {
+                            // Variant exists, update sizes
+                            for (let raisedSize of raisedVariant.variantSizes) {
+                                let storeSize = storeVariant.variantSizes.find(s => s.size === raisedSize.size);
+
+                                if (storeSize) {
+                                    // Size exists, increase quantity
+                                    storeSize.quantity += raisedSize.quantity;
+                                } else {
+                                    // Size doesn't exist, add it
+                                    storeVariant.variantSizes.push(raisedSize);
+                                }
+                            }
+                        } else {
+                            // Variant doesn't exist, add it
+                            storeProduct.variants.push(raisedVariant);
+                        }
+                    }
+                } else {
+                    // Product doesn't exist, add it
+                    store.products.push(raisedProduct);
+                }
+            }
+
+            // Save the store
+            await store.save({ session });
+
+            // Commit transaction
+            await session.commitTransaction();
+            session.endSession();
+
+            return {
+                status: 200,
+                message: "Inventory received and store updated successfully."
+            };
+        } catch (err) {
+            await session.abortTransaction();
+            session.endSession();
+            console.error("Error while receiving inventory:", err.message);
+            throw err;
         }
     }
 
