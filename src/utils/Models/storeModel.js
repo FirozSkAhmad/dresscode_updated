@@ -25,7 +25,6 @@ const variantSchema = new mongoose.Schema({
         styleCoat: {
             type: String,
             trim: true,
-            unique: true,
         },
         sku: {
             type: String,
@@ -43,7 +42,6 @@ const variantSchema = new mongoose.Schema({
     variantId: {
         type: String,
         required: true,
-        unique: true,
     },
 });
 

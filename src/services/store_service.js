@@ -403,30 +403,91 @@ class StoreService {
         const session = await mongoose.startSession();
         session.startTransaction();
         try {
-            // Fetch all assigned inventories and select specific fields
-            const assignedInventories = await AssignedInventory.find({}, 'assignedInventoryId assignedDate receivedDate status totalAmountOfAssigned').exec();
+            const assignedInventories = await AssignedInventory.find({ storeId: storeId }, 'assignedInventoryId assignedDate receivedDate status totalAmountOfAssigned')
+                .exec();
 
-            if (assignedInventories) {
-                const formattedData = assignedInventories.map(inv => ({
-                    assignedInventoryId: inv.assignedInventoryId,
-                    DateOfAssigned: inv.assignedDate.toLocaleDateString("en-US"),
-                    DateOfReceived: inv.receivedDate ? inv.receivedDate : '----------',
-                    Status: inv.status,
-                    TotalAmount: inv.totalAmountOfAssigned
-                }));
-
-                res.json({
-                    success: true,
-                    data: formattedData
-                });
-            } else {
-                res.status(404).json({
-                    success: false,
-                    message: 'No assigned inventories found'
-                });
+            if (assignedInventories.length === 0) {
+                throw new Error('No assigned inventories found for the given storeId.');
             }
+
+            const formattedData = assignedInventories.map(inv => ({
+                assignedInventoryId: inv.assignedInventoryId,
+                assignedDate: inv.assignedDate,
+                receivedDate: inv.receivedDate,
+                status: inv.status,
+                totalAmountOfAssigned: inv.totalAmountOfAssigned
+            }));
+
+            await session.commitTransaction();
+            session.endSession();
+
+            return formattedData
         } catch (error) {
-            console.error("Error while retrieving assigned inventories:", error);
+            await session.abortTransaction();
+            session.endSession();
+            console.error("Error while retrieving assigned inventories:", error.message);
+            throw new Error("Server error");
+        }
+    }
+
+    async getAssignedInventoryDetails() {
+        try {
+            const { assignedInventoryId } = req.params;
+
+            const assignedInventory = await AssignedInventory.findOne({ assignedInventoryId })
+                .populate({
+                    path: 'products',
+                    populate: {
+                        path: 'variants'
+                    }
+                })
+                .exec();
+
+            if (!assignedInventory) {
+                throw new Error('Assigned inventory not found');
+            }
+
+            const productsData = assignedInventory.products.map(product => ({
+                productId: product.productId,
+                group: product.group,
+                category: product.category,
+                subCategory: product.subCategory,
+                gender: product.gender,
+                productType: product.productType,
+                fit: product.fit,
+                neckline: product.neckline,
+                pattern: product.pattern,
+                sleeves: product.sleeves,
+                material: product.material,
+                price: product.price,
+                productDescription: product.productDescription,
+                sizeChart: product.sizeChart,
+                variants: product.variants.map(variant => ({
+                    color: variant.color.name,
+                    variantSizes: variant.variantSizes.map(v => ({
+                        size: v.size,
+                        quantity: v.quantity,
+                        styleCoat: v.styleCoat,
+                        sku: v.sku
+                    })),
+                    imageUrls: variant.imageUrls,
+                    variantId: variant.variantId
+                }))
+            }));
+
+            const responseData = {
+                assignedInventoryId: assignedInventory.assignedInventoryId,
+                storeId: assignedInventory.storeId,
+                assignedDate: assignedInventory.assignedDate,
+                receivedDate: assignedInventory.receivedDate,
+                totalAmountOfAssigned: assignedInventory.totalAmountOfAssigned,
+                Status: assignedInventory.status,
+                products: productsData
+            };
+
+            return responseData
+        } catch (error) {
+            console.error("Error while retrieving assigned inventory details:", error.message);
             throw new Error("Server error.");;
         }
     }

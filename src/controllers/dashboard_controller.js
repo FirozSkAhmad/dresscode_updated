@@ -349,6 +349,7 @@ router.get('/:groupName/getAllActiveProducts', jwtHelperObj.verifyAccessToken, a
             productId: product.productId,
             category: product?.category ? product.category : null,
             subCategory: product?.subCategory ? product.subCategory : null,
+            schoolName: product?.schoolName ? product.schoolName : null,
             gender: product.gender,
             productType: product.productType,
             fit: product?.fit ? product.fit : null,

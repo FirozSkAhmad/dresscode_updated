@@ -188,15 +188,25 @@ router.get('/get-storeDetails/:storeId', jwtHelperObj.verifyAccessToken, async (
     }
 });
 
-router.get('/assigned-inventories', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+router.get('/assigned-inventories/:storeId', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
+
+        const { storeId } = req.params;
+
+        // Validate that storeId is provided
+        if (!storeId) {
+            return res.status(400).json({
+                status: 400,
+                message: "storeId is required."
+            });
+        }
 
         // Extract the role type from the JWT token added to req by the middleware
         const roleType = req.aud.split(":")[1];
-        if (!['WAREHOUSE MANAGER'].includes(roleType)) {
+        if (!['STORE MANAGER', 'WAREHOUSE MANAGER'].includes(roleType)) {
             return res.status(401).json({
                 status: 401,
-                message: "Unauthorized access. Only WAREHOUSE MANAGER can access assigned inventories."
+                message: "Unauthorized access. Only WAREHOUSE MANAGER AND STORE MANAGER can access assigned inventories."
             });
         }
 
@@ -205,6 +215,35 @@ router.get('/assigned-inventories', jwtHelperObj.verifyAccessToken, async (req, 
         res.json(result);
     } catch (err) {
         console.error("Error while retrieving store details:", err.message);
+        next(err);
+    }
+});
+
+router.patch('/assigned-inventory-details/:assignedInventoryId', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+        const { assignedInventoryId } = req.params;
+
+        // Validate that storeId is provided
+        if (!assignedInventoryId) {
+            return res.status(400).json({
+                status: 400,
+                message: "assignedInventoryId is required."
+            });
+        }
+
+        // Extract the role type from the JWT token added to req by the middleware
+        const roleType = req.aud.split(":")[1];
+        if (!['WAREHOUSE MANAGER', 'STORE MANAGER'].includes(roleType)) {
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access. Only WAREHOUSE MANAGER AND STORE MANAGER can access assigned inventory details."
+            });
+        }
+
+        const result = await storeServiceObj.getAssignedInventoryDetails(assignedInventoryId);
+        res.json(result);
+    } catch (err) {
+        console.error("Error while assigning inventory:", err.message);
         next(err);
     }
 });
