@@ -1281,7 +1281,7 @@ function getFormattedDate() {
 }
 
 
-router.get('/downloadInventory/:storeName', jwtHelperObj.verifyAccessToken, async (req, res) => {
+router.get('/downloadInventory', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
         const roleType = req.aud.split(":")[1]; // Middleware decodes JWT and adds it to req
         if (roleType !== "WAREHOUSE MANAGER") {
@@ -1293,7 +1293,7 @@ router.get('/downloadInventory/:storeName', jwtHelperObj.verifyAccessToken, asyn
             });
         }
 
-        const { storeName } = req.params;
+        const { storeName } = req.body;
 
         // Fetch products from the 'Togs' collection where 'schoolName' matches 'storeName'
         const products = await TogsModel.find({ schoolName: storeName, isDeleted: false })

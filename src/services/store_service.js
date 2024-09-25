@@ -1,5 +1,6 @@
 const Store = require('../utils/Models/storeModel');
 const AssignedInventory = require('../utils/Models/assignedInventoryModel');
+const RaisedInventory = require('../utils/Models/raisedInventoryModel');
 const mongoose = require('mongoose');
 const JWTHelper = require('../utils/Helpers/jwt_helper')
 const bcrypt = require('bcrypt');
@@ -153,7 +154,7 @@ class StoreService {
         return baseData;
     }
 
-    async processCsvFile(buffer, storeId) {
+    async processCsvFile(buffer, storeId, storeName, typeOfRequest) {
         try {
 
             // Check if the store exists
@@ -166,8 +167,13 @@ class StoreService {
             for (const item of data) {
                 this.addVariant(item, products); // Call the specific function based on the group  
             }
-            // Create AssignedInventory document
-            await this.createAssignedInventory(storeId, products);
+            if (!typeOfRequest) {
+                // Create AssignedInventory document
+                await this.createAssignedInventory(storeId, products);
+            }
+            else {
+                await this.createRaisedInventory(storeId, storeName, products);
+            }
             return { status: 200, message: "Products assigined successfully." };
         } catch (error) {
             throw new Error(error.message);
@@ -268,6 +274,25 @@ class StoreService {
 
             // Save to AssignedInventory collection
             await AssignedInventory.create(assignedInventoryData);
+        } catch (error) {
+            console.error("Error creating assigned inventory:", error.message);
+            throw new Error(`Failed to create assigned inventory`);
+        }
+    }
+
+    async createRaisedInventory(storeId, storeName, products) {
+        try {
+            // Prepare the assignedInventory data
+            const raisedInventoryData = {
+                storeId: storeId,
+                storeName: storeName,
+                raisedDate: new Date(),
+                status: 'PENDING',
+                products: products
+            };
+
+            // Save to AssignedInventory collection
+            await RaisedInventory.create(raisedInventoryData);
         } catch (error) {
             console.error("Error creating assigned inventory:", error.message);
             throw new Error(`Failed to create assigned inventory`);
@@ -492,6 +517,88 @@ class StoreService {
         }
     }
 
+    async downloadInventory(storeId, res) {
+        try {
+            const store = await Store.findOne({ storeId }).lean();
+
+            if (!store || !store.products || store.products.length === 0) {
+                return res.status(404).send({ message: "No products found for the specified storeId" });
+            }
+
+            // Define headers for the CSV file
+            const csvStringifier = csvWriter({
+                header: [
+                    { id: 'productId', title: 'productId' },
+                    { id: 'groupName', title: 'groupName' },
+                    { id: 'categoryName', title: 'categoryName' },
+                    { id: 'subCategoryName', title: 'subCategoryName' },
+                    { id: 'gender', title: 'gender' },
+                    { id: 'productType', title: 'productType' },
+                    { id: 'fit', title: 'fit' },
+                    { id: 'neckline', title: 'neckline' },
+                    { id: 'pattern', title: 'pattern' },
+                    { id: 'sleeves', title: 'sleeves' },
+                    { id: 'material', title: 'material' },
+                    { id: 'price', title: 'price' },
+                    { id: 'productDescription', title: 'productDescription' },
+                    { id: 'sizeChart', title: 'sizeChart' },
+                    { id: 'variantId', title: 'variantId' },
+                    { id: 'variantColor', title: 'variantColor' },
+                    { id: 'hexcode', title: 'hexcode' },
+                    { id: 'variantSize', title: 'variantSize' },
+                    { id: 'variantImages', title: 'variantImages' },
+                    { id: 'styleCoat', title: 'styleCoat' },
+                    { id: 'sku', title: 'sku' },
+                    { id: 'variantQuantity', title: 'variantQuantity' },
+                ]
+            });
+
+            let records = [];
+
+            store.products.forEach(product => {
+                product.variants.forEach(variant => {
+                    variant.variantSizes.forEach(v => {
+                        const row = {
+                            productId: product.productId,
+                            groupName: product.group,
+                            categoryName: product.category,
+                            subCategoryName: product.subCategory,
+                            gender: product.gender,
+                            productType: product.productType,
+                            fit: product.fit || "N/A",
+                            neckline: product.neckline || "N/A",
+                            pattern: product.pattern || "N/A",
+                            sleeves: product.sleeves || "N/A",
+                            material: product.material || "N/A",
+                            price: product.price,
+                            productDescription: product.productDescription || "N/A",
+                            sizeChart: product.sizeChart || "N/A",
+                            variantId: variant.variantId,
+                            variantColor: variant.color.name,
+                            hexcode: variant.color.hexcode,
+                            variantSize: v.size,
+                            variantImages: variant.imageUrls ? variant.imageUrls.join(', ') : "N/A",
+                            styleCoat: v.styleCoat,
+                            sku: v.sku,
+                            variantQuantity: v.quantity,
+                        };
+                        records.push(row);
+                    });
+                });
+            });
+
+            // Prepare the CSV output
+            res.setHeader('Content-Type', 'text/csv');
+            res.setHeader('Content-Disposition', `attachment; filename="inventory_${storeId}.csv"`);
+            csvStringifier.pipe(res);
+            records.forEach(record => csvStringifier.write(record));
+            csvStringifier.end();
+
+        } catch (error) {
+            console.error("Error generating CSV file:", error.message);
+            throw new Error("Server error");
+        }
+    }
 }
 
 module.exports = StoreService;

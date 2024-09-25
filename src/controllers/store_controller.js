@@ -268,5 +268,79 @@ router.post('/store-login', async (req, res, next) => {
     }
 });
 
+router.get('/downloadInventory/:storeId', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+
+        const { storeId } = req.params;
+
+        // Validate that storeId is provided
+        if (!storeId) {
+            return res.status(400).json({
+                status: 400,
+                message: "storeId is required."
+            });
+        }
+
+        // Extract the role type from the JWT token added to req by the middleware
+        const roleType = req.aud.split(":")[1];
+        if (!['STORE MANAGER'].includes(roleType)) {
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access. Only STORE MANAGER can download the store inventory."
+            });
+        }
+
+        const userStoreId = req.aud.split(":")[0];
+        // If the user is a STORE MANAGER, ensure they are associated with the correct store
+        if (roleType === 'STORE MANAGER' && storeId !== userStoreId) {
+            throw new Error("Forbidden. You are not authorized to download the store inventory.");
+        }
+
+        // Process the request and get store details
+        const result = await storeServiceObj.downloadInventory(storeId);
+        res.json(result);
+    } catch (err) {
+        console.error("Error while retrieving store details:", err.message);
+        next(err);
+    }
+});
+
+router.post('/raise-inventory-request', jwtHelperObj.verifyAccessToken, upload.single('file'), async (req, res, next) => {
+    try {
+        const { storeId, storeName } = req.body;
+
+        // Validate that storeId is provided
+        if (!storeId) {
+            return res.status(400).json({
+                status: 400,
+                message: "Store ID is required."
+            });
+        }
+
+        // Extract the role type from the JWT token added to req by the middleware
+        const roleType = req.aud.split(":")[1];
+        if (roleType !== "WAREHOUSE MANAGER") {
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access. Only Warehouse Managers can assign inventory to stores."
+            });
+        }
+
+        // Validate the uploaded file
+        if (!req.file || !isCsvFile(req.file)) {
+            return res.status(400).json({
+                status: 400,
+                message: "Invalid file format. Please upload a CSV file."
+            });
+        }
+
+        // Process the CSV file and assign inventory
+        const result = await storeServiceObj.processCsvFile(req.file.buffer, storeId, storeName,"RAISE");
+        res.json(result);
+    } catch (err) {
+        console.error("Error while assigning inventory:", err.message);
+        next(err);
+    }
+});
 
 module.exports = router;
