@@ -233,8 +233,6 @@ class BulkUploadService {
                 query[field] = item[field];
             });
 
-            console.log(query)
-
             const existingProduct = await Model.findOne(query, null, { session });
 
             if (existingProduct) {

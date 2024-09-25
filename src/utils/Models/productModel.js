@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-const AssignedHistory = require("./assignedHistoryModel");
 const Counter = require("./counterModel");
 
 // const variantAssignedHistorySchema = new mongoose.Schema({

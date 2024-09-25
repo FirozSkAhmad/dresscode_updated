@@ -1,5 +1,4 @@
-const mongoose = require('mongoose');
-const crypto = require('crypto'); // Use crypto module for random string generation
+const mongoose = require("mongoose");
 
 const variantSchema = new mongoose.Schema({
     color: {
@@ -132,8 +131,9 @@ const productsSechma = new mongoose.Schema(
     }
 );
 
-const storeSchema = new mongoose.Schema({
-    storeId: {
+// Define the Assigned History Schema
+const assignedInventorySchema = new mongoose.Schema({
+    assignedInventoryId: {
         type: String,
         trim: true,
         unique: true,
@@ -141,65 +141,33 @@ const storeSchema = new mongoose.Schema({
             return crypto.randomBytes(3).toString("hex").toUpperCase().slice(0, 6);
         },
     },
-    storeName: {
-        type: String,
-        required: true,
-        unique: true,
-    },
-    storeAddress: {
+    storeId: {
         type: String,
         required: true,
     },
-    city: {
-        type: String,
-        required: true,
+    assignedDate: {
+        type: Date,
+        default: Date.now,
+        immutable: true
     },
-    pincode: {
+    receivedDate: {
         type: String,
-        required: true,
+        default: null
     },
-    state: {
-        type: String,
-        required: true,
-    },
-    commissionPercentage: {
+    totalAmountOfAssigned: {
         type: Number,
-        required: true,
-        min: 0,
-        max: 100,
+        required: true
     },
-    userName: {
+    status: {
         type: String,
         required: true,
-        unique: true,
+        default: 'ASSIGNED',
+        enum: ['ASSIGNED', 'RECEIVED']
     },
-    phoneNo: {
-        type: String,
-        required: true,
-        unique: true,
-        match: [/^\d{10}$/, 'Please enter a valid phone number'],
-    },
-    emailID: {
-        type: String,
-        required: true,
-        unique: true,
-        match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email address'],
-    },
-    password: {
-        type: String,
-        required: true,
-    },
-    roleType: {
-        type: String,
-        required: true,
-        default: 'STORE MANAGER'
-    },
-    products: [productsSechma]
-}, {
-    timestamps: true,
+    products: [productsSechma] // Array of product and their variants
 });
 
-// Indexes for optimized querying
-storeSchema.index({ storeId: 1, storeName: 1 });
+assignedInventorySchema.index({ assignedInventoryId: 1 });
 
-module.exports = mongoose.model('Store', storeSchema);
+module.exports = mongoose.model('AssignedInventory', assignedInventorySchema);
+
