@@ -372,6 +372,8 @@ router.post('/raise-inventory-request', jwtHelperObj.verifyAccessToken, upload.s
 router.get('/raised-inventory-requests-by-store/:storeId', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
 
+        const { storeId } = req.params;
+        
         // Validate that storeId is provided
         if (!storeId) {
             return res.status(400).json({

@@ -498,7 +498,8 @@ class StoreService {
                     state: storeDetails.state,
                     userName: storeDetails.userName,
                     phoneNo: storeDetails.phoneNo,
-                    emailID: storeDetails.emailID
+                    emailID: storeDetails.emailID,
+                    password: storeDetails.password
                 }
             };
         } catch (err) {
@@ -545,7 +546,7 @@ class StoreService {
         const session = await mongoose.startSession();
         session.startTransaction();
         try {
-            const assignedInventories = await AssignedInventory.find({}, 'assignedInventoryId assignedDate receivedDate status totalAmountOfAssigned')
+            const assignedInventories = await AssignedInventory.find({}, 'assignedInventoryId assignedDate receivedDate status totalAmountOfAssigned storeId')
                 .exec();
 
             if (assignedInventories.length === 0) {
@@ -555,7 +556,6 @@ class StoreService {
 
             // Step 2: Get unique storeIds from assignedInventories
             const storeIds = [...new Set(assignedInventories.map(assignedInventory => assignedInventory.storeId))];
-
             // Step 3: Fetch store names for the retrieved storeIds
             const stores = await Store.find({ storeId: { $in: storeIds } }, { storeId: 1, storeName: 1 });
 
@@ -630,7 +630,27 @@ class StoreService {
                 }))
             }));
 
+            // Get the store using storeId
+            const storeDetails = await Store.findOne({ storeId: assignedInventory.storeId });
+
+            if (!storeDetails) {
+                throw new Error("Store not found.");
+            }
+            const storeData = {
+                storeName: storeDetails.storeName,
+                storeId: storeDetails.storeId,
+                storeAddress: storeDetails.storeAddress,
+                city: storeDetails.city,
+                pincode: storeDetails.pincode,
+                state: storeDetails.state,
+                userName: storeDetails.userName,
+                phoneNo: storeDetails.phoneNo,
+                emailID: storeDetails.emailID,
+                password: storeDetails.password
+            }
+
             const responseData = {
+                storeDetails: storeData,
                 assignedInventoryId: assignedInventory.assignedInventoryId,
                 storeId: assignedInventory.storeId,
                 assignedDate: assignedInventory.assignedDate,
