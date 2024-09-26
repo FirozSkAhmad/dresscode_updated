@@ -345,7 +345,7 @@ router.post('/raise-inventory-request', jwtHelperObj.verifyAccessToken, upload.s
     }
 });
 
-router.get('/raised-inventory-requests', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+router.get('/raised-inventory-requests-by-store/:storeId', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
 
         // Validate that storeId is provided
@@ -355,6 +355,27 @@ router.get('/raised-inventory-requests', jwtHelperObj.verifyAccessToken, async (
                 message: "storeId is required."
             });
         }
+
+        // Extract the role type from the JWT token added to req by the middleware
+        const roleType = req.aud.split(":")[1];
+        if (!['STORE MANAGER', 'WAREHOUSE MANAGER'].includes(roleType)) {
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access. Only WAREHOUSE MANAGER AND STORE MANAGER can access raised inventory requests."
+            });
+        }
+
+        // Process the request and get store details
+        const result = await storeServiceObj.getRaisedInventoryRequestsByStore(storeId);
+        res.json(result);
+    } catch (err) {
+        console.error("Error while retrieving raised inventory requests:", err.message);
+        next(err);
+    }
+});
+
+router.get('/raised-inventory-requests', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
 
         // Extract the role type from the JWT token added to req by the middleware
         const roleType = req.aud.split(":")[1];
@@ -432,7 +453,7 @@ router.patch('/approve-inventory-request/:raisedInventoryId', jwtHelperObj.verif
     }
 });
 
-router.patch('/approve-inventory-request/:raisedInventoryId', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+router.patch('/reject-inventory-request/:raisedInventoryId', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
         const { raisedInventoryId } = req.params;
 
@@ -449,14 +470,14 @@ router.patch('/approve-inventory-request/:raisedInventoryId', jwtHelperObj.verif
         if (!['WAREHOUSE MANAGER'].includes(roleType)) {
             return res.status(401).json({
                 status: 401,
-                message: "Unauthorized access. Only WAREHOUSE MANAGER can approve inventory request."
+                message: "Unauthorized access. Only WAREHOUSE MANAGER can reject inventory request."
             });
         }
 
-        const result = await storeServiceObj.approveInventory(raisedInventoryId, roleType);
+        const result = await storeServiceObj.rejectInventory(raisedInventoryId, roleType);
         res.json(result);
     } catch (err) {
-        console.error("Error while assigning inventory:", err.message);
+        console.error("Error while rejecting inventory request:", err.message);
         next(err);
     }
 });
@@ -518,6 +539,221 @@ router.get('/get-products/:storeId', jwtHelperObj.verifyAccessToken, async (req,
         res.json(result);
     } catch (err) {
         console.error("Error while assigning inventory:", err.message);
+        next(err);
+    }
+});
+
+router.post('/create-bill/:storeId', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+        const { storeId } = req.params;
+        const billData = req.body
+
+        // Validate that storeId is provided
+        if (!storeId) {
+            return res.status(400).json({
+                status: 400,
+                message: "Store ID is required."
+            });
+        }
+
+        // Extract the role type from the JWT token added to req by the middleware
+        const roleType = req.aud.split(":")[1];
+        if (roleType !== "STORE MANAGER") {
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access. Only STORE MANAGER can create bill."
+            });
+        }
+
+        const result = await storeServiceObj.createBill(storeId, billData);
+        res.json(result);
+    } catch (err) {
+        console.error("Error while creating bill:", err.message);
+        next(err);
+    }
+});
+
+router.patch('/delete-bill', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+        const { storeId, billId } = req.body;
+
+        // Validate that storeId is provided
+        if (!storeId) {
+            return res.status(400).json({
+                status: 400,
+                message: "Store ID is required."
+            });
+        }
+
+        // Validate that storeId is provided
+        if (!billId) {
+            return res.status(400).json({
+                status: 400,
+                message: "Bill ID is required."
+            });
+        }
+
+        // Extract the role type from the JWT token added to req by the middleware
+        const roleType = req.aud.split(":")[1];
+        if (roleType !== "STORE MANAGER") {
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access. Only STORE MANAGER can delete bill."
+            });
+        }
+
+        const result = await storeServiceObj.deleteBill(storeId, billId);
+        res.json(result);
+    } catch (err) {
+        console.error("Error while deleting bill:", err.message);
+        next(err);
+    }
+});
+
+router.get('/get-deleted-bills/:storeId', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+        const { storeId } = req.params;
+
+        // Validate that storeId is provided
+        if (!storeId) {
+            return res.status(400).json({
+                status: 400,
+                message: "Store ID is required."
+            });
+        }
+
+
+        // Extract the role type from the JWT token added to req by the middleware
+        const roleType = req.aud.split(":")[1];
+        if (roleType !== "STORE MANAGER") {
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access. Only STORE MANAGER can get deleted bills."
+            });
+        }
+
+        const result = await storeServiceObj.getDeletedBillsByStoreId(storeId);
+        res.json({
+            message: 'Deleted bills fetched successfully',
+            deletedBills: result
+        });
+    } catch (err) {
+        console.error("Error while retrieving deleted bills:", err.message);
+        next(err);
+    }
+});
+
+router.get('/get-deleted-bills', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+
+        // Validate that storeId is provided
+        if (!storeId) {
+            return res.status(400).json({
+                status: 400,
+                message: "Store ID is required."
+            });
+        }
+
+        // Extract the role type from the JWT token added to req by the middleware
+        const roleType = req.aud.split(":")[1];
+        if (roleType !== 'WAREHOUSE MANAGER') {
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access. Only WAREHOUSE MANAGER can retrieve all deleted bills."
+            });
+        }
+
+        const result = await storeServiceObj.getDeletedBills();
+        res.json({
+            message: 'Bills fetched successfully',
+            deletedBills: result
+        });
+    } catch (err) {
+        console.error("Error while retrieving bills:", err.message);
+        next(err);
+    }
+});
+
+router.get('/get-bills/:storeId', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+        const { storeId } = req.params;
+
+        // Validate that storeId is provided
+        if (!storeId) {
+            return res.status(400).json({
+                status: 400,
+                message: "Store ID is required."
+            });
+        }
+
+
+        // Extract the role type from the JWT token added to req by the middleware
+        const roleType = req.aud.split(":")[1];
+        if (roleType !== "STORE MANAGER") {
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access. Only STORE MANAGER can get bills."
+            });
+        }
+
+        const result = await storeServiceObj.getBillsByStoreId(storeId);
+        res.json({
+            message: 'bills fetched successfully',
+            Bills: result
+        });
+    } catch (err) {
+        console.error("Error while retrieving bills:", err.message);
+        next(err);
+    }
+});
+
+router.get('/get-bills', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+
+        // Extract the role type from the JWT token added to req by the middleware
+        const roleType = req.aud.split(":")[1];
+        if (roleType !== "WAREHOUSE MANAGER") {
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access. Only WAREHOUSE MANAGER can get all bills."
+            });
+        }
+
+        const result = await storeServiceObj.getBills();
+        res.json({
+            message: 'Bills fetched successfully',
+            Bills: result
+        });
+    } catch (err) {
+        console.error("Error while retrieving all bills:", err.message);
+        next(err);
+    }
+});
+
+router.get('/get-bill-details/:billId', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+
+        // Validate that storeId is provided
+        if (!billId) {
+            return res.status(400).json({
+                status: 400,
+                message: "Bill ID is required."
+            });
+        }
+
+        // Extract the role type from the JWT token added to req by the middleware
+        const roleType = req.aud.split(":")[1];
+        if (!['WAREHOUSE MANAGER', 'STORE MANAGER'].includes(roleType)) {
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access. Only WAREHOUSE MANAGER and STORE MANAGER can retrieve bill details."
+            });
+        }
+
+        const result = await storeServiceObj.getBillDetailsByBillId(billId);
+        res.json(result);
+    } catch (err) {
+        console.error("Error while retrieving bill details:", err.message);
         next(err);
     }
 });

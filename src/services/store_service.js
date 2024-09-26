@@ -1,6 +1,8 @@
 const Store = require('../utils/Models/storeModel');
 const AssignedInventory = require('../utils/Models/assignedInventoryModel');
 const RaisedInventory = require('../utils/Models/raisedInventoryModel');
+const Customer = require('../utils/Models/customerModel');
+const Bill = require('../utils/Models/billingModel');
 const Togs = require('../utils/Models/togsModel');
 const mongoose = require('mongoose');
 const JWTHelper = require('../utils/Helpers/jwt_helper')
@@ -258,14 +260,21 @@ class StoreService {
             let totalAmount = 0;
             const inventoryCheckTasks = [];
 
+            // Find the store by storeId and project only the storeName field
+            const store = await Store.findOne({ storeId }, 'storeName').exec();
+
+            if (!store) {
+                return { status: 404, message: "Store not found" };
+            }
+
             // Prepare to verify all inventory before committing any changes
             for (const product of products) {
                 inventoryCheckTasks.push((async () => {
                     const insufficientStockErrors = [];
-                    const togsProduct = await Togs.findOne({ productId: product.productId }).exec();
+                    const togsProduct = await Togs.findOne({ productId: product.productId, schoolName: store.storeName }).exec();
 
                     if (!togsProduct) {
-                        insufficientStockErrors.push({ productId: product.productId, message: "Product not found in Togs." });
+                        insufficientStockErrors.push({ productId: product.productId, message: `Product not found in ${store.storeName} Togs.` });
                         return { errors: insufficientStockErrors };
                     }
 
@@ -674,6 +683,31 @@ class StoreService {
         }
     }
 
+    async getRaisedInventoryRequestsByStore(storeId) {
+        try {
+            const raisedInventories = await RaisedInventory.find({ storeId }, 'raisedInventoryId assignedDate receivedDate status totalAmountOfAssigned')
+                .exec();
+
+            if (raisedInventories.length === 0) {
+                throw new Error('No assigned inventories found for the given storeId.');
+            }
+
+            const formattedData = raisedInventories.map(inv => ({
+                raisedInventoryId: inv.raisedInventoryId,
+                raisedDate: inv.raisedDate,
+                approvedDate: inv.approvedDate,
+                rejectedDate: inv.rejectedDate,
+                receivedDate: inv.receivedDate,
+                status: inv.status
+            }));
+
+            return formattedData
+        } catch (error) {
+            console.error("Error while retrieving assigned inventories:", error.message);
+            throw new Error("Server error");
+        }
+    }
+
     async getRaisedInventoryRequests() {
         try {
             const raisedInventories = await RaisedInventory.find({}, 'raisedInventoryId assignedDate receivedDate status totalAmountOfAssigned')
@@ -786,61 +820,61 @@ class StoreService {
                     path: 'variants'
                 }
             }).exec();
-    
+
             if (!raisedInventory) {
                 return res.status(404).json({
                     status: 404,
                     message: "Raised Inventory request not found."
                 });
             }
-    
+
             // Track whether all variants are approved
             let allVariantsApproved = true;
-    
+
             // Prepare updates for Togs and process each product's variants
             const updates = [];
             for (const product of raisedInventory.products) {
                 const togsProduct = await Togs.findOne({ productId: product.productId }).exec();
                 if (!togsProduct) continue;
-    
+
                 for (const variant of product.variants) {
                     let allSizesApproved = true;
-    
+
                     for (const vSize of variant.variantSizes) {
                         // If the size is already approved, skip to the next one
                         if (vSize.isApproved) continue;
-    
+
                         const togsVariant = togsProduct.variants.find(tv => tv.variantId === variant.variantId);
                         if (!togsVariant) {
                             allSizesApproved = false;
                             continue;
                         }
-    
+
                         const togsSize = togsVariant.variantSizes.find(tv => tv.size === vSize.size);
                         if (!togsSize || togsSize.quantity < vSize.quantity) {
                             allSizesApproved = false;
                             allVariantsApproved = false;
                             continue;
                         }
-    
+
                         // Approve the size if quantity is available and deduct the stock
                         togsSize.quantity -= vSize.quantity;
                         vSize.isApproved = true;
-    
+
                         updates.push({ togsProduct, togsVariant, togsSize });
                     }
-    
+
                     if (!allSizesApproved) {
                         allVariantsApproved = false;
                     }
                 }
             }
-    
+
             // Apply stock deductions to the Togs warehouse
             for (let update of updates) {
                 await update.togsProduct.save();
             }
-    
+
             // Set the status based on approval status
             if (allVariantsApproved) {
                 raisedInventory.status = 'APPROVED';
@@ -848,10 +882,10 @@ class StoreService {
             } else {
                 raisedInventory.status = 'DRAFT';
             }
-    
+
             // Save the updated raised inventory
             await raisedInventory.save();
-    
+
             // Return response based on final status
             if (raisedInventory.status === 'APPROVED') {
                 res.status(200).json({
@@ -868,7 +902,41 @@ class StoreService {
             console.error("Error while approving inventory:", error.message);
             next(error);
         }
-    } 
+    }
+
+    async rejectInventory(raisedInventoryId, roleType) {
+        try {
+            // Fetch the raised inventory details
+            const raisedInventory = await RaisedInventory.findOne({ raisedInventoryId }).populate({
+                path: 'products',
+                populate: {
+                    path: 'variants'
+                }
+            }).exec();
+
+            if (!raisedInventory) {
+                return res.status(404).json({
+                    status: 404,
+                    message: "Raised Inventory request not found."
+                });
+            }
+
+            raisedInventory.status = 'REJECTED';
+            raisedInventory.rejectedDate = new Date().toISOString(); // Set approved date
+
+
+            // Save the updated raised inventory
+            await raisedInventory.save();
+
+            return {
+                message: "Inventory request rejected successfully."
+            }
+
+        } catch (error) {
+            console.error("Error while rejecting inventory request:", error.message);
+            next(error);
+        }
+    }
 
     async receiveInventoryReq(raisedInventoryId, roleType, userStoreId) {
         const session = await mongoose.startSession();
@@ -876,43 +944,43 @@ class StoreService {
         try {
             // Fetch the raised inventory
             const raisedInventory = await RaisedInventory.findOne({ raisedInventoryId }).session(session);
-    
+
             if (!raisedInventory) {
                 throw new Error("Raised Inventory not found.");
             }
-    
+
             // If the user is a STORE MANAGER, ensure they are associated with the correct store
             if (roleType === 'STORE MANAGER' && raisedInventory.storeId !== userStoreId) {
                 throw new Error("Forbidden. You are not authorized to receive this inventory.");
             }
-    
+
             // Check if the inventory has already been fully received
             if (raisedInventory.status === 'RECEIVED' && raisedInventory.products.every(product =>
                 product.variants.every(variant => variant.variantSizes.every(size => size.isReceived))
             )) {
                 throw new Error("Inventory has already been fully received.");
             }
-    
+
             // Get the store associated with the raised inventory
             const store = await Store.findOne({ storeId: raisedInventory.storeId }).session(session);
-    
+
             if (!store) {
                 throw new Error("Store not found.");
             }
-    
+
             // Flag to track whether all variants are received
             let allVariantsReceived = true;
-    
+
             // Update store's products with only the approved and unreceived variants and sizes
             for (let raisedProduct of raisedInventory.products) {
                 let storeProduct = store.products.find(p => p.productId === raisedProduct.productId);
-    
+
                 if (!storeProduct) {
                     // Add the product only if it contains unreceived approved variants
                     const unreceivedApprovedVariants = raisedProduct.variants.filter(variant =>
                         variant.variantSizes.some(size => size.isApproved && !size.isReceived)
                     );
-    
+
                     if (unreceivedApprovedVariants.length > 0) {
                         // Clone the product with only unreceived approved variants
                         storeProduct = { ...raisedProduct, variants: unreceivedApprovedVariants };
@@ -921,13 +989,13 @@ class StoreService {
                 } else {
                     for (let raisedVariant of raisedProduct.variants) {
                         let storeVariant = storeProduct.variants.find(v => v.color.name === raisedVariant.color.name);
-    
+
                         if (!storeVariant) {
                             // Add the variant only if it contains unreceived approved sizes
                             const unreceivedApprovedSizes = raisedVariant.variantSizes.filter(size =>
                                 size.isApproved && !size.isReceived
                             );
-    
+
                             if (unreceivedApprovedSizes.length > 0) {
                                 // Clone the variant with only unreceived approved sizes
                                 storeVariant = { ...raisedVariant, variantSizes: unreceivedApprovedSizes };
@@ -938,7 +1006,7 @@ class StoreService {
                             for (let raisedSize of raisedVariant.variantSizes) {
                                 if (raisedSize.isApproved && !raisedSize.isReceived) {
                                     let storeSize = storeVariant.variantSizes.find(s => s.size === raisedSize.size);
-    
+
                                     if (!storeSize) {
                                         // Add the size if it doesn't exist in the store
                                         storeVariant.variantSizes.push({ ...raisedSize });
@@ -946,7 +1014,7 @@ class StoreService {
                                         // Update the quantity if the size already exists
                                         storeSize.quantity += raisedSize.quantity;
                                     }
-    
+
                                     // Mark the size as received
                                     raisedSize.isReceived = true;
                                 } else if (!raisedSize.isReceived) {
@@ -957,7 +1025,7 @@ class StoreService {
                     }
                 }
             }
-    
+
             // Set the status to RECEIVED if all variants are approved and received, otherwise set to DRAFT
             if (allVariantsReceived) {
                 raisedInventory.status = 'RECEIVED';
@@ -965,15 +1033,15 @@ class StoreService {
             } else {
                 raisedInventory.status = 'DRAFT';
             }
-    
+
             // Save the updated raised inventory and store
             await raisedInventory.save({ session });
             await store.save({ session });
-    
+
             // Commit the transaction
             await session.commitTransaction();
             session.endSession();
-    
+
             return {
                 status: 200,
                 message: allVariantsReceived
@@ -988,7 +1056,7 @@ class StoreService {
             throw err;
         }
     }
-    
+
 
     async getproducts(storeId) {
         try {
@@ -1037,6 +1105,373 @@ class StoreService {
         } catch (error) {
             console.error("Error while retrieving raised inventory details:", error.message);
             throw new Error("Server error.");
+        }
+    }
+
+    async createBill(storeId, billData) {
+        const session = await mongoose.startSession();
+        session.startTransaction();
+        try {
+            const { customerDetails, products, discountPercentage, modeOfPayment } = billData;
+
+            // 1. Find the store using storeId
+            const store = await Store.findOne({ storeId }).session(session);
+            if (!store) {
+                throw new Error('Store not found');
+            }
+
+            // 2. Find the customer by phone number or create a new one if not found
+            let customer = await Customer.findOne({ customerPhone: customerDetails.customerPhone }).session(session);
+            if (!customer) {
+                customer = new Customer({
+                    customerName: customerDetails.customerName,
+                    customerPhone: customerDetails.customerPhone,
+                    customerEmail: customerDetails.customerEmail
+                });
+                await customer.save({ session });
+            }
+
+            // 3. Validate product quantities and fetch product details to structure them for the bill
+            const billedProducts = [];
+            let totalAmount = 0;
+
+            for (let billProduct of products) {
+                const { productId, variantId, styleCoat, billingQuantity } = billProduct;
+
+                // Find the product in the store
+                const storeProduct = store.products.find(p => p.productId === productId);
+                if (!storeProduct) {
+                    throw new Error(`Product with ID ${productId} not found in store`);
+                }
+
+                // Find the variant in the product
+                const storeVariant = storeProduct.variants.find(v => v.variantId === variantId);
+                if (!storeVariant) {
+                    throw new Error(`Variant with ID ${variantId} not found in product ${productId}`);
+                }
+
+                // Find the size/coat in the variant
+                const storeSize = storeVariant.variantSizes.find(s => s.styleCoat === styleCoat);
+                if (!storeSize) {
+                    throw new Error(`Style coat ${styleCoat} not found in variant ${variantId}`);
+                }
+
+                // Check if the quantity is sufficient
+                if (storeSize.quantity < billingQuantity) {
+                    throw new Error(`Insufficient quantity for style coat ${styleCoat}, available: ${storeSize.quantity}, required: ${billingQuantity}`);
+                }
+
+                // Reduce the store quantity for this variant size
+                storeSize.quantity -= billingQuantity;
+
+                // Calculate the total billed amount for this product (price * quantity)
+                const billedPrice = storeProduct.price * billingQuantity;
+                totalAmount += billedPrice;
+
+                // Check if the product already exists in the billedProducts array
+                let billedProduct = billedProducts.find(p => p.productId === productId);
+                if (!billedProduct) {
+                    // If the product does not exist, create it and add it to billedProducts
+                    billedProduct = {
+                        productId: storeProduct.productId,
+                        group: storeProduct.group,
+                        category: storeProduct.category,
+                        subCategory: storeProduct.subCategory,
+                        gender: storeProduct.gender,
+                        productType: storeProduct.productType,
+                        fit: storeProduct.fit,
+                        neckline: storeProduct.neckline,
+                        pattern: storeProduct.pattern,
+                        sleeves: storeProduct.sleeves,
+                        material: storeProduct.material,
+                        price: storeProduct.price,
+                        productDescription: storeProduct.productDescription,
+                        sizeChart: storeProduct.sizeChart,
+                        variants: [] // Initialize an empty array for variants
+                    };
+                    billedProducts.push(billedProduct);
+                }
+
+                // Check if the variant already exists in the product's variants array
+                let billedVariant = billedProduct.variants.find(v => v.variantId === variantId);
+                if (!billedVariant) {
+                    // If the variant does not exist, create it and add it to the product's variants array
+                    billedVariant = {
+                        variantId: storeVariant.variantId,
+                        color: storeVariant.color,
+                        variantSizes: [], // Initialize an empty array for variantSizes
+                        imageUrls: storeVariant.imageUrls,
+                        isDeleted: storeVariant.isDeleted
+                    };
+                    billedProduct.variants.push(billedVariant);
+                }
+
+                // Check if the styleCoat already exists in the variantSizes array
+                let billedSize = billedVariant.variantSizes.find(s => s.styleCoat === styleCoat);
+                if (billedSize) {
+                    // If the styleCoat exists, just add the billingQuantity to the existing billedQuantity
+                    billedSize.billedQuantity += billingQuantity;
+                } else {
+                    // If the styleCoat does not exist, add it to the variantSizes array
+                    billedVariant.variantSizes.push({
+                        size: storeSize.size,
+                        billedQuantity: billingQuantity, // The quantity being billed
+                        styleCoat: storeSize.styleCoat,
+                        sku: storeSize.sku
+                    });
+                }
+            }
+
+            // 4. Calculate the total price and apply discount
+            const discount = discountPercentage ? (totalAmount * (discountPercentage / 100)) : 0;
+            const priceAfterDiscount = totalAmount - discount;
+
+            // 5. Create the bill with customer reference
+            const bill = new Bill({
+                storeId,
+                customer: customer._id, // Linking the customer
+                TotalAmount: totalAmount,
+                discountPercentage: discountPercentage || 0, // Using the discount from request
+                priceAfterDiscount,
+                modeOfPayment: modeOfPayment,
+                products: billedProducts // Saving the products with variants in the bill
+            });
+
+            await bill.save({ session });
+
+            // 6. Update the store's products with the new quantities
+            await store.save({ session });
+
+            // Commit the transaction
+            await session.commitTransaction();
+            session.endSession();
+
+            return {
+                status: 200,
+                message: "Bill created successfully",
+                billId: bill.billId
+            };
+        } catch (error) {
+            // Rollback transaction in case of any failure
+            await session.abortTransaction();
+            session.endSession();
+            console.error("Error creating bill:", error.message);
+            throw error.message;
+        }
+    }
+
+    async deleteBill(storeId, billId) {
+        try {
+            // Find the bill by storeId and billId first
+            const bill = await Bill.findOne({ storeId, billId });
+
+            if (!bill) {
+                return {
+                    status: 404,
+                    message: 'Bill not found for the provided storeId and billId'
+                };
+            }
+
+            // Check if the bill is already deleted
+            if (bill.isDeleted) {
+                return {
+                    status: 400,
+                    message: 'Bill is already marked as deleted'
+                };
+            }
+
+            // If not already deleted, update the isDeleted field to true and set deletedDate
+            bill.isDeleted = true;
+            bill.dateOfDeletion = new Date(); // Set the current date as the deletedDate
+            await bill.save();
+
+            return {
+                status: 200,
+                message: 'Bill deleted successfully',
+                bill
+            };
+        } catch (error) {
+            console.error('Error deleting bill:', error.message);
+            throw new Error(error.message);
+        }
+    }
+
+    async getDeletedBillsByStoreId(storeId) {
+        try {
+            // Find all deleted bills for the given storeId and return only the required fields
+            const deletedBills = await Bill.find(
+                { storeId, isDeleted: true }, // Query to find bills that are marked as deleted
+                {
+                    billId: 1,
+                    dateOfBill: 1,
+                    deletedDate: 1,
+                    TotalAmount: 1,
+                    discountPercentage: 1,
+                    priceAfterDiscount: 1
+                } // Projection to return only specific fields
+            );
+
+            if (!deletedBills.length) {
+                return []
+            }
+
+            return deletedBills
+        } catch (error) {
+            console.error('Error fetching deleted bills:', error.message);
+            throw new Error(error.message);
+        }
+    }
+
+    async getDeletedBills() {
+        try {
+            // Step 1: Find all deleted bills
+            const deletedBills = await Bill.find(
+                { isDeleted: true }, // Query to find bills that are marked as deleted
+                {
+                    billId: 1,
+                    dateOfBill: 1,
+                    deletedDate: 1,
+                    TotalAmount: 1,
+                    discountPercentage: 1,
+                    priceAfterDiscount: 1,
+                    storeId: 1 // Include storeId to use it later for fetching storeName
+                }
+            );
+
+            if (!deletedBills.length) {
+                return [];
+            }
+
+            // Step 2: Get unique storeIds from deletedBills
+            const storeIds = [...new Set(deletedBills.map(bill => bill.storeId))];
+
+            // Step 3: Fetch store names for the retrieved storeIds
+            const stores = await Store.find({ storeId: { $in: storeIds } }, { storeId: 1, storeName: 1 });
+
+            // Step 4: Create a storeId-to-storeName map for quick lookup
+            const storeMap = stores.reduce((map, store) => {
+                map[store.storeId] = store.storeName;
+                return map;
+            }, {});
+
+            // Step 5: Map through the deletedBills and append the storeName
+            const result = deletedBills.map(bill => ({
+                billId: bill.billId,
+                dateOfBill: bill.dateOfBill,
+                deletedDate: bill.deletedDate,
+                TotalAmount: bill.TotalAmount,
+                discountPercentage: bill.discountPercentage,
+                priceAfterDiscount: bill.priceAfterDiscount,
+                storeId: bill.storeId,
+                storeName: storeMap[bill.storeId] || 'Unknown Store' // Default to 'Unknown Store' if not found
+            }));
+
+            return result;
+        } catch (error) {
+            console.error('Error fetching deleted bills:', error.message);
+            throw new Error(error.message);
+        }
+    }
+
+    async getBills() {
+        try {
+            // Find all deleted bills for the given storeId and return only the required fields
+            const deletedBills = await Bill.find(
+                { isDeleted: false }, // Query to find bills that are marked as deleted
+                {
+                    billId: 1,
+                    dateOfBill: 1,
+                    deletedDate: 1,
+                    TotalAmount: 1,
+                    discountPercentage: 1,
+                    priceAfterDiscount: 1
+                } // Projection to return only specific fields
+            );
+
+            if (!deletedBills.length) {
+                return [];
+            }
+
+            // Step 2: Get unique storeIds from deletedBills
+            const storeIds = [...new Set(deletedBills.map(bill => bill.storeId))];
+
+            // Step 3: Fetch store names for the retrieved storeIds
+            const stores = await Store.find({ storeId: { $in: storeIds } }, { storeId: 1, storeName: 1 });
+
+            // Step 4: Create a storeId-to-storeName map for quick lookup
+            const storeMap = stores.reduce((map, store) => {
+                map[store.storeId] = store.storeName;
+                return map;
+            }, {});
+
+            // Step 5: Map through the deletedBills and append the storeName
+            const result = deletedBills.map(bill => ({
+                billId: bill.billId,
+                dateOfBill: bill.dateOfBill,
+                deletedDate: bill.deletedDate,
+                TotalAmount: bill.TotalAmount,
+                discountPercentage: bill.discountPercentage,
+                priceAfterDiscount: bill.priceAfterDiscount,
+                storeId: bill.storeId,
+                storeName: storeMap[bill.storeId] || 'Unknown Store' // Default to 'Unknown Store' if not found
+            }));
+
+            return result;
+        } catch (error) {
+            console.error('Error fetching deleted bills:', error.message);
+            throw new Error(error.message);
+        }
+    }
+
+    async getBillsByStoreId(storeId) {
+        try {
+            // Find all deleted bills for the given storeId and return only the required fields
+            const deletedBills = await Bill.find(
+                { storeId, isDeleted: false }, // Query to find bills that are marked as deleted
+                {
+                    billId: 1,
+                    dateOfBill: 1,
+                    deletedDate: 1,
+                    TotalAmount: 1,
+                    discountPercentage: 1,
+                    priceAfterDiscount: 1
+                } // Projection to return only specific fields
+            );
+
+            if (!deletedBills.length) {
+                return []
+            }
+
+            return deletedBills
+        } catch (error) {
+            console.error('Error fetching deleted bills:', error.message);
+            throw new Error(error.message);
+        }
+    }
+
+    async getBillDetailsByBillId(billId) {
+        try {
+            // Find the bill by billId
+            const bill = await Bill.findOne({ billId })
+                .populate('customer', 'customerName customerPhone customerEmail') // Populate customer details
+                .exec();
+
+            if (!bill) {
+                return {
+                    status: 404,
+                    message: 'Bill not found for the provided billId'
+                };
+            }
+
+            // Return the entire bill including products, variants, and variantSizes
+            return {
+                status: 200,
+                message: 'Bill details fetched successfully',
+                bill
+            };
+        } catch (error) {
+            console.error('Error fetching bill details:', error.message);
+            throw new Error('Error while fetching bill details');
         }
     }
 }
