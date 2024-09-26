@@ -24,8 +24,7 @@ const variantSchema = new mongoose.Schema({
         },
         styleCoat: {
             type: String,
-            trim: true,
-            unique: true,
+            trim: true
         },
         sku: {
             type: String,
@@ -50,8 +49,7 @@ const variantSchema = new mongoose.Schema({
     },
     variantId: {
         type: String,
-        required: true,
-        unique: true,
+        required: true
     },
 });
 
@@ -64,7 +62,6 @@ const productsSechma = new mongoose.Schema(
         productId: {
             type: String,
             trim: true,
-            unique: true
         },
         group: {
             type: String,
