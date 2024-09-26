@@ -182,7 +182,7 @@ class StoreService {
             else {
                 await this.createRaisedInventory(storeId, storeName, products);
             }
-            return { status: 200, message: "Products assigined successfully." };
+            return { status: 200, message: "Inventory request raised successfully." };
         } catch (error) {
             throw new Error(error.message);
         }

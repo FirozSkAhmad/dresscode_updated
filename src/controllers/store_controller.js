@@ -321,10 +321,10 @@ router.post('/raise-inventory-request', jwtHelperObj.verifyAccessToken, upload.s
 
         // Extract the role type from the JWT token added to req by the middleware
         const roleType = req.aud.split(":")[1];
-        if (roleType !== "WAREHOUSE MANAGER") {
+        if (roleType !== "STORE MANAGER") {
             return res.status(401).json({
                 status: 401,
-                message: "Unauthorized access. Only Warehouse Managers can assign inventory to stores."
+                message: "Unauthorized access. Only STORE MANAGER can raise inventory request."
             });
         }
 
