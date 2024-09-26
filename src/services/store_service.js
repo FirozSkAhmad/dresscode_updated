@@ -18,6 +18,7 @@ class StoreService {
         // Check if userName, phoneNo, or emailID already exists
         const existingStore = await Store.findOne({
             $or: [
+                { storeName: storeData.storeName },
                 { userName: storeData.userName },
                 { phoneNo: storeData.phoneNo },
                 { emailID: storeData.emailID }
@@ -25,7 +26,7 @@ class StoreService {
         });
 
         if (existingStore) {
-            throw new Error('User Name, Phone No, or Email ID already exists.');
+            throw new Error('storeName, User Name, Phone No, or Email ID already exists.');
         }
 
         // Hash the password before saving
@@ -51,24 +52,24 @@ class StoreService {
 
     async loginUser(userDetails, session, res) {
         try {
-            const userData = await Store.findOne({ emailID: userDetails.emailID }).session(session);
+            const storeData = await Store.findOne({ emailID: userDetails.emailID }).session(session);
 
-            if (!userData) {
+            if (!storeData) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("No user exists with given emailID");
             }
 
-            if (userDetails.password !== userData.password) {
+            if (userDetails.password !== storeData.password) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("Incorrect Password");
             }
 
             // If you need to update last login time or log the login attempt
             await Store.updateOne(
-                { _id: userData._id },
+                { _id: storeData._id },
                 { $set: { lastLogin: new Date() } },
                 { session: session }
             );
 
-            const tokenPayload = `${userData.storeId}:${userData.roleType}:${userData.userName}`;
+            const tokenPayload = `${storeData.storeId}:${storeData.roleType}:${storeData.userName}`;
             const accessToken = await this.jwtObject.generateAccessToken(tokenPayload);
             const refreshToken = await this.jwtObject.generateRefreshToken(tokenPayload);
 
@@ -82,10 +83,10 @@ class StoreService {
 
             const data = {
                 accessToken: accessToken,
-                userId: userData._id,
-                name: userData.name,
-                emailID: userData.emailID,
-                phoneNumber: userData.phoneNumber,
+                storeId: storeData.storeId,
+                userName: storeData.userName,
+                emailID: storeData.emailID,
+                phoneNo: storeData.phoneNo,
             };
 
             return data;
@@ -326,7 +327,7 @@ class StoreService {
             const assignedInventoryData = {
                 storeId: storeId,
                 assignedDate: new Date(),
-                totalAmountAssigned: totalAmount,
+                totalAmountOfAssigned: totalAmount,
                 status: 'ASSIGNED',
                 products: products
             };
@@ -335,7 +336,7 @@ class StoreService {
             return { status: 200, message: "Assigned inventory created and quantities updated in Togs." };
         } catch (error) {
             console.error("Error during inventory assignment and update:", error.message);
-            return { status: 400, error: JSON.parse(error.message) };
+            throw new Error(error.message)
         }
     }
 

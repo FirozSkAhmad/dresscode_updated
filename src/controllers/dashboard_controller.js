@@ -1294,7 +1294,7 @@ router.get('/downloadInventory/:storeName', jwtHelperObj.verifyAccessToken, asyn
         }
 
         // Decode the storeName to handle URL encoding like %20 for spaces
-        const storeName = decodeURIComponent(req.params.storeName);
+        const storeName = decodeURIComponent(req.params.storeName.toUpperCase());
 
         // Fetch products from the 'Togs' collection where 'schoolName' matches 'storeName'
         const products = await TogsModel.find({ schoolName: storeName, isDeleted: false })
