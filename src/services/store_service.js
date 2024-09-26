@@ -944,19 +944,18 @@ class StoreService {
 
             // Return response based on final status
             if (raisedInventory.status === 'APPROVED') {
-                res.status(200).json({
-                    status: 200,
+                return {
                     message: "Inventory successfully approved and quantities updated in warehouse."
-                });
+
+                }
             } else {
-                res.status(202).json({
-                    status: 202,
+                return {
                     message: "Partial approval complete. Inventory status set to DRAFT, awaiting full approval."
-                });
+                }
             }
         } catch (error) {
             console.error("Error while approving inventory:", error.message);
-            next(error);
+            throw new Error(error.message);
         }
     }
 
@@ -990,7 +989,7 @@ class StoreService {
 
         } catch (error) {
             console.error("Error while rejecting inventory request:", error.message);
-            next(error);
+            throw new Error(error.message);
         }
     }
 
