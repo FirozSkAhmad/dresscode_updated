@@ -254,35 +254,91 @@ class StoreService {
 
     async createAssignedInventory(storeId, products) {
         try {
-            // Calculate total amount assigned
-            let totalAmount = products.reduce((sum, product) => {
-                let productTotal = product.variants.reduce((variantSum, variant) => {
-                    let variantTotal = variant.variantSizes.reduce((sizeSum, size) => {
-                        const quantity = size.quantity || 0;
-                        const price = product.price || 0;
-                        return sizeSum + (quantity * price);
-                    }, 0);
-                    return variantSum + variantTotal;
-                }, 0);
-                return sum + productTotal;
-            }, 0);
+            let totalAmount = 0;
+            const inventoryCheckTasks = [];
 
-            // Prepare the assignedInventory data
+            // Prepare to verify all inventory before committing any changes
+            for (const product of products) {
+                inventoryCheckTasks.push((async () => {
+                    const insufficientStockErrors = [];
+                    const togsProduct = await Togs.findOne({ productId: product.productId }).exec();
+
+                    if (!togsProduct) {
+                        insufficientStockErrors.push({ productId: product.productId, message: "Product not found in Togs." });
+                        return { errors: insufficientStockErrors };
+                    }
+
+                    product.variants.forEach(variant => {
+                        const togsVariant = togsProduct.variants.find(v => v.color.name === variant.color.name && v.color.hexcode === variant.color.hexcode);
+                        if (!togsVariant) {
+                            insufficientStockErrors.push({ productId: product.productId, variantId: variant.variantId, message: "Variant not found in Togs." });
+                            return;
+                        }
+
+                        variant.variantSizes.forEach(sizeDetail => {
+                            const togsSizeDetail = togsVariant.variantSizes.find(v => v.size === sizeDetail.size);
+                            if (!togsSizeDetail || togsSizeDetail.quantity < sizeDetail.quantity) {
+                                insufficientStockErrors.push({
+                                    productId: product.productId,
+                                    variantId: variant.variantId,
+                                    size: sizeDetail.size,
+                                    requiredQuantity: sizeDetail.quantity,
+                                    availableQuantity: togsSizeDetail ? togsSizeDetail.quantity : 0,
+                                    message: "Insufficient stock for size."
+                                });
+                            } else {
+                                // Calculate total assuming decrement will be successful
+                                totalAmount += sizeDetail.quantity * product.price;
+                            }
+                        });
+                    });
+
+                    return {
+                        product,
+                        togsProduct,
+                        errors: insufficientStockErrors
+                    };
+                })());
+            }
+
+            // Resolve all inventory check tasks
+            const inventoryChecks = await Promise.all(inventoryCheckTasks);
+            const aggregatedErrors = inventoryChecks.flatMap(check => check.errors || []);
+
+            // If there were inventory issues, do not proceed with any updates
+            if (aggregatedErrors.length > 0) {
+                throw new Error(JSON.stringify(aggregatedErrors));
+            }
+
+            // If all checks pass, then proceed to update the quantities
+            for (const check of inventoryChecks) {
+                check.product.variants.forEach(variant => {
+                    const togsVariant = check.togsProduct.variants.find(v => v.color.name === variant.color.name && v.color.hexcode === variant.color.hexcode);
+                    variant.variantSizes.forEach(sizeDetail => {
+                        const togsSizeDetail = togsVariant.variantSizes.find(v => v.size === sizeDetail.size);
+                        togsSizeDetail.quantity -= sizeDetail.quantity; // Safe to update now
+                    });
+                });
+                await check.togsProduct.save(); // Commit the changes to the database
+            }
+
+            // Everything is okay; prepare and save the assigned inventory
             const assignedInventoryData = {
                 storeId: storeId,
                 assignedDate: new Date(),
-                totalAmountOfAssigned: totalAmount,
+                totalAmountAssigned: totalAmount,
                 status: 'ASSIGNED',
                 products: products
             };
 
-            // Save to AssignedInventory collection
             await AssignedInventory.create(assignedInventoryData);
+            return { status: 200, message: "Assigned inventory created and quantities updated in Togs." };
         } catch (error) {
-            console.error("Error creating assigned inventory:", error.message);
-            throw new Error(`Failed to create assigned inventory`);
+            console.error("Error during inventory assignment and update:", error.message);
+            return { status: 400, error: JSON.parse(error.message) };
         }
     }
+
 
     async createRaisedInventory(storeId, storeName, products) {
         try {
@@ -729,28 +785,28 @@ class StoreService {
                     path: 'variants'
                 }
             }).exec();
-    
+
             if (!raisedInventory) {
                 return res.status(404).json({
                     status: 404,
                     message: "Raised Inventory request not found."
                 });
             }
-    
+
             // Check if the inventory can be approved and prepare updates for Togs
             const updates = [];
             const canBeApproved = await Promise.all(raisedInventory.products.map(async product => {
                 const togsProduct = await Togs.findOne({ productId: product.productId }).exec();
                 if (!togsProduct) return false;
-    
+
                 return product.variants.every(variant => {
                     const togsVariant = togsProduct.variants.find(tv => tv.variantId === variant.variantId);
                     if (!togsVariant) return false;
-    
+
                     return variant.variantSizes.every(v => {
                         const togsSize = togsVariant.variantSizes.find(tv => tv.size === v.size);
                         if (!togsSize || togsSize.quantity < v.quantity) return false;
-    
+
                         // Prepare updates
                         updates.push({
                             togsProduct,
@@ -762,19 +818,19 @@ class StoreService {
                     });
                 });
             }));
-    
+
             if (canBeApproved.every(status => status)) {
                 // Deduct quantities from Togs
                 for (let update of updates) {
                     update.togsSize.quantity -= update.quantityToDeduct;
                     await update.togsProduct.save();
                 }
-    
+
                 // Update RaisedInventory status and approved date
                 raisedInventory.status = 'APPROVED';
                 raisedInventory.approvedDate = new Date().toISOString(); // Setting the approved date
                 await raisedInventory.save();
-    
+
                 res.status(200).json({
                     status: 200,
                     message: "Inventory successfully approved and quantities updated in warehouse."
