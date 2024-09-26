@@ -1060,7 +1060,7 @@ class StoreService {
 
     async getproducts(storeId) {
         try {
-            const store = await Store.find({ storeId })
+            const store = await Store.findOne({ storeId })
                 .populate({
                     path: 'products',
                     populate: {
@@ -1103,7 +1103,7 @@ class StoreService {
 
             return productsData
         } catch (error) {
-            console.error("Error while retrieving raised inventory details:", error.message);
+            console.error("Error while retrieving products:", error.message);
             throw new Error("Server error.");
         }
     }
