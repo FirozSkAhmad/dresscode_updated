@@ -31,7 +31,11 @@ const variantSchema = new mongoose.Schema({
             type: String,
             trim: true
         },
-        isCompleted: {
+        isApproved: {
+            type: Boolean,
+            default: false,
+        },
+        isReceived: {
             type: Boolean,
             default: false,
         }
