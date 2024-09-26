@@ -509,7 +509,7 @@ class StoreService {
         }
     }
 
-    async getAssignedInventories(storeId) {
+    async getAssignedInventoriesByStore(storeId) {
         const session = await mongoose.startSession();
         session.startTransaction();
         try {
@@ -527,6 +527,52 @@ class StoreService {
                 receivedDate: inv.receivedDate,
                 status: inv.status,
                 totalAmountOfAssigned: inv.totalAmountOfAssigned
+            }));
+
+            await session.commitTransaction();
+            session.endSession();
+
+            return formattedData
+        } catch (error) {
+            await session.abortTransaction();
+            session.endSession();
+            console.error("Error while retrieving assigned inventories:", error.message);
+            throw new Error("Server error");
+        }
+    }
+
+    async getAssignedInventories() {
+        const session = await mongoose.startSession();
+        session.startTransaction();
+        try {
+            const assignedInventories = await AssignedInventory.find({}, 'assignedInventoryId assignedDate receivedDate status totalAmountOfAssigned')
+                .exec();
+
+            if (assignedInventories.length === 0) {
+                console.log('No assigned inventories found for the given storeId.');
+                return []
+            }
+
+            // Step 2: Get unique storeIds from assignedInventories
+            const storeIds = [...new Set(assignedInventories.map(assignedInventory => assignedInventory.storeId))];
+
+            // Step 3: Fetch store names for the retrieved storeIds
+            const stores = await Store.find({ storeId: { $in: storeIds } }, { storeId: 1, storeName: 1 });
+
+            // Step 4: Create a storeId-to-storeName map for quick lookup
+            const storeMap = stores.reduce((map, store) => {
+                map[store.storeId] = store.storeName;
+                return map;
+            }, {});
+
+            const formattedData = assignedInventories.map(inv => ({
+                assignedInventoryId: inv.assignedInventoryId,
+                assignedDate: inv.assignedDate,
+                receivedDate: inv.receivedDate,
+                status: inv.status,
+                totalAmountOfAssigned: inv.totalAmountOfAssigned,
+                storeId: inv.storeId,
+                storeName: storeMap[inv.storeId] || 'Unknown Store' // Default to 'Unknown Store' if not found
             }));
 
             await session.commitTransaction();
@@ -789,7 +835,9 @@ class StoreService {
                                     quantity: v.quantity,
                                     quantityInWarehouse: roleType === 'WAREHOUSE MANAGER' ? quantityInWarehouse : undefined,
                                     styleCoat: v.styleCoat,
-                                    sku: v.sku
+                                    sku: v.sku,
+                                    isApproved: v.isApproved,
+                                    isReceived: v.isReceived
                                 };
                             }),
                             imageUrls: variant.imageUrls,
@@ -1480,6 +1528,57 @@ class StoreService {
         } catch (error) {
             console.error('Error fetching bill details:', error.message);
             throw new Error('Error while fetching bill details');
+        }
+    }
+
+
+    async getBills() {
+        try {
+            // Find all deleted bills for the given storeId and return only the required fields
+            const deletedBills = await Bill.find(
+                { isDeleted: false }, // Query to find bills that are marked as deleted
+                {
+                    billId: 1,
+                    dateOfBill: 1,
+                    deletedDate: 1,
+                    TotalAmount: 1,
+                    discountPercentage: 1,
+                    priceAfterDiscount: 1
+                } // Projection to return only specific fields
+            );
+
+            if (!deletedBills.length) {
+                return [];
+            }
+
+            // Step 2: Get unique storeIds from deletedBills
+            const storeIds = [...new Set(deletedBills.map(bill => bill.storeId))];
+
+            // Step 3: Fetch store names for the retrieved storeIds
+            const stores = await Store.find({ storeId: { $in: storeIds } }, { storeId: 1, storeName: 1 });
+
+            // Step 4: Create a storeId-to-storeName map for quick lookup
+            const storeMap = stores.reduce((map, store) => {
+                map[store.storeId] = store.storeName;
+                return map;
+            }, {});
+
+            // Step 5: Map through the deletedBills and append the storeName
+            const result = deletedBills.map(bill => ({
+                billId: bill.billId,
+                dateOfBill: bill.dateOfBill,
+                deletedDate: bill.deletedDate,
+                TotalAmount: bill.TotalAmount,
+                discountPercentage: bill.discountPercentage,
+                priceAfterDiscount: bill.priceAfterDiscount,
+                storeId: bill.storeId,
+                storeName: storeMap[bill.storeId] || 'Unknown Store' // Default to 'Unknown Store' if not found
+            }));
+
+            return result;
+        } catch (error) {
+            console.error('Error fetching deleted bills:', error.message);
+            throw new Error(error.message);
         }
     }
 }

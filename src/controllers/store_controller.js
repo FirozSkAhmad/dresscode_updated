@@ -210,7 +210,31 @@ router.get('/assigned-inventories/:storeId', jwtHelperObj.verifyAccessToken, asy
         }
 
         // Process the request and get store details
-        const result = await storeServiceObj.getAssignedInventories(storeId);
+        const result = await storeServiceObj.getAssignedInventoriesByStore(storeId);
+        res.json({
+            "message": "assigned inventories retrived successfully",
+            "assignedInventories": result
+        });
+    } catch (err) {
+        console.error("Error while retrieving assigned inventories:", err.message);
+        next(err);
+    }
+});
+
+router.get('/assigned-inventories', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+
+        // Extract the role type from the JWT token added to req by the middleware
+        const roleType = req.aud.split(":")[1];
+        if (!['WAREHOUSE MANAGER'].includes(roleType)) {
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access. Only WAREHOUSE MANAGER can access assigned inventories."
+            });
+        }
+
+        // Process the request and get store details
+        const result = await storeServiceObj.getAssignedInventories();
         res.json({
             "message": "assigned inventories retrived successfully",
             "assignedInventories": result
@@ -299,7 +323,7 @@ router.get('/downloadInventory/:storeId', jwtHelperObj.verifyAccessToken, async 
         }
 
         // Process the request and get store details
-        const result = await storeServiceObj.downloadInventory(storeId,res);
+        const result = await storeServiceObj.downloadInventory(storeId, res);
         res.json(result);
     } catch (err) {
         console.error("Error while retrieving store details:", err.message);
