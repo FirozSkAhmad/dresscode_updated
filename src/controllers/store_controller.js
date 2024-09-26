@@ -432,6 +432,35 @@ router.patch('/approve-inventory-request/:raisedInventoryId', jwtHelperObj.verif
     }
 });
 
+router.patch('/approve-inventory-request/:raisedInventoryId', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+        const { raisedInventoryId } = req.params;
+
+        // Validate that storeId is provided
+        if (!raisedInventoryId) {
+            return res.status(400).json({
+                status: 400,
+                message: "raisedInventoryId is required."
+            });
+        }
+
+        // Extract the role type from the JWT token added to req by the middleware
+        const roleType = req.aud.split(":")[1];
+        if (!['WAREHOUSE MANAGER'].includes(roleType)) {
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access. Only WAREHOUSE MANAGER can approve inventory request."
+            });
+        }
+
+        const result = await storeServiceObj.approveInventory(raisedInventoryId, roleType);
+        res.json(result);
+    } catch (err) {
+        console.error("Error while assigning inventory:", err.message);
+        next(err);
+    }
+});
+
 router.patch('/receive-inventory-request/:raisedInventoryId', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
         const { raisedInventoryId } = req.params;

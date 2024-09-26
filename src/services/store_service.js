@@ -786,154 +786,209 @@ class StoreService {
                     path: 'variants'
                 }
             }).exec();
-
+    
             if (!raisedInventory) {
                 return res.status(404).json({
                     status: 404,
                     message: "Raised Inventory request not found."
                 });
             }
-
-            // Check if the inventory can be approved and prepare updates for Togs
+    
+            // Track whether all variants are approved
+            let allVariantsApproved = true;
+    
+            // Prepare updates for Togs and process each product's variants
             const updates = [];
-            const canBeApproved = await Promise.all(raisedInventory.products.map(async product => {
+            for (const product of raisedInventory.products) {
                 const togsProduct = await Togs.findOne({ productId: product.productId }).exec();
-                if (!togsProduct) return false;
-
-                return product.variants.every(variant => {
-                    const togsVariant = togsProduct.variants.find(tv => tv.variantId === variant.variantId);
-                    if (!togsVariant) return false;
-
-                    return variant.variantSizes.every(v => {
-                        const togsSize = togsVariant.variantSizes.find(tv => tv.size === v.size);
-                        if (!togsSize || togsSize.quantity < v.quantity) return false;
-
-                        // Prepare updates
-                        updates.push({
-                            togsProduct,
-                            togsVariant,
-                            togsSize,
-                            quantityToDeduct: v.quantity
-                        });
-                        return true;
-                    });
-                });
-            }));
-
-            if (canBeApproved.every(status => status)) {
-                // Deduct quantities from Togs
-                for (let update of updates) {
-                    update.togsSize.quantity -= update.quantityToDeduct;
-                    await update.togsProduct.save();
+                if (!togsProduct) continue;
+    
+                for (const variant of product.variants) {
+                    let allSizesApproved = true;
+    
+                    for (const vSize of variant.variantSizes) {
+                        // If the size is already approved, skip to the next one
+                        if (vSize.isApproved) continue;
+    
+                        const togsVariant = togsProduct.variants.find(tv => tv.variantId === variant.variantId);
+                        if (!togsVariant) {
+                            allSizesApproved = false;
+                            continue;
+                        }
+    
+                        const togsSize = togsVariant.variantSizes.find(tv => tv.size === vSize.size);
+                        if (!togsSize || togsSize.quantity < vSize.quantity) {
+                            allSizesApproved = false;
+                            allVariantsApproved = false;
+                            continue;
+                        }
+    
+                        // Approve the size if quantity is available and deduct the stock
+                        togsSize.quantity -= vSize.quantity;
+                        vSize.isApproved = true;
+    
+                        updates.push({ togsProduct, togsVariant, togsSize });
+                    }
+    
+                    if (!allSizesApproved) {
+                        allVariantsApproved = false;
+                    }
                 }
-
-                // Update RaisedInventory status and approved date
+            }
+    
+            // Apply stock deductions to the Togs warehouse
+            for (let update of updates) {
+                await update.togsProduct.save();
+            }
+    
+            // Set the status based on approval status
+            if (allVariantsApproved) {
                 raisedInventory.status = 'APPROVED';
-                raisedInventory.approvedDate = new Date().toISOString(); // Setting the approved date
-                await raisedInventory.save();
-
+                raisedInventory.approvedDate = new Date().toISOString(); // Set approved date
+            } else {
+                raisedInventory.status = 'DRAFT';
+            }
+    
+            // Save the updated raised inventory
+            await raisedInventory.save();
+    
+            // Return response based on final status
+            if (raisedInventory.status === 'APPROVED') {
                 res.status(200).json({
                     status: 200,
                     message: "Inventory successfully approved and quantities updated in warehouse."
                 });
             } else {
-                res.status(409).json({
-                    status: 409,
-                    message: "Cannot approve inventory as not all variant quantities are available in warehouse."
+                res.status(202).json({
+                    status: 202,
+                    message: "Partial approval complete. Inventory status set to DRAFT, awaiting full approval."
                 });
             }
         } catch (error) {
             console.error("Error while approving inventory:", error.message);
             next(error);
         }
-    }
+    } 
 
     async receiveInventoryReq(raisedInventoryId, roleType, userStoreId) {
         const session = await mongoose.startSession();
         session.startTransaction();
         try {
-
-            // Get the assigned inventory using assignedInventoryId
+            // Fetch the raised inventory
             const raisedInventory = await RaisedInventory.findOne({ raisedInventoryId }).session(session);
-
+    
             if (!raisedInventory) {
                 throw new Error("Raised Inventory not found.");
             }
-
+    
             // If the user is a STORE MANAGER, ensure they are associated with the correct store
             if (roleType === 'STORE MANAGER' && raisedInventory.storeId !== userStoreId) {
                 throw new Error("Forbidden. You are not authorized to receive this inventory.");
             }
-
-            // Check if the inventory has already been received
-            if (raisedInventory.status === 'RECEIVED') {
-                throw new Error("Inventory has already been received.");
+    
+            // Check if the inventory has already been fully received
+            if (raisedInventory.status === 'RECEIVED' && raisedInventory.products.every(product =>
+                product.variants.every(variant => variant.variantSizes.every(size => size.isReceived))
+            )) {
+                throw new Error("Inventory has already been fully received.");
             }
-
-            // Update assignedInventory status and receivedDate
-            raisedInventory.status = 'RECEIVED';
-            raisedInventory.receivedDate = new Date();
-            await raisedInventory.save({ session });
-
-            // Get the store
+    
+            // Get the store associated with the raised inventory
             const store = await Store.findOne({ storeId: raisedInventory.storeId }).session(session);
-
+    
             if (!store) {
                 throw new Error("Store not found.");
             }
-
-            // Update store's products
+    
+            // Flag to track whether all variants are received
+            let allVariantsReceived = true;
+    
+            // Update store's products with only the approved and unreceived variants and sizes
             for (let raisedProduct of raisedInventory.products) {
-                // Find the product in store's products
                 let storeProduct = store.products.find(p => p.productId === raisedProduct.productId);
-
-                if (storeProduct) {
-                    // Product exists, update variants
-                    for (let raisedVariant of raisedProduct.variants) {
-                        let storeVariant = storeProduct.variants.find(v => v.color.name === raisedVariant.color.name);
-
-                        if (storeVariant) {
-                            // Variant exists, update sizes
-                            for (let raisedSize of raisedVariant.variantSizes) {
-                                let storeSize = storeVariant.variantSizes.find(s => s.size === raisedSize.size);
-
-                                if (storeSize) {
-                                    // Size exists, increase quantity
-                                    storeSize.quantity += raisedSize.quantity;
-                                } else {
-                                    // Size doesn't exist, add it
-                                    storeVariant.variantSizes.push(raisedSize);
-                                }
-                            }
-                        } else {
-                            // Variant doesn't exist, add it
-                            storeProduct.variants.push(raisedVariant);
-                        }
+    
+                if (!storeProduct) {
+                    // Add the product only if it contains unreceived approved variants
+                    const unreceivedApprovedVariants = raisedProduct.variants.filter(variant =>
+                        variant.variantSizes.some(size => size.isApproved && !size.isReceived)
+                    );
+    
+                    if (unreceivedApprovedVariants.length > 0) {
+                        // Clone the product with only unreceived approved variants
+                        storeProduct = { ...raisedProduct, variants: unreceivedApprovedVariants };
+                        store.products.push(storeProduct);
                     }
                 } else {
-                    // Product doesn't exist, add it
-                    store.products.push(raisedProduct);
+                    for (let raisedVariant of raisedProduct.variants) {
+                        let storeVariant = storeProduct.variants.find(v => v.color.name === raisedVariant.color.name);
+    
+                        if (!storeVariant) {
+                            // Add the variant only if it contains unreceived approved sizes
+                            const unreceivedApprovedSizes = raisedVariant.variantSizes.filter(size =>
+                                size.isApproved && !size.isReceived
+                            );
+    
+                            if (unreceivedApprovedSizes.length > 0) {
+                                // Clone the variant with only unreceived approved sizes
+                                storeVariant = { ...raisedVariant, variantSizes: unreceivedApprovedSizes };
+                                storeProduct.variants.push(storeVariant);
+                            }
+                        } else {
+                            // Update the variant with only unreceived approved sizes
+                            for (let raisedSize of raisedVariant.variantSizes) {
+                                if (raisedSize.isApproved && !raisedSize.isReceived) {
+                                    let storeSize = storeVariant.variantSizes.find(s => s.size === raisedSize.size);
+    
+                                    if (!storeSize) {
+                                        // Add the size if it doesn't exist in the store
+                                        storeVariant.variantSizes.push({ ...raisedSize });
+                                    } else {
+                                        // Update the quantity if the size already exists
+                                        storeSize.quantity += raisedSize.quantity;
+                                    }
+    
+                                    // Mark the size as received
+                                    raisedSize.isReceived = true;
+                                } else if (!raisedSize.isReceived) {
+                                    allVariantsReceived = false;
+                                }
+                            }
+                        }
+                    }
                 }
             }
-
-            // Save the store
+    
+            // Set the status to RECEIVED if all variants are approved and received, otherwise set to DRAFT
+            if (allVariantsReceived) {
+                raisedInventory.status = 'RECEIVED';
+                raisedInventory.receivedDate = new Date();
+            } else {
+                raisedInventory.status = 'DRAFT';
+            }
+    
+            // Save the updated raised inventory and store
+            await raisedInventory.save({ session });
             await store.save({ session });
-
-            // Commit transaction
+    
+            // Commit the transaction
             await session.commitTransaction();
             session.endSession();
-
+    
             return {
                 status: 200,
-                message: "Inventory received and store updated successfully."
+                message: allVariantsReceived
+                    ? "Inventory fully received and store updated successfully."
+                    : "Partial inventory received. Store updated, awaiting remaining approval."
             };
         } catch (err) {
+            // Rollback the transaction in case of any error
             await session.abortTransaction();
             session.endSession();
             console.error("Error while receiving inventory:", err.message);
             throw err;
         }
     }
+    
 
     async getproducts(storeId) {
         try {
