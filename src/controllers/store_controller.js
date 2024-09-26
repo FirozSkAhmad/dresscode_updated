@@ -299,7 +299,7 @@ router.get('/downloadInventory/:storeId', jwtHelperObj.verifyAccessToken, async 
         }
 
         // Process the request and get store details
-        const result = await storeServiceObj.downloadInventory(storeId);
+        const result = await storeServiceObj.downloadInventory(storeId,res);
         res.json(result);
     } catch (err) {
         console.error("Error while retrieving store details:", err.message);

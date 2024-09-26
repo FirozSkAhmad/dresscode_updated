@@ -9,6 +9,7 @@ const JWTHelper = require('../utils/Helpers/jwt_helper')
 const bcrypt = require('bcrypt');
 const stream = require('stream');
 const csv = require('csv-parser');
+const csvWriter = require('csv-writer').createObjectCsvStringifier; // Import csv-writer
 
 class StoreService {
     constructor() {
@@ -670,12 +671,19 @@ class StoreService {
                 });
             });
 
+            if (records.length === 0) {
+                return res.status(404).send({ message: "No variant data available for the specified school name" });
+            }
+
+            // Generate CSV content
+            const header = csvStringifier.getHeaderString();
+            const csvContent = csvStringifier.stringifyRecords(records);
+
             // Prepare the CSV output
             res.setHeader('Content-Type', 'text/csv');
             res.setHeader('Content-Disposition', `attachment; filename="inventory_${storeId}.csv"`);
-            csvStringifier.pipe(res);
-            records.forEach(record => csvStringifier.write(record));
-            csvStringifier.end();
+            // Send the CSV content
+            res.send(header + csvContent);
 
         } catch (error) {
             console.error("Error generating CSV file:", error.message);
