@@ -714,7 +714,7 @@ class StoreService {
                 .exec();
 
             if (raisedInventories.length === 0) {
-                throw new Error('No assigned inventories found for the given storeId.');
+                return []
             }
 
             const formattedData = raisedInventories.map(inv => ({

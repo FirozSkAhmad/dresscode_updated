@@ -388,7 +388,10 @@ router.get('/raised-inventory-requests', jwtHelperObj.verifyAccessToken, async (
 
         // Process the request and get store details
         const result = await storeServiceObj.getRaisedInventoryRequests();
-        res.json(result);
+        res.json({
+            message: "Successfully retrieved raised inventory requests",
+            raisedInventoryReqs: result
+        });
     } catch (err) {
         console.error("Error while retrieving raised inventory requests:", err.message);
         next(err);
