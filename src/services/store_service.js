@@ -759,7 +759,7 @@ class StoreService {
 
     async getRaisedInventoryRequestsByStore(storeId) {
         try {
-            const raisedInventories = await RaisedInventory.find({ storeId }, 'raisedInventoryId assignedDate receivedDate status totalAmountOfAssigned')
+            const raisedInventories = await RaisedInventory.find({ storeId }, 'raisedInventoryId raisedDate approvedDate rejectedDate receivedDate status totalAmountOfAssigned')
                 .exec();
 
             if (raisedInventories.length === 0) {
@@ -784,7 +784,7 @@ class StoreService {
 
     async getRaisedInventoryRequests() {
         try {
-            const raisedInventories = await RaisedInventory.find({}, 'raisedInventoryId assignedDate receivedDate status totalAmountOfAssigned')
+            const raisedInventories = await RaisedInventory.find({}, 'raisedInventoryId raisedDate approvedDate rejectedDate receivedDate status totalAmountOfAssigned')
                 .exec();
 
             if (raisedInventories.length === 0) {
