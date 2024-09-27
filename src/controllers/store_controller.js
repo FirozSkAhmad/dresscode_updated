@@ -808,7 +808,7 @@ router.get('/get-customer-details/:customerPhone', jwtHelperObj.verifyAccessToke
             });
         }
 
-        const result = await storeServiceObj.getCustomerByPhone(storeId);
+        const result = await storeServiceObj.getCustomerByPhone(customerPhone);
         res.json({
             message:"Retrived the customer details successfully.",
             result
