@@ -1605,9 +1605,13 @@ class StoreService {
         try {
             const customer = await Customer.findOne({ customerPhone });
             if (!customer) {
-                return { message: 'Customer not found' };
+                return [];
             }
-            return customer;
+            return {
+                customerName:customer.customerName,
+                customerPhone:customer.customerPhone,
+                customerEmail:customer.customerEmail
+            };
         } catch (error) {
             console.error('Error fetching customer details:', error);
             throw new Error(error.message);

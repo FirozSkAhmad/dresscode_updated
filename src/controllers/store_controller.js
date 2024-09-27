@@ -808,8 +808,11 @@ router.get('/get-customer-details/:customerPhone', jwtHelperObj.verifyAccessToke
             });
         }
 
-        const result = await storeServiceObj.getproducts(storeId);
-        res.json(result);
+        const result = await storeServiceObj.getCustomerByPhone(storeId);
+        res.json({
+            message:"Retrived the customer details successfully.",
+            result
+        });
     } catch (err) {
         console.error("Error while assigning inventory:", err.message);
         next(err);
