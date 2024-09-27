@@ -787,4 +787,33 @@ router.get('/get-bill-details/:billId', jwtHelperObj.verifyAccessToken, async (r
     }
 });
 
+router.get('/get-customer-details/:customerPhone', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+        const { customerPhone } = req.params;
+
+        // Validate that storeId is provided
+        if (!customerPhone) {
+            return res.status(400).json({
+                status: 400,
+                message: "customerPhone is required."
+            });
+        }
+
+        // Extract the role type from the JWT token added to req by the middleware
+        const roleType = req.aud.split(":")[1];
+        if (!['WAREHOUSE MANAGER', 'STORE MANAGER'].includes(roleType)) {
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access. Only WAREHOUSE MANAGER AND STORE MANAGER can access customer details."
+            });
+        }
+
+        const result = await storeServiceObj.getproducts(storeId);
+        res.json(result);
+    } catch (err) {
+        console.error("Error while assigning inventory:", err.message);
+        next(err);
+    }
+});
+
 module.exports = router;

@@ -1600,6 +1600,19 @@ class StoreService {
             throw new Error(error.message);
         }
     }
+
+    async getCustomerByPhone(customerPhone) {
+        try {
+            const customer = await Customer.findOne({ customerPhone });
+            if (!customer) {
+                return { message: 'Customer not found' };
+            }
+            return customer;
+        } catch (error) {
+            console.error('Error fetching customer details:', error);
+            throw new Error(error.message);
+        }
+    };
 }
 
 module.exports = StoreService;
