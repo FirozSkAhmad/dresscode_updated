@@ -819,4 +819,16 @@ router.get('/get-customer-details/:customerPhone', jwtHelperObj.verifyAccessToke
     }
 });
 
+router.post('/create-customer', async (req, res, next) => {
+    try {
+        const customerDetails = req.body
+
+        const result = await storeServiceObj.createCustomer(customerDetails);
+        res.json(result);
+    } catch (err) {
+        console.error("Error while creating customer:", err.message);
+        next(err);
+    }
+});
+
 module.exports = router;

@@ -1197,13 +1197,33 @@ class StoreService {
 
             // 2. Find the customer by phone number or create a new one if not found
             let customer = await Customer.findOne({ customerPhone: customerDetails.customerPhone }).session(session);
+
             if (!customer) {
+                // Create new customer if not found
                 customer = new Customer({
                     customerName: customerDetails.customerName,
                     customerPhone: customerDetails.customerPhone,
                     customerEmail: customerDetails.customerEmail
                 });
                 await customer.save({ session });
+            } else {
+                // If customer is found, check if customerPhone or customerEmail are different
+                let isUpdated = false;
+
+                if (customer.customerPhone !== customerDetails.customerPhone) {
+                    customer.customerPhone = customerDetails.customerPhone;
+                    isUpdated = true;
+                }
+
+                if (customer.customerEmail !== customerDetails.customerEmail) {
+                    customer.customerEmail = customerDetails.customerEmail;
+                    isUpdated = true;
+                }
+
+                // Only save if there are changes
+                if (isUpdated) {
+                    await customer.save({ session });
+                }
             }
 
             // 3. Validate product quantities and fetch product details to structure them for the bill
@@ -1605,18 +1625,46 @@ class StoreService {
         try {
             const customer = await Customer.findOne({ customerPhone });
             if (!customer) {
-                return [];
+                return {};
             }
             return {
-                customerName:customer.customerName,
-                customerPhone:customer.customerPhone,
-                customerEmail:customer.customerEmail
+                customerName: customer.customerName,
+                customerPhone: customer.customerPhone,
+                customerEmail: customer.customerEmail
             };
         } catch (error) {
             console.error('Error fetching customer details:', error);
             throw new Error(error.message);
         }
     };
+
+    async createCustomer(customerDetails) {
+        try {
+            // Check if the customer exists by phone number
+            let customer = await Customer.findOne({ customerPhone: customerDetails.customerPhone });
+
+            // If the customer does not exist, create a new customer
+            if (!customer) {
+                customer = new Customer({
+                    customerName: customerDetails.customerName,
+                    customerPhone: customerDetails.customerPhone,
+                    customerEmail: customerDetails.customerEmail
+                });
+                await customer.save(); // Save the new customer to the database
+            }
+
+            // Return the customer details
+            return {
+                customerName: customer.customerName,
+                customerPhone: customer.customerPhone,
+                customerEmail: customer.customerEmail
+            };
+        } catch (error) {
+            console.error('Error creating or fetching customer details:', error);
+            throw new Error(error.message); // Handle any errors that occur
+        }
+    }
+
 }
 
 module.exports = StoreService;
