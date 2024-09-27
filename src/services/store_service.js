@@ -87,6 +87,7 @@ class StoreService {
             const data = {
                 accessToken: accessToken,
                 storeId: storeData.storeId,
+                storeName: storeData.storeName,
                 userName: storeData.userName,
                 emailID: storeData.emailID,
                 phoneNo: storeData.phoneNo,
