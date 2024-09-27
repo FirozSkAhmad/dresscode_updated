@@ -525,10 +525,10 @@ router.patch('/receive-inventory-request/:raisedInventoryId', jwtHelperObj.verif
 
         // Extract the role type from the JWT token added to req by the middleware
         const roleType = req.aud.split(":")[1];
-        if (!['WAREHOUSE MANAGER'].includes(roleType)) {
+        if (!['STORE MANAGER'].includes(roleType)) {
             return res.status(401).json({
                 status: 401,
-                message: "Unauthorized access. Only WAREHOUSE MANAGER can approve inventory request."
+                message: "Unauthorized access. Only STORE MANAGER can approve inventory request."
             });
         }
 
