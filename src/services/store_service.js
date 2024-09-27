@@ -871,7 +871,7 @@ class StoreService {
                 raisedInventoryId: raisedInventory.raisedInventoryId,
                 storeId: raisedInventory.storeId,
                 storeName: raisedInventory.storeName,
-                receivedDate: raisedInventory.raisedDate,
+                raisedDate: raisedInventory.raisedDate,
                 approvedDate: raisedInventory.approvedDate,
                 rejectedDate: raisedInventory.rejectedDate,
                 receivedDate: raisedInventory.receivedDate,
