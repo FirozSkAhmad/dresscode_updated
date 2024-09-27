@@ -10,8 +10,8 @@ const cookieParser = require('cookie-parser');
 const allowedOrigins = [
     'https://dresscode-ecom.vercel.app',
     'https://dresscode-dashboard.vercel.app',
-    'https://76b7-2405-201-c404-293c-89a2-7d23-7e08-af6c.ngrok-free.app',
-    'https://4627-2405-201-c404-293c-14c0-7600-e9d8-c220.ngrok-free.app'
+    'https://537c-2405-201-c404-293c-2151-2743-6c10-2579.ngrok-free.app',
+    'https://56e6-2405-201-c404-293c-ad70-8bdc-4dbc-d9b3.ngrok-free.app'
 ];
 
 class App {
