@@ -762,6 +762,7 @@ router.get('/get-bills', jwtHelperObj.verifyAccessToken, async (req, res, next) 
 router.get('/get-bill-details/:billId', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
 
+        const { billId } = req.params;
         // Validate that storeId is provided
         if (!billId) {
             return res.status(400).json({
