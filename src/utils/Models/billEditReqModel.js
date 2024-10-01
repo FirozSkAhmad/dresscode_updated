@@ -129,8 +129,8 @@ const productsSechma = new mongoose.Schema(
     }
 );
 
-const billSchema = new mongoose.Schema({
-    billId: {
+const billEditReqSchema = new mongoose.Schema({
+    editBillReqId: {
         type: String,
         trim: true,
         unique: true,
@@ -138,24 +138,33 @@ const billSchema = new mongoose.Schema({
             return crypto.randomBytes(3).toString("hex").toUpperCase().slice(0, 6);
         },
     },
-    invoiceNo: { type: String, required: true, trim: true },
+    bill: { type: mongoose.Schema.Types.ObjectId, ref: 'Bill' },
     storeId: { type: String, required: true, trim: true },
     customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
     TotalAmount: { type: Number, required: true },
     discountPercentage: { type: Number, required: true },
     priceAfterDiscount: { type: Number, required: true },
-    modeOfPayment: { type: String, required: true, trim: true, enum: ['CASH', 'UPI', 'CARD'] },
-    isDeleted: {
+    isApproved: {
         type: Boolean,
-        default: false
-    },
-    dateOfDeletion: {
-        type: Date,
         default: null
     },
     dateOfBill: {
         type: Date,
+        default: null
+    },
+    dateOfValidate: {
+        type: Date,
+        default: null
+    },
+    dateOfBillEditReq: {
+        type: Date,
         default: Date.now // Automatically sets the current date and time
+    },
+    reqNote:{
+        type:String
+    },
+    validateNote:{
+        type:String
     },
     products: [productsSechma]
 }, {
@@ -163,12 +172,6 @@ const billSchema = new mongoose.Schema({
 });
 
 // Indexes for optimized querying
-billSchema.index({ billId: 1, storeId: 1 });
-billSchema.pre('save', function (next) {
-    if (this.modeOfPayment) {
-        this.modeOfPayment = this.modeOfPayment.toUpperCase();
-    }
-    next();
-});
+billEditReqSchema.index({ editBillReqId: 1, storeId: 1 });
 
-module.exports = mongoose.model('Bill', billSchema);
+module.exports = mongoose.model('BillEditReq', billEditReqSchema);

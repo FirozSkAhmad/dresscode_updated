@@ -129,15 +129,8 @@ const productsSechma = new mongoose.Schema(
     }
 );
 
-const billSchema = new mongoose.Schema({
-    billId: {
-        type: String,
-        trim: true,
-        unique: true,
-        default: () => {
-            return crypto.randomBytes(3).toString("hex").toUpperCase().slice(0, 6);
-        },
-    },
+const oldBillSchema = new mongoose.Schema({
+    billId: { type: String, required: true, trim: true },
     invoiceNo: { type: String, required: true, trim: true },
     storeId: { type: String, required: true, trim: true },
     customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
@@ -163,12 +156,12 @@ const billSchema = new mongoose.Schema({
 });
 
 // Indexes for optimized querying
-billSchema.index({ billId: 1, storeId: 1 });
-billSchema.pre('save', function (next) {
+oldBillSchema.index({ billId: 1, storeId: 1 });
+oldBillSchema.pre('save', function (next) {
     if (this.modeOfPayment) {
         this.modeOfPayment = this.modeOfPayment.toUpperCase();
     }
     next();
 });
 
-module.exports = mongoose.model('Bill', billSchema);
+module.exports = mongoose.model('oldBill', oldBillSchema);

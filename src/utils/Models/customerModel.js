@@ -16,6 +16,10 @@ const customerSchema = new Schema({
         type: String,
         required: true,
         maxlength: 100
+    },
+    isCreated: {
+        type: Boolean,
+        default: false
     }
 }, {
     collection: 'customers', // Specifies the collection name in MongoDB

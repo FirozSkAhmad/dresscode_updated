@@ -373,7 +373,7 @@ router.get('/raised-inventory-requests-by-store/:storeId', jwtHelperObj.verifyAc
     try {
 
         const { storeId } = req.params;
-        
+
         // Validate that storeId is provided
         if (!storeId) {
             return res.status(400).json({
@@ -781,7 +781,10 @@ router.get('/get-bill-details/:billId', jwtHelperObj.verifyAccessToken, async (r
         }
 
         const result = await storeServiceObj.getBillDetailsByBillId(billId);
-        res.json(result);
+        res.json({
+            message: 'Bill details fetched successfully',
+            result
+        });
     } catch (err) {
         console.error("Error while retrieving bill details:", err.message);
         next(err);
@@ -811,7 +814,7 @@ router.get('/get-customer-details/:customerPhone', jwtHelperObj.verifyAccessToke
 
         const result = await storeServiceObj.getCustomerByPhone(customerPhone);
         res.json({
-            message:"Retrived the customer details successfully.",
+            message: "Retrived the customer details successfully.",
             result
         });
     } catch (err) {
@@ -828,6 +831,155 @@ router.post('/create-customer', async (req, res, next) => {
         res.json(result);
     } catch (err) {
         console.error("Error while creating customer:", err.message);
+        next(err);
+    }
+});
+
+router.post('/create-bill-edit-req', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+        const { storeId, billId } = req.query;
+        const billEditReqData = req.body
+
+        // Validate that storeId is provided
+        if (!storeId) {
+            return res.status(400).json({
+                status: 400,
+                message: "Store ID is required."
+            });
+        }
+
+        // Extract the role type from the JWT token added to req by the middleware
+        const roleType = req.aud.split(":")[1];
+        if (roleType !== "STORE MANAGER") {
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access. Only STORE MANAGER can create bill edit req."
+            });
+        }
+
+        const result = await storeServiceObj.createBillEditReq(billId, storeId, billEditReqData);
+        res.json(result);
+    } catch (err) {
+        console.error("Error while creating bill edit req:", err.message);
+        next(err);
+    }
+});
+
+router.get('/get-bill-edit-reqs/:storeId', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+        const { storeId } = req.params;
+
+        // Validate that storeId is provided
+        if (!storeId) {
+            return res.status(400).json({
+                status: 400,
+                message: "Store ID is required."
+            });
+        }
+
+        // Extract the role type from the JWT token added to req by the middleware
+        const roleType = req.aud.split(":")[1];
+        if (roleType !== "STORE MANAGER") {
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access. Only STORE MANAGER can get bill edit reqs."
+            });
+        }
+
+        const result = await storeServiceObj.getBillEditReqsByStoreId(storeId);
+        res.json({
+            message: 'bill edit reqs fetched successfully',
+            Bills: result
+        });
+    } catch (err) {
+        console.error("Error while retrieving bill edit reqs:", err.message);
+        next(err);
+    }
+});
+
+router.get('/get-bill-edit-reqs', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+        // Extract the role type from the JWT token added to req by the middleware
+        const roleType = req.aud.split(":")[1];
+        if (roleType !== "WAREHOUSE MANAGER") {
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access. Only WAREHOUSE MANAGER can get bill edit reqs."
+            });
+        }
+
+        const result = await storeServiceObj.getBillEditReqs();
+        res.json({
+            message: 'bill edit reqs fetched successfully',
+            Bills: result
+        });
+    } catch (err) {
+        console.error("Error while retrieving bill edit reqs:", err.message);
+        next(err);
+    }
+});
+
+router.get('/get-bill-edit-req-details/:editBillReqId', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+
+        const { editBillReqId } = req.params;
+        // Validate that storeId is provided
+        if (!editBillReqId) {
+            return res.status(400).json({
+                status: 400,
+                message: "Edit Bill Req ID is required."
+            });
+        }
+
+        // Extract the role type from the JWT token added to req by the middleware
+        const roleType = req.aud.split(":")[1];
+        if (!['WAREHOUSE MANAGER', 'STORE MANAGER'].includes(roleType)) {
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access. Only WAREHOUSE MANAGER and STORE MANAGER can retrieve bill details."
+            });
+        }
+
+        const result = await storeServiceObj.getBillEditReqDetailsByBillId(editBillReqId);
+        res.json({
+            message: 'Bill Edit Req details fetched successfully',
+            result
+        });
+    } catch (err) {
+        console.error("Error while retrieving bill details:", err.message);
+        next(err);
+    }
+});
+
+
+router.patch('/validate-bill-edit-req', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+
+        const { editBillReqId, isApproved } = req.query;
+        // Validate that storeId is provided
+        if (!editBillReqId) {
+            return res.status(400).json({
+                status: 400,
+                message: "Edit Bill Req ID is required."
+            });
+        }
+
+        // Extract the role type from the JWT token added to req by the middleware
+        const roleType = req.aud.split(":")[1];
+        if (!['WAREHOUSE MANAGER'].includes(roleType)) {
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access. Only WAREHOUSE MANAGER can retrieve bill details."
+            });
+        }
+
+        const result = await storeServiceObj.validateBillEditReq(editBillReqId, isApproved);
+        res.json({
+            message: 'Validated Bill Edit Req successfully',
+            result
+        });
+    } catch (err) {
+        console.error("Error while Validating Bill Edit Req:", err.message);
         next(err);
     }
 });

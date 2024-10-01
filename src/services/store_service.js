@@ -1,8 +1,10 @@
 const Store = require('../utils/Models/storeModel');
 const AssignedInventory = require('../utils/Models/assignedInventoryModel');
 const RaisedInventory = require('../utils/Models/raisedInventoryModel');
+const Counter = require('../utils/Models/counterModel');
 const Customer = require('../utils/Models/customerModel');
 const Bill = require('../utils/Models/billingModel');
+const BillEditReq = require('../utils/Models/billEditReqModel');
 const Togs = require('../utils/Models/togsModel');
 const mongoose = require('mongoose');
 const JWTHelper = require('../utils/Helpers/jwt_helper')
@@ -1204,7 +1206,8 @@ class StoreService {
                 customer = new Customer({
                     customerName: customerDetails.customerName,
                     customerPhone: customerDetails.customerPhone,
-                    customerEmail: customerDetails.customerEmail
+                    customerEmail: customerDetails.customerEmail,
+                    isCreated: ture
                 });
                 await customer.save({ session });
             } else {
@@ -1322,8 +1325,17 @@ class StoreService {
             const discount = discountPercentage ? (totalAmount * (discountPercentage / 100)) : 0;
             const priceAfterDiscount = totalAmount - discount;
 
+            const counter = await Counter.findByIdAndUpdate(
+                { _id: 'billId' }, // We use 'billId' as the identifier for this sequence
+                { $inc: { seq: 1 } }, // Increment the sequence by 1
+                { new: true, upsert: true } // Return the updated document, create if it doesn't exist
+            );
+
+            const invoiceNo = `INVOICE-${counter.seq}`;
+
             // 5. Create the bill with customer reference
             const bill = new Bill({
+                invoiceNo,
                 storeId,
                 customer: customer._id, // Linking the customer
                 TotalAmount: totalAmount,
@@ -1521,8 +1533,8 @@ class StoreService {
 
     async getBillsByStoreId(storeId) {
         try {
-            // Find all deleted bills for the given storeId and return only the required fields
-            const deletedBills = await Bill.find(
+            // Find all bills for the given storeId and return only the required fields
+            const Bills = await Bill.find(
                 { storeId, isDeleted: false }, // Query to find bills that are marked as deleted
                 {
                     billId: 1,
@@ -1534,11 +1546,11 @@ class StoreService {
                 } // Projection to return only specific fields
             );
 
-            if (!deletedBills.length) {
+            if (!Bills.length) {
                 return []
             }
 
-            return deletedBills
+            return Bills
         } catch (error) {
             console.error('Error fetching deleted bills:', error.message);
             throw new Error(error.message);
@@ -1547,30 +1559,46 @@ class StoreService {
 
     async getBillDetailsByBillId(billId) {
         try {
-            // Find the bill by billId
+            // Fetch the bill by billId
             const bill = await Bill.findOne({ billId })
-                .populate('customer', 'customerName customerPhone customerEmail') // Populate customer details
-                .exec();
+                .populate('customer', 'customerName customerPhone customerEmail')
+                .lean();
 
             if (!bill) {
-                return {
-                    status: 404,
-                    message: 'Bill not found for the provided billId'
-                };
+                throw new Error('Bill not found for the provided billId')
+            }
+
+            // Loop through the products and variants to fetch the real-time quantityInStore from the Store schema
+            for (const product of bill.products) {
+                for (const variant of product.variants) {
+                    for (const variantSize of variant.variantSizes) {
+                        // Fetch real-time quantityInStore from the Store schema
+                        const store = await Store.findOne({
+                            'products.variants.variantId': variant.variantId,
+                            'products.variants.variantSizes.size': variantSize.size
+                        }, {
+                            'products.$': 1 // Fetch only the matching product
+                        });
+
+                        if (store && store.products[0]) {
+                            const matchedVariant = store.products[0].variants.find(v => v.variantId === variant.variantId);
+                            const matchedSize = matchedVariant.variantSizes.find(vs => vs.size === variantSize.size);
+                            if (matchedSize) {
+                                variantSize.quantityInStore = matchedSize.quantity; // Add real-time quantityInStore
+                            }
+                        }
+                    }
+                }
             }
 
             // Return the entire bill including products, variants, and variantSizes
-            return {
-                status: 200,
-                message: 'Bill details fetched successfully',
-                bill
-            };
+            return bill
+
         } catch (error) {
             console.error('Error fetching bill details:', error.message);
-            throw new Error('Error while fetching bill details');
+            throw new Error(error.message);
         }
     }
-
 
     async getBills() {
         try {
@@ -1624,7 +1652,7 @@ class StoreService {
 
     async getCustomerByPhone(customerPhone) {
         try {
-            const customer = await Customer.findOne({ customerPhone });
+            const customer = await Customer.findOne({ customerPhone: customerPhone, isCreated: true });
             if (!customer) {
                 return {};
             }
@@ -1663,6 +1691,405 @@ class StoreService {
         } catch (error) {
             console.error('Error creating or fetching customer details:', error);
             throw new Error(error.message); // Handle any errors that occur
+        }
+    }
+
+    async createBillEditReq(billId, storeId, billEditReqData) {
+        const session = await mongoose.startSession();
+        session.startTransaction();
+        try {
+            const { customerDetails, products, discountPercentage, reqNote } = billId;
+
+            // Create a new customer if not found
+            const customer = new Customer({
+                customerName: customerDetails.customerName,
+                customerPhone: customerDetails.customerPhone,
+                customerEmail: customerDetails.customerEmail,
+                isCreated: true
+            });
+            await customer.save({ session });
+
+            // 1. Find the original bill using the provided billId
+            const originalBill = await Bill.findOne({ billId }).populate('customer').session(session);
+            if (!originalBill) {
+                throw new Error('Bill not found');
+            }
+
+            // 2. Find the store by storeId
+            const store = await Store.findOne({ storeId }).session(session);
+            if (!store) {
+                throw new Error('Store not found');
+            }
+
+            let totalAmount = 0;
+            const editedProducts = [];
+
+            // 3. Loop through each product in the req.body.products
+            for (let reqProduct of products) {
+                const { productId, variantId, styleCoat, billingQuantity } = reqProduct;
+
+                // 3.1 Find the product in the original bill
+                const originalProduct = originalBill.products.find(p => p.productId === productId);
+                if (!originalProduct) {
+                    throw new Error(`Product with ID ${productId} not found in the bill`);
+                }
+
+                // 3.2 Find the variant in the original bill's product
+                const originalVariant = originalProduct.variants.find(v => v.variantId === variantId);
+                if (!originalVariant) {
+                    throw new Error(`Variant with ID ${variantId} not found in the bill for product ${productId}`);
+                }
+
+                // 3.3 Find the variantSize (styleCoat) in the original bill's variant
+                const originalVariantSize = originalVariant.variantSizes.find(vs => vs.styleCoat === styleCoat);
+                if (!originalVariantSize) {
+                    throw new Error(`StyleCoat ${styleCoat} not found in variant ${variantId}`);
+                }
+
+                const existingBilledQuantity = originalVariantSize.billedQuantity;
+                const extraBillingQuantity = billingQuantity - existingBilledQuantity;
+
+                // 4. Find the same product/variant/size in the store and check if the extra quantity is available
+                const storeProduct = store.products.find(p => p.productId === productId);
+                if (!storeProduct) {
+                    throw new Error(`Product with ID ${productId} not found in the store`);
+                }
+
+                const storeVariant = storeProduct.variants.find(v => v.variantId === variantId);
+                if (!storeVariant) {
+                    throw new Error(`Variant with ID ${variantId} not found in store product ${productId}`);
+                }
+
+                const storeVariantSize = storeVariant.variantSizes.find(s => s.styleCoat === styleCoat);
+                if (!storeVariantSize) {
+                    throw new Error(`StyleCoat ${styleCoat} not found in store variant ${variantId}`);
+                }
+
+                // 4.1 Check if the store has enough quantity to fulfill the extra billingQuantity
+                if (storeVariantSize.quantity < extraBillingQuantity) {
+                    throw new Error(`Insufficient quantity for style coat ${styleCoat}, required: ${extraBillingQuantity}, available: ${storeVariantSize.quantity}`);
+                }
+
+                // 5. Update the store's variant size quantity (this can be saved later after successful edit request creation)
+                storeVariantSize.quantity -= extraBillingQuantity;
+
+                // 6. Prepare the edited product to be added to BillEditReq
+                let editedProduct = editedProducts.find(p => p.productId === productId);
+                if (!editedProduct) {
+                    editedProduct = {
+                        productId: storeProduct.productId,
+                        group: storeProduct.group,
+                        category: storeProduct.category,
+                        subCategory: storeProduct.subCategory,
+                        gender: storeProduct.gender,
+                        productType: storeProduct.productType,
+                        fit: storeProduct.fit,
+                        neckline: storeProduct.neckline,
+                        pattern: storeProduct.pattern,
+                        sleeves: storeProduct.sleeves,
+                        material: storeProduct.material,
+                        price: storeProduct.price,
+                        productDescription: storeProduct.productDescription,
+                        sizeChart: storeProduct.sizeChart,
+                        variants: []
+                    };
+                    editedProducts.push(editedProduct);
+                }
+
+                let editedVariant = editedProduct.variants.find(v => v.variantId === variantId);
+                if (!editedVariant) {
+                    editedVariant = {
+                        variantId: storeVariant.variantId,
+                        color: storeVariant.color,
+                        variantSizes: [],
+                        imageUrls: storeVariant.imageUrls,
+                        isDeleted: storeVariant.isDeleted
+                    };
+                    editedProduct.variants.push(editedVariant);
+                }
+
+                // Add the updated billing quantity to the variant sizes
+                editedVariant.variantSizes.push({
+                    size: storeVariantSize.size,
+                    billedQuantity: billingQuantity,
+                    styleCoat: storeVariantSize.styleCoat,
+                    sku: storeVariantSize.sku
+                });
+
+                totalAmount += storeProduct.price * billingQuantity;
+            }
+
+            // 7. Calculate the discount and price after discount
+            const discount = discountPercentage ? (totalAmount * (discountPercentage / 100)) : 0;
+            const priceAfterDiscount = totalAmount - discount;
+
+            // 8. Create the BillEditReq with a reference to the original bill
+            const billEditReq = new BillEditReq({
+                bill: originalBill._id,
+                storeId,
+                customer: customer._id,
+                TotalAmount: totalAmount,
+                discountPercentage: discountPercentage || 0,
+                priceAfterDiscount,
+                dateOfBill: originalBill.dateOfBill,
+                reqNote,
+                products: editedProducts
+            });
+
+            // 9. Save the BillEditReq and update the store
+            await billEditReq.save({ session });
+            await store.save({ session });
+
+            // Commit the transaction
+            await session.commitTransaction();
+            session.endSession();
+
+            res.status(200).json({
+                message: 'Bill edit request created successfully',
+                editBillReqId: billEditReq.editBillReqId
+            });
+        } catch (error) {
+            await session.abortTransaction();
+            session.endSession();
+            console.error('Error creating bill edit request:', error.message);
+            res.status(400).json({ error: error.message });
+        }
+    }
+
+    async getBillEditReqsByStoreId(storeId) {
+        try {
+            // Find all deleted bills for the given storeId and return only the required fields
+            const BillEditReqs = await BillEditReq.find(
+                { storeId }, // Query to find bills that are marked as deleted
+                {
+                    billId: 1,
+                    isApproved: 1,
+                    dateOfValidate: 1,
+                    dateOfBillEditReq: 1,
+                    dateOfBill: 1,
+                } // Projection to return only specific fields
+            );
+
+            if (!BillEditReqs.length) {
+                return []
+            }
+
+            return BillEditReqs
+        } catch (error) {
+            console.error('Error fetching bill edit reqs:', error.message);
+            throw new Error(error.message);
+        }
+    }
+
+    async getBillEditReqs() {
+        try {
+            // Find all deleted bills for the given storeId and return only the required fields
+            const BillEditReqs = await BillEditReq.find(
+                {
+                    billId: 1,
+                    isApproved: 1,
+                    dateOfValidate: 1,
+                    dateOfBillEditReq: 1,
+                    dateOfBill: 1,
+                } // Projection to return only specific fields
+            );
+
+            if (!BillEditReqs.length) {
+                return []
+            }
+
+            return BillEditReqs
+        } catch (error) {
+            console.error('Error fetching bill edit reqs:', error.message);
+            throw new Error(error.message);
+        }
+    }
+
+    async getBillAndEditBillDetails(editBillReqId) {
+        try {
+            // 1. Fetch the requested bill edit, and populate the bill (current bill) and customer
+            const requestedBillEdit = await BillEditReq.findOne({ editBillReqId })
+                .populate({
+                    path: 'bill', // Populates the current bill
+                    populate: { path: 'customer', select: 'customerName customerPhone customerEmail' } // Also populate customer details in the current bill
+                })
+                .populate('customer', 'customerName customerPhone customerEmail') // Populate customer details in the edit request
+                .lean();
+
+            if (!requestedBillEdit) {
+                throw new Error('Bill Edit Request not found for the provided editBillReqId');
+            }
+
+            const currentBill = requestedBillEdit.bill; // The current bill is populated via reference
+
+            // 2. Integrate real-time quantityInStore for the requested bill edit
+            await fetchRealTimeQuantity(requestedBillEdit);
+
+            // Return the combined object
+            return {
+                currentBill,
+                requestedBillEdit
+            };
+
+        } catch (error) {
+            console.error('Error fetching bill details:', error.message);
+            throw new Error(error.message);
+        }
+    }
+
+    // Helper function to fetch real-time quantityInStore for a bill's products
+    async fetchRealTimeQuantity(bill) {
+        for (const product of bill.products) {
+            for (const variant of product.variants) {
+                for (const variantSize of variant.variantSizes) {
+                    // Fetch real-time quantityInStore from the Store schema
+                    const store = await Store.findOne({
+                        'products.variants.variantId': variant.variantId,
+                        'products.variants.variantSizes.size': variantSize.size
+                    }, {
+                        'products.$': 1 // Fetch only the matching product
+                    });
+
+                    if (store && store.products[0]) {
+                        const matchedVariant = store.products[0].variants.find(v => v.variantId === variant.variantId);
+                        const matchedSize = matchedVariant.variantSizes.find(vs => vs.size === variantSize.size);
+                        if (matchedSize) {
+                            variantSize.quantityInStore = matchedSize.quantity; // Add real-time quantityInStore
+                        }
+                    }
+                }
+            }
+        }
+    }
+    async validateBillEditReq(editBillReqId, isApproved) {
+        const session = await mongoose.startSession();
+        session.startTransaction();
+
+        try {
+            // 1. Find the Bill Edit Request by editBillReqId
+            const billEditReq = await BillEditReq.findOne({ editBillReqId }).populate('bill customer').session(session);
+
+            if (!billEditReq) {
+                throw new Error('Bill Edit Request not found');
+            }
+
+            if (isApproved === false) {
+                // If isApproved is false, update the status and exit
+                billEditReq.isApproved = false;
+                await billEditReq.save({ session });
+                await session.commitTransaction();
+                session.endSession();
+                return { message: 'Bill Edit Request rejected successfully.' };
+            }
+
+            // If isApproved is true, we proceed with validation
+
+            // 2. Check if the customer with isCreated: true exists
+            let customer = await Customer.findOne({ customerPhone: billEditReq.customer.customerPhone, isCreated: true }).session(session);
+
+            if (customer) {
+                // If customer with isCreated: true exists, update customerName and customerEmail if needed
+                let isUpdated = false;
+
+                if (customer.customerName !== billEditReq.customer.customerName) {
+                    customer.customerName = billEditReq.customer.customerName;
+                    isUpdated = true;
+                }
+
+                if (customer.customerEmail !== billEditReq.customer.customerEmail) {
+                    customer.customerEmail = billEditReq.customer.customerEmail;
+                    isUpdated = true;
+                }
+
+                if (isUpdated) {
+                    await customer.save({ session });
+                }
+
+                // Delete the temporary customer where isCreated is false
+                await Customer.deleteOne({ customerPhone: billEditReq.customer.customerPhone, isCreated: false }).session(session);
+
+            } else {
+                // If no customer is found, update the existing customer to isCreated: true
+                billEditReq.customer.isCreated = true;
+                await billEditReq.customer.save({ session });
+            }
+
+            // 3. Validate the extra billing quantity for each variant size
+            for (const product of billEditReq.products) {
+                for (const variant of product.variants) {
+                    for (const variantSize of variant.variantSizes) {
+                        const store = await Store.findOne({
+                            'products.variants.variantId': variant.variantId,
+                            'products.variants.variantSizes.size': variantSize.size
+                        }).session(session);
+
+                        if (!store) {
+                            throw new Error(`Store does not have product ${product.productId}`);
+                        }
+
+                        const storeVariant = store.products.find(p => p.productId === product.productId)
+                            .variants.find(v => v.variantId === variant.variantId);
+
+                        const storeVariantSize = storeVariant.variantSizes.find(vs => vs.size === variantSize.size);
+
+                        const extraBillingQuantity = variantSize.billedQuantity - storeVariantSize.billedQuantity;
+
+                        if (storeVariantSize.quantity < extraBillingQuantity) {
+                            throw new Error(`Insufficient quantity for styleCoat ${variantSize.styleCoat}, available: ${storeVariantSize.quantity}, required: ${extraBillingQuantity}`);
+                        }
+
+                        // Reduce the quantity in the store
+                        storeVariantSize.quantity -= extraBillingQuantity;
+                        await store.save({ session });
+                    }
+                }
+            }
+
+            // 4. Create an oldBill from the current bill data
+            const oldBill = new Bill({
+                billId: billEditReq.bill.billId,
+                invoiceNo: billEditReq.bill.invoiceNo,
+                storeId: billEditReq.storeId,
+                customer: billEditReq.bill.customer,
+                TotalAmount: billEditReq.bill.TotalAmount,
+                discountPercentage: billEditReq.bill.discountPercentage,
+                priceAfterDiscount: billEditReq.bill.priceAfterDiscount,
+                products: billEditReq.bill.products,
+                modeOfPayment: billEditReq.bill.modeOfPayment,
+                dateOfBill: billEditReq.bill.dateOfBill
+            });
+
+            await oldBill.save({ session });
+
+            // 5. Add the oldBill _id reference to the bill in the BillEditReq
+            billEditReq.bill = oldBill._id;
+
+            // 6. Update the current bill with the new data from BillEditReq
+            const currentBill = await Bill.findById(billEditReq.bill._id).session(session);
+
+            currentBill.TotalAmount = billEditReq.TotalAmount;
+            currentBill.discountPercentage = billEditReq.discountPercentage;
+            currentBill.priceAfterDiscount = billEditReq.priceAfterDiscount;
+            currentBill.customer = billEditReq.customer._id;
+            currentBill.products = billEditReq.products; // Update the product details including variant sizes
+
+            await currentBill.save({ session });
+
+            // 7. Mark the BillEditReq as approved
+            billEditReq.isApproved = true;
+            await billEditReq.save({ session });
+
+            // Commit transaction
+            await session.commitTransaction();
+            session.endSession();
+
+            return { message: 'Bill Edit Request approved and bill updated successfully.', editBillReqId: billEditReq.editBillReqId };
+
+        } catch (error) {
+            await session.abortTransaction();
+            session.endSession();
+            console.error('Error validating bill edit request:', error.message);
+            throw new Error(error.message);
         }
     }
 
