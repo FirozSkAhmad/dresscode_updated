@@ -11,7 +11,7 @@ const allowedOrigins = [
     'https://dresscode-ecom.vercel.app',
     'https://dresscode-dashboard.vercel.app',
     'https://90fa-2405-201-c404-293c-c99d-5967-4296-f75f.ngrok-free.app',
-    'https://46b6-2405-201-c404-293c-914b-7c01-19a8-3ec1.ngrok-free.app'
+    'https://fb03-103-10-31-21.ngrok-free.app'
 ];
 
 class App {
