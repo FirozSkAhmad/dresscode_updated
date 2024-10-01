@@ -1207,7 +1207,7 @@ class StoreService {
                     customerName: customerDetails.customerName,
                     customerPhone: customerDetails.customerPhone,
                     customerEmail: customerDetails.customerEmail,
-                    isCreated: ture
+                    isCreated: true
                 });
                 await customer.save({ session });
             } else {
@@ -1364,7 +1364,7 @@ class StoreService {
             await session.abortTransaction();
             session.endSession();
             console.error("Error creating bill:", error.message);
-            throw error.message;
+            throw new Error(error.message);
         }
     }
 
