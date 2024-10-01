@@ -6,4 +6,4 @@ const counterSchema = new Schema({
     seq: { type: Number, default: 1000 }  // Starting point for your IDs
 });
 
-const Counter = mongoose.model('Counter', counterSchema);
+module.exports = mongoose.model('Counter', counterSchema);
