@@ -940,7 +940,7 @@ router.get('/get-bill-edit-req-details/:editBillReqId', jwtHelperObj.verifyAcces
             });
         }
 
-        const result = await storeServiceObj.getBillEditReqDetailsByBillId(editBillReqId);
+        const result = await storeServiceObj.getBillEditReqDetails(editBillReqId);
         res.json({
             message: 'Bill Edit Req details fetched successfully',
             result

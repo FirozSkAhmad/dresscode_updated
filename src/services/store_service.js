@@ -1912,7 +1912,7 @@ class StoreService {
         }
     }
 
-    async getBillAndEditBillDetails(editBillReqId) {
+    async getBillEditReqDetails(editBillReqId) {
         try {
             // 1. Fetch the requested bill edit, and populate the bill (current bill) and customer
             const requestedBillEdit = await BillEditReq.findOne({ editBillReqId })
