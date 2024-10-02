@@ -1869,7 +1869,7 @@ class StoreService {
             const BillEditReqs = await BillEditReq.find(
                 { storeId }, // Query to find bills that are marked as deleted
                 {
-                    billId: 1,
+                    editBillReqId: 1,
                     isApproved: 1,
                     dateOfValidate: 1,
                     dateOfBillEditReq: 1,
