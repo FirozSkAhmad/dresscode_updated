@@ -1836,6 +1836,12 @@ class StoreService {
                 products: editedProducts
             });
 
+            // Update the editStatus to 'PENDING'
+            originalBill.editStatus = 'PENDING';
+
+            // Save the bill within the session
+            await originalBill.save({ session });
+
             // 9. Save the BillEditReq and update the store
             await billEditReq.save({ session });
             await store.save({ session });
@@ -1973,13 +1979,29 @@ class StoreService {
                 throw new Error('Bill Edit Request not found');
             }
 
+
+            // Check if isApproved is false
             if (isApproved === false) {
-                // If isApproved is false, update the status and exit
+                // If isApproved is false, update the billEditReq status to false
                 billEditReq.isApproved = false;
+
+                // Update the editStatus of the bill to 'REJECTED'
+                const originalBill = billEditReq.bill;  // This is already populated
+                if (!originalBill) {
+                    throw new Error('Bill associated with the request not found');
+                }
+
+                originalBill.editStatus = 'REJECTED';
+
+                // Save both the bill and the Bill Edit Request within the same session
+                await originalBill.save({ session });
                 await billEditReq.save({ session });
+
+                // Commit the transaction and end the session
                 await session.commitTransaction();
                 session.endSession();
-                return { message: 'Bill Edit Request rejected successfully.' };
+
+                return { message: 'Bill Edit Request rejected and Bill editStatus updated to REJECTED successfully.' };
             }
 
             // If isApproved is true, we proceed with validation
@@ -2072,6 +2094,7 @@ class StoreService {
             currentBill.priceAfterDiscount = billEditReq.priceAfterDiscount;
             currentBill.customer = billEditReq.customer._id;
             currentBill.products = billEditReq.products; // Update the product details including variant sizes
+            currentBill.editStatus = "APPROVED";
 
             await currentBill.save({ session });
 

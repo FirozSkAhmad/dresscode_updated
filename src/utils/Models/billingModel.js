@@ -157,6 +157,7 @@ const billSchema = new mongoose.Schema({
         type: Date,
         default: Date.now // Automatically sets the current date and time
     },
+    editStatus: { type: String, trim: true, enum: [null, 'PENDING', 'REJECTED', 'APPROVED'], default: null },
     products: [productsSechma]
 }, {
     timestamps: true,
