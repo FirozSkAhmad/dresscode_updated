@@ -1542,7 +1542,8 @@ class StoreService {
                     deletedDate: 1,
                     TotalAmount: 1,
                     discountPercentage: 1,
-                    priceAfterDiscount: 1
+                    priceAfterDiscount: 1,
+                    editStatus: 1
                 } // Projection to return only specific fields
             );
 
