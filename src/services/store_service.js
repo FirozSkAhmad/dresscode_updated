@@ -1698,7 +1698,7 @@ class StoreService {
         const session = await mongoose.startSession();
         session.startTransaction();
         try {
-            const { customerDetails, products, discountPercentage, reqNote } = billId;
+            const { customerDetails, products, discountPercentage, reqNote } = billEditReqData;
 
             // Create a new customer if not found
             const customer = new Customer({
