@@ -160,11 +160,13 @@ const billEditReqSchema = new mongoose.Schema({
         type: Date,
         default: Date.now // Automatically sets the current date and time
     },
-    reqNote:{
-        type:String
+    reqNote: {
+        type: String,
+        defalut: null
     },
-    validateNote:{
-        type:String
+    validateNote: {
+        type: String,
+        defalut: null
     },
     products: [productsSechma]
 }, {

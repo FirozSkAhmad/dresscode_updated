@@ -1914,12 +1914,8 @@ class StoreService {
 
     async getBillEditReqDetails(editBillReqId) {
         try {
-            // 1. Fetch the requested bill edit, and populate the bill (current bill) and customer
+            // 1. Fetch the requested bill edit, and populate only the necessary fields
             const requestedBillEdit = await BillEditReq.findOne({ editBillReqId })
-                .populate({
-                    path: 'bill', // Populates the current bill
-                    populate: { path: 'customer', select: 'customerName customerPhone customerEmail' } // Also populate customer details in the current bill
-                })
                 .populate('customer', 'customerName customerPhone customerEmail') // Populate customer details in the edit request
                 .lean();
 
@@ -1927,12 +1923,21 @@ class StoreService {
                 throw new Error('Bill Edit Request not found for the provided editBillReqId');
             }
 
-            const currentBill = requestedBillEdit.bill; // The current bill is populated via reference
+            // No need to populate the full bill details within requestedBillEdit
+            // As the bill is not required to be fully populated, only the necessary fields are fetched
 
             // 2. Integrate real-time quantityInStore for the requested bill edit
             await this.fetchRealTimeQuantity(requestedBillEdit);
 
-            // Return the combined object
+            // Return the current bill separately if needed elsewhere in your application, not included in requestedBillEdit
+            const currentBill = await Bill.findById(requestedBillEdit.bill)
+                .populate({
+                    path: 'customer',
+                    select: 'customerName customerPhone customerEmail'
+                })
+                .lean();
+
+            // Return only the necessary details
             return {
                 currentBill,
                 requestedBillEdit
@@ -1943,6 +1948,7 @@ class StoreService {
             throw new Error(error.message);
         }
     }
+
 
     // Helper function to fetch real-time quantityInStore for a bill's products
     async fetchRealTimeQuantity(bill) {
