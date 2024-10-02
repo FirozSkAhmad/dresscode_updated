@@ -1844,15 +1844,15 @@ class StoreService {
             await session.commitTransaction();
             session.endSession();
 
-            res.status(200).json({
+            return {
                 message: 'Bill edit request created successfully',
                 editBillReqId: billEditReq.editBillReqId
-            });
+            };
         } catch (error) {
             await session.abortTransaction();
             session.endSession();
             console.error('Error creating bill edit request:', error.message);
-            res.status(400).json({ error: error.message });
+            throw new Error(error.message);
         }
     }
 
