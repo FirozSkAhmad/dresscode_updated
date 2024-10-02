@@ -1930,7 +1930,7 @@ class StoreService {
             const currentBill = requestedBillEdit.bill; // The current bill is populated via reference
 
             // 2. Integrate real-time quantityInStore for the requested bill edit
-            await fetchRealTimeQuantity(requestedBillEdit);
+            await this.fetchRealTimeQuantity(requestedBillEdit);
 
             // Return the combined object
             return {
