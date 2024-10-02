@@ -162,11 +162,11 @@ const billEditReqSchema = new mongoose.Schema({
     },
     reqNote: {
         type: String,
-        defalut: null
+        default: null
     },
     validateNote: {
         type: String,
-        defalut: null
+        default: null
     },
     products: [productsSechma]
 }, {
