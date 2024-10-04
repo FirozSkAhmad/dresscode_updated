@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const crypto = require('crypto'); // Use crypto module for random string generation
 
 const variantSchema = new mongoose.Schema({
     color: {
@@ -150,6 +149,7 @@ const oldBillSchema = new mongoose.Schema({
         type: Date,
         default: Date.now // Automatically sets the current date and time
     },
+    editStatus: { type: String, trim: true, enum: [null, 'PENDING', 'REJECTED', 'APPROVED'], default: null },
     products: [productsSechma]
 }, {
     timestamps: true,

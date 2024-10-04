@@ -4,6 +4,7 @@ const RaisedInventory = require('../utils/Models/raisedInventoryModel');
 const Counter = require('../utils/Models/counterModel');
 const Customer = require('../utils/Models/customerModel');
 const Bill = require('../utils/Models/billingModel');
+const OldBill = require('../utils/Models/oldBillModel');
 const BillEditReq = require('../utils/Models/billEditReqModel');
 const Togs = require('../utils/Models/togsModel');
 const mongoose = require('mongoose');
@@ -2196,7 +2197,7 @@ class StoreService {
             console.log('Removed items:', removedItems);
 
             // 5. Create an oldBill copy of the original bill before changes
-            const oldBill = new Bill({
+            const oldBill = new OldBill({
                 invoiceNo: originalBill.invoiceNo,
                 storeId: originalBill.storeId,
                 customer: originalBill.customer,
