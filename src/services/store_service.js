@@ -2195,7 +2195,6 @@ class StoreService {
 
             // 5. Create an oldBill copy of the original bill before changes
             const oldBill = new Bill({
-                billId: originalBill.billId,
                 invoiceNo: originalBill.invoiceNo,
                 storeId: originalBill.storeId,
                 customer: originalBill.customer,
