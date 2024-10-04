@@ -129,7 +129,14 @@ const productsSechma = new mongoose.Schema(
 );
 
 const oldBillSchema = new mongoose.Schema({
-    billId: { type: String, required: true, trim: true },
+    OldBillId: {
+        type: String,
+        trim: true,
+        unique: true,
+        default: () => {
+            return crypto.randomBytes(3).toString("hex").toUpperCase().slice(0, 6);
+        },
+    },
     invoiceNo: { type: String, required: true, trim: true },
     storeId: { type: String, required: true, trim: true },
     customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
