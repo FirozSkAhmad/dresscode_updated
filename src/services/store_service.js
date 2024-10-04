@@ -1991,12 +1991,22 @@ class StoreService {
             await this.fetchRealTimeQuantity(requestedBillEdit);
 
             // Return the current bill separately if needed elsewhere in your application, not included in requestedBillEdit
-            const currentBill = await Bill.findById(requestedBillEdit.bill)
-                .populate({
-                    path: 'customer',
-                    select: 'customerName customerPhone customerEmail'
-                })
-                .lean();
+            let currentBill
+            if (isApproved === null) {
+                currentBill = await Bill.findById(requestedBillEdit.bill)
+                    .populate({
+                        path: 'customer',
+                        select: 'customerName customerPhone customerEmail'
+                    })
+                    .lean();
+            } else {
+                currentBill = await OldBill.findById(requestedBillEdit.bill)
+                    .populate({
+                        path: 'customer',
+                        select: 'customerName customerPhone customerEmail'
+                    })
+                    .lean();
+            }
 
             // Return only the necessary details
             return {
