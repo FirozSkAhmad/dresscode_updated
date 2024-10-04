@@ -164,4 +164,4 @@ oldBillSchema.pre('save', function (next) {
     next();
 });
 
-module.exports = mongoose.model('oldBill', oldBillSchema);
+module.exports = mongoose.model('OldBill', oldBillSchema);
