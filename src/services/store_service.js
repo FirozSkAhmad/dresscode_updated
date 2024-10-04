@@ -2045,6 +2045,7 @@ class StoreService {
             // Handle rejection first
             if (!isApproved) {
                 billEditReq.isApproved = false;
+                billEditReq.dateOfValidate = new Date();
                 originalBill.editStatus = 'REJECTED';
 
                 await Promise.all([
@@ -2086,8 +2087,9 @@ class StoreService {
                 if (isUpdated) {
                     await existingCustomer.save({ session });
                 }
-
+                billEditReq.customer = existingCustomer._id
                 await Customer.deleteOne({ customerPhone: billEditReq.customer.customerPhone, isCreated: false }).session(session);
+                await billEditReq.customer.save({ session });
             } else {
                 billEditReq.customer.isCreated = true;
                 await billEditReq.customer.save({ session });
@@ -2203,13 +2205,16 @@ class StoreService {
                 priceAfterDiscount: originalBill.priceAfterDiscount,
                 products: originalBill.products,
                 modeOfPayment: originalBill.modeOfPayment,
-                dateOfBill: originalBill.dateOfBill
+                dateOfBill: originalBill.dateOfBill,
+                editStatus: 'APPROVED'
             });
             await oldBill.save({ session });
 
             // Update BillEditReq with reference to oldBill
             billEditReq.bill = oldBill._id;
             billEditReq.validateNote = validateNote;
+            billEditReq.isApproved = true;
+            billEditReq.dateOfValidate = new Date();
 
             // 6. Update the original bill with the changes from BillEditReq
             originalBill.TotalAmount = billEditReq.TotalAmount;
