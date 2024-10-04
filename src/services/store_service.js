@@ -2112,10 +2112,10 @@ class StoreService {
                 }
                 billEditReq.customer = existingCustomer._id
                 await Customer.deleteOne({ customerPhone: billEditReq.customer.customerPhone, isCreated: false }).session(session);
-                await billEditReq.customer.save({ session });
+                await billEditReq.save({ session });
             } else {
                 billEditReq.customer.isCreated = true;
-                await billEditReq.customer.save({ session });
+                await billEditReq.save({ session });
             }
 
             // 3. Handle new products in BillEditReq that are not present in the original bill
