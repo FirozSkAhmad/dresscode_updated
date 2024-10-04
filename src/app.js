@@ -7,12 +7,9 @@ const http = require('http');
 const cookieParser = require('cookie-parser');
 
 
-const allowedOrigins = [
-    'https://dresscode-ecom.vercel.app',
-    'https://dresscode-dashboard.vercel.app',
-    'https://82c2-2405-201-c404-293c-b5fc-6871-dbd5-6908.ngrok-free.app',
-    'https://ba1a-103-10-31-21.ngrok-free.app'
-];
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+    : [];
 
 class App {
     constructor() {
