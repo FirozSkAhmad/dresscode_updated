@@ -1939,27 +1939,27 @@ class StoreService {
 
     async getBillEditReqs() {
         try {
-            // Find all deleted bills for the given storeId and return only the required fields
-            const BillEditReqs = await BillEditReq.find(
-                {
-                    billId: 1,
-                    isApproved: 1,
-                    dateOfValidate: 1,
-                    dateOfBillEditReq: 1,
-                    dateOfBill: 1,
-                } // Projection to return only specific fields
-            );
+            // Fetch all BillEditReqs without filter, just projection
+            const BillEditReqs = await BillEditReq.find({}, {
+                _id: 0, // Exclude _id from the result
+                editBillReqId: 1, // Project to include only specific fields
+                isApproved: 1,
+                dateOfValidate: 1,
+                dateOfBillEditReq: 1,
+                dateOfBill: 1,
+            });
 
             if (!BillEditReqs.length) {
-                return []
+                return []; // Return empty array if no BillEditReqs are found
             }
 
-            return BillEditReqs
+            return BillEditReqs; // Return all found BillEditReqs
         } catch (error) {
             console.error('Error fetching bill edit reqs:', error.message);
             throw new Error(error.message);
         }
     }
+
 
     async getBillEditReqDetails(editBillReqId) {
         try {
