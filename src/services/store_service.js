@@ -2023,7 +2023,7 @@ class StoreService {
             }
         }
     }
-    async validateBillEditReq(editBillReqId, isApproved) {
+    async validateBillEditReq(editBillReqId, isApproved, validateNote) {
         const session = await mongoose.startSession();
         session.startTransaction();
 
@@ -2210,6 +2210,7 @@ class StoreService {
 
             // Update BillEditReq with reference to oldBill
             billEditReq.bill = oldBill._id;
+            billEditReq.validateNote = validateNote;
 
             // 6. Update the original bill with the changes from BillEditReq
             originalBill.TotalAmount = billEditReq.TotalAmount;

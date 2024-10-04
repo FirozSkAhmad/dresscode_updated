@@ -956,6 +956,7 @@ router.patch('/validate-bill-edit-req', jwtHelperObj.verifyAccessToken, async (r
     try {
 
         const { editBillReqId, isApproved } = req.query;
+        const { validateNote } = req.body;
         // Validate that storeId is provided
         if (!editBillReqId) {
             return res.status(400).json({
@@ -973,7 +974,7 @@ router.patch('/validate-bill-edit-req', jwtHelperObj.verifyAccessToken, async (r
             });
         }
 
-        const result = await storeServiceObj.validateBillEditReq(editBillReqId, isApproved);
+        const result = await storeServiceObj.validateBillEditReq(editBillReqId, isApproved, validateNote);
         res.json({
             message: 'Validated Bill Edit Req successfully',
             result
