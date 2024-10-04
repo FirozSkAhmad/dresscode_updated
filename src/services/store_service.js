@@ -1574,19 +1574,30 @@ class StoreService {
             for (const product of bill.products) {
                 for (const variant of product.variants) {
                     for (const variantSize of variant.variantSizes) {
-                        // Fetch real-time quantityInStore from the Store schema
                         const store = await Store.findOne({
+                            'products.productId': product.productId,
                             'products.variants.variantId': variant.variantId,
                             'products.variants.variantSizes.size': variantSize.size
                         }, {
-                            'products.$': 1 // Fetch only the matching product
+                            'products': 1 // Fetch all products matching the condition
                         });
 
-                        if (store && store.products[0]) {
-                            const matchedVariant = store.products[0].variants.find(v => v.variantId === variant.variantId);
-                            const matchedSize = matchedVariant.variantSizes.find(vs => vs.size === variantSize.size);
-                            if (matchedSize) {
-                                variantSize.quantityInStore = matchedSize.quantity; // Add real-time quantityInStore
+                        if (store && store.products.length) {
+                            // Find the correct product in the array of products
+                            const storeProduct = store.products.find(p => p.productId === product.productId);
+
+                            if (storeProduct) {
+                                // Find the correct variant in the product
+                                const matchedVariant = storeProduct.variants.find(v => v.variantId === variant.variantId);
+
+                                if (matchedVariant) {
+                                    // Find the correct variant size in the variant
+                                    const matchedSize = matchedVariant.variantSizes.find(vs => vs.size === variantSize.size);
+
+                                    if (matchedSize) {
+                                        variantSize.quantityInStore = matchedSize.quantity; // Add real-time quantityInStore
+                                    }
+                                }
                             }
                         }
                     }
