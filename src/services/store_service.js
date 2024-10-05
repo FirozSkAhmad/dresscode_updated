@@ -1362,6 +1362,7 @@ class StoreService {
                 invoiceNo: bill.invoiceNo,
                 dateOfBill: bill.dateOfBill,
                 customerDetails,
+                modeOfPayment,
                 billedProducts,
                 totalAmount,
                 discountPercentage: discountPercentage || 0, // Using the discount from request
