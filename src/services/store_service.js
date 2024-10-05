@@ -1358,7 +1358,14 @@ class StoreService {
             return {
                 status: 200,
                 message: "Bill created successfully",
-                billId: bill.billId
+                billId: bill.billId,
+                invoiceNo: bill.invoiceNo,
+                dateOfBill: bill.dateOfBill,
+                customerDetails,
+                billedProducts,
+                totalAmount,
+                discountPercentage: discountPercentage || 0, // Using the discount from request
+                priceAfterDiscount
             };
         } catch (error) {
             // Rollback transaction in case of any failure
