@@ -2083,11 +2083,8 @@ class StoreService {
                 throw new Error('Bill associated with the request not found');
             }
 
-            console.log(isApproved)
-            console.log(!isApproved)
-
             // Handle rejection first
-            if (!isApproved) {
+            if (isApproved == false) {
                 billEditReq.isApproved = false;
                 billEditReq.dateOfValidate = new Date();
                 originalBill.editStatus = 'REJECTED';
