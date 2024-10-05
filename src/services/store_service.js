@@ -2084,6 +2084,7 @@ class StoreService {
             }
 
             console.log(isApproved)
+            console.log(!isApproved)
 
             // Handle rejection first
             if (!isApproved) {
