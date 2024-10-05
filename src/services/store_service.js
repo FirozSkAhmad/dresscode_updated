@@ -2000,7 +2000,7 @@ class StoreService {
 
             // Return the current bill separately if needed elsewhere in your application, not included in requestedBillEdit
             let currentBill
-            if (requestedBillEdit.isApproved === null) {
+            if (requestedBillEdit.isApproved === null || requestedBillEdit.isApproved === false) {
                 currentBill = await Bill.findById(requestedBillEdit.bill)
                     .populate({
                         path: 'customer',
