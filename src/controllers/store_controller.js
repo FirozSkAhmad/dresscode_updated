@@ -672,16 +672,8 @@ router.get('/get-deleted-bills/:storeId', jwtHelperObj.verifyAccessToken, async 
     }
 });
 
-router.get('/get-deleted-bills', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+router.get('/get-all-deleted-bills', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
-
-        // Validate that storeId is provided
-        if (!storeId) {
-            return res.status(400).json({
-                status: 400,
-                message: "Store ID is required."
-            });
-        }
 
         // Extract the role type from the JWT token added to req by the middleware
         const roleType = req.aud.split(":")[1];
