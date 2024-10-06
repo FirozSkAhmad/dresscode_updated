@@ -47,7 +47,7 @@ const uploadPdfToS3 = async (pdfBuffer, fileName, folderName) => {
     });
 
     const result = await uploader.done();
-    const location = `https://${uploader.params.Bucket}.s3.${s3Client.config.region}.amazonaws.com/${uploader.params.Key}`;
+    const location = `https://${uploader.params.Bucket}.s3.ap-south-1.amazonaws.com.amazonaws.com/${uploader.params.Key}`;
     return location;
   } catch (err) {
     console.error('Error uploading PDF to S3', err);
