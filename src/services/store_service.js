@@ -2128,7 +2128,7 @@ class StoreService {
                 if (isUpdated) {
                     await existingCustomer.save({ session });
                 }
-                billEditReq.customer = existingCustomer._id
+                billEditReq.customer = existingCustomer
                 await Customer.deleteOne({ customerPhone: billEditReq.customer.customerPhone, isCreated: false }).session(session);
                 await billEditReq.save({ session });
             } else {
@@ -2238,7 +2238,9 @@ class StoreService {
 
             // 5. Create an oldBill copy of the original bill before changes
             const oldBill = new OldBill({
+                billId: originalBill.billId,
                 invoiceNo: originalBill.invoiceNo,
+                invoiceUrl: originalBill.invoiceUrl,
                 storeId: originalBill.storeId,
                 customer: originalBill.customer,
                 TotalAmount: originalBill.TotalAmount,
@@ -2258,6 +2260,7 @@ class StoreService {
             billEditReq.dateOfValidate = new Date();
 
             // 6. Update the original bill with the changes from BillEditReq
+            originalBill.customer = billEditReq.customer._id;
             originalBill.TotalAmount = billEditReq.TotalAmount;
             originalBill.discountPercentage = billEditReq.discountPercentage;
             originalBill.priceAfterDiscount = billEditReq.priceAfterDiscount;
@@ -2273,7 +2276,18 @@ class StoreService {
             await session.commitTransaction();
             session.endSession();
 
-            return { message: 'Bill Edit Request approved and bill updated successfully.', editBillReqId: billEditReq.editBillReqId };
+            return {
+                message: 'Bill Edit Request approved and bill updated successfully.',
+                billId: originalBill.billId,
+                invoiceNo: originalBill.invoiceNo,
+                dateOfBill: originalBill.dateOfBill,
+                customerDetails: billEditReq.customer,
+                modeOfPayment: originalBill.modeOfPayment,
+                billedProducts: originalBill.products,
+                totalAmount: originalBill.TotalAmount,
+                discountPercentage: originalBill.discountPercentage || 0, // Using the discount from request
+                priceAfterDiscount: originalBill.priceAfterDiscount
+            };
 
         } catch (error) {
             await session.abortTransaction();

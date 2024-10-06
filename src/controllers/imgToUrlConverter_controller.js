@@ -3,6 +3,7 @@ const { uploadFile, uploadPdfToS3 } = require("../../AWS/aws")
 const multer = require('multer');
 const upload = multer();
 const router = express.Router();
+const Bill = require('../utils/Models/billingModel');
 
 router.post('/generateImgUrl', multer().any(), async (req, res) => {
     try {
@@ -29,7 +30,10 @@ router.post('/generateImgUrl', multer().any(), async (req, res) => {
     }
 });
 
-router.post('/addInvoice', upload.single('pdf'), async (req, res) => {
+router.post('/addInvoice/:billId', upload.single('pdf'), async (req, res) => {
+    const { billId } = req.params
+
+
     if (!req.file) {
         return res.status(400).send('No file uploaded.');
     }
@@ -40,7 +44,24 @@ router.post('/addInvoice', upload.single('pdf'), async (req, res) => {
         const s3Url = await uploadPdfToS3(buffer, req.file.originalname, "invoices");
         // console.log("S3 URL of the uploaded PDF:", s3Url);
         // Respond with the S3 URL or another success message
-        res.json({ s3Url: s3Url });
+
+        // Find the bill by billId
+        const bill = await Bill.findOne({ billId: billId });
+
+        // If no bill is found, return an error
+        if (!bill) {
+            return { success: false, message: 'Bill not found' };
+        }
+
+        // Update the invoiceUrl with the provided S3 URL
+        bill.invoiceUrl = s3Url;
+
+        // Save the updated bill
+        await bill.save();
+
+        res.json({
+            message: 'Successfully updated the invoice in the bill and added the invoice to S3.',
+        });
     } catch (error) {
         console.error("Failed to upload PDF to S3", error);
         res.status(500).json({ error: 'Error while uploading to S3' });

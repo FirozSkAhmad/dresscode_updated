@@ -138,7 +138,9 @@ const oldBillSchema = new mongoose.Schema({
             return crypto.randomBytes(3).toString("hex").toUpperCase().slice(0, 6);
         },
     },
+    billId: { type: String, required: true, trim: true },
     invoiceNo: { type: String, required: true, trim: true },
+    invoiceUrl: { type: String, required: true, trim: true, default: null },
     storeId: { type: String, required: true, trim: true },
     customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
     TotalAmount: { type: Number, required: true },
