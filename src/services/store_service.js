@@ -2296,6 +2296,45 @@ class StoreService {
             throw new Error(error.message);
         }
     }
+    async getStoreOverview(storeId) {
+        try {
+            // Aggregating the total billed amount, number of active bills, and number of deleted bills
+            const result = await Bill.aggregate([
+                { $match: { storeId } }, // Match bills by storeId
+                {
+                    $group: {
+                        _id: null, // We don't need to group by any field, so we use null
+                        totalBilledAmount: {
+                            $sum: {
+                                $cond: [{ $eq: ["$isDeleted", false] }, "$priceAfterDiscount", 0]
+                            }
+                        }, // Sum priceAfterDiscount for non-deleted bills
+                        activeBillCount: {
+                            $sum: { $cond: [{ $eq: ["$isDeleted", false] }, 1, 0] }
+                        }, // Count bills where isDeleted is false
+                        deletedBillCount: {
+                            $sum: { $cond: [{ $eq: ["$isDeleted", true] }, 1, 0] }
+                        } // Count bills where isDeleted is true
+                    }
+                }
+            ]);
+
+            // Extracting the values, defaulting to 0 if no matching documents are found
+            const { totalBilledAmount = 0, activeBillCount = 0, deletedBillCount = 0 } = result.length > 0 ? result[0] : {};
+
+            return {
+                storeId,
+                totalBilledAmount,
+                activeBillCount,
+                deletedBillCount
+            };
+        } catch (error) {
+            // Handle any errors that occur during the database query
+            console.error("Error fetching store overview:", error);
+            throw new Error("Could not fetch store overview");
+        }
+    }
+
 }
 
 module.exports = StoreService;

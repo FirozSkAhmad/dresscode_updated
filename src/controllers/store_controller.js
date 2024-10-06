@@ -977,4 +977,36 @@ router.patch('/validate-bill-edit-req', jwtHelperObj.verifyAccessToken, async (r
     }
 });
 
+router.get('/get-store-overview/:storeId', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+
+        const { storeId } = req.params;
+        // Validate that storeId is provided
+        if (!storeId) {
+            return res.status(400).json({
+                status: 400,
+                message: "storeId is required."
+            });
+        }
+
+        // Extract the role type from the JWT token added to req by the middleware
+        const roleType = req.aud.split(":")[1];
+        if (!['WAREHOUSE MANAGER', 'STORE MANAGER'].includes(roleType)) {
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access. Only WAREHOUSE MANAGER and STORE MANAGER can retrieve store overview."
+            });
+        }
+
+        const result = await storeServiceObj.getStoreOverview(storeId);
+        res.json({
+            message: 'store overview fetched successfully',
+            result
+        });
+    } catch (err) {
+        console.error("Error while retrieving store overview:", err.message);
+        next(err);
+    }
+});
+
 module.exports = router;
