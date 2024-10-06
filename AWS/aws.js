@@ -40,7 +40,7 @@ const uploadPdfToS3 = async (pdfBuffer, fileName, folderName) => {
       params: {
         ACL: 'public-read',
         Bucket: 'dresscode-buck',
-        Key: `${folderName}/${fileName}.pdf`,
+        Key: `${folderName}/${fileName}`,
         Body: pdfBuffer,
         ContentType: 'application/pdf',
       },
