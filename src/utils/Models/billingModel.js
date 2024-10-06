@@ -139,7 +139,7 @@ const billSchema = new mongoose.Schema({
         },
     },
     invoiceNo: { type: String, required: true, trim: true },
-    invoiceUrl: { type: String, required: true, trim: true, default: null },
+    invoiceUrl: { type: String, trim: true, default: null },
     storeId: { type: String, required: true, trim: true },
     customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
     TotalAmount: { type: Number, required: true },
