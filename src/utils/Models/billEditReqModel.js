@@ -168,6 +168,10 @@ const billEditReqSchema = new mongoose.Schema({
         type: String,
         default: null
     },
+    approvedInvoiceUrl: {
+        type: String,
+        default: null
+    },
     products: [productsSechma]
 }, {
     timestamps: true,
