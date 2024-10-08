@@ -230,20 +230,24 @@ class StoreService {
 
     addVariant(item, products) {
         try {
-
+    
             // Check if the product already exists in the local 'products' array
             let existingProduct = products.find(product => product.productId === item.productId);
-
+    
             if (existingProduct) {
                 const variant = existingProduct.variants.find(v => v.color.name === item.variant.color.name);
                 if (variant) {
-                    const sizeDetail = variant.variantSizes.find(v => v.size === item.variant.variantSizes[0].size);
-                    if (sizeDetail) {
-                        sizeDetail.quantity += item.variant.variantSizes[0].quantity;
-                    } else {
-                        variant.variantSizes.push(item.variant.variantSizes[0]);
-                    }
+                    // Loop through all sizes in the item's variantSizes array
+                    item.variant.variantSizes.forEach(newSizeDetail => {
+                        const existingSizeDetail = variant.variantSizes.find(v => v.size === newSizeDetail.size);
+                        if (existingSizeDetail) {
+                            existingSizeDetail.quantity += newSizeDetail.quantity;
+                        } else {
+                            variant.variantSizes.push(newSizeDetail);
+                        }
+                    });
                 } else {
+                    // Variant doesn't exist, so add the entire variant to the existing product
                     existingProduct.variants.push(item.variant);
                 }
             } else {
@@ -259,6 +263,7 @@ class StoreService {
             throw new Error(`Failed to add or update variant`);
         }
     }
+    
 
     async createAssignedInventory(storeId, products) {
         try {
