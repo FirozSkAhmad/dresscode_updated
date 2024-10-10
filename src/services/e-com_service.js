@@ -863,6 +863,35 @@ class EComService {
         }
     }
 
+    async getAllSchoolNames() {
+        try {
+            const schoolNames = await mongoose.model("Togs").aggregate([
+                {
+                    $match: {
+                        isDeleted: false, // Optional: Only include non-deleted records
+                    },
+                },
+                {
+                    $group: {
+                        _id: null,
+                        uniqueSchoolNames: { $addToSet: "$schoolName" },
+                    },
+                },
+                {
+                    $project: {
+                        _id: 0,
+                        uniqueSchoolNames: 1,
+                    },
+                },
+            ]);
+
+            return schoolNames.length > 0 ? schoolNames[0].uniqueSchoolNames : [];
+        } catch (error) {
+            console.error("Error fetching school names: ", error);
+            return [];
+        }
+    };
+
     async getProductsByGroup(groupName, color, size) {
         const sizeAndColorConfig = {
             "ELITE": {
@@ -1030,6 +1059,181 @@ class EComService {
             throw new Error('Failed to fetch products by filters.');
         }
     }
+
+    async getProductsByGroupAndSchoolName(groupName, schoolName, color, size) {
+        const sizeAndColorConfig = {
+            "ELITE": {
+                allColors: [],
+                allSizes: ["XS", "S", "M", "L", "XL", "XXL"]
+            },
+            "HEAL": {
+                allColors: [],
+                allSizes: ["XS", "S", "M", "L", "XL", "XXL"]
+            },
+            "TOGS": {
+                allColors: [],
+                allSizes: ["22", "24", "26", "28", "30", "32", "34", "36", "38", "40", "42", "44"]
+            }
+        };
+
+        const modelToUse = modelMap[groupName];
+        const allProducts = [];
+        try {
+            // Use the aggregation pipeline to ensure unique category data
+            const result = await modelToUse.aggregate([
+                { $match: { isDeleted: false } }, // Filter by schoolName and non-deleted items
+                {
+                    $group: { // Group by category name and imageUrl to ensure uniqueness
+                        _id: { name: "$category" },
+                        category: { $first: "$category" },
+                    }
+                },
+                {
+                    $project: { // Project the necessary fields
+                        _id: 0,
+                        category: "$category"
+                    }
+                }
+            ]);
+
+
+            const categories = result.map(item => item.category);
+            // Iterate over categories to fetch unique subCategories
+            for (const category of categories) {
+                const subCategoriesResult = await modelToUse.aggregate([
+                    { $match: { 'category': category } }, // Match documents by category and schoolName
+                    {
+                        $group: { // Group by subCategory name and imageUrl to ensure uniqueness
+                            _id: { name: "$subCategory" },
+                            subCategory: { $first: "$subCategory" },
+                        }
+                    },
+                    {
+                        $project: { // Project the necessary fields
+                            _id: 0,
+                            subCategory: "$subCategory"
+                        }
+                    }
+                ]);
+
+
+                const subCategories = subCategoriesResult.map(item => item.subCategory);
+                for (const subCategory of subCategories) {
+                    const matchQuery = {
+                        category: category,
+                        subCategory: subCategory,
+                        schoolName: schoolName // Include schoolName in the query
+                    };
+                    const products = await modelToUse.aggregate([
+                        { $match: matchQuery },
+                        {
+                            $project: {
+                                _id: 1,
+                                productId: 1,
+                                group: 1,
+                                category: 1,
+                                subCategory: 1,
+                                schoolName: 1, // Include schoolName in the product data
+                                gender: 1,
+                                productType: 1,
+                                fit: 1,
+                                neckline: 1,
+                                pattern: 1,
+                                cuff: 1,
+                                sleeves: 1,
+                                material: 1,
+                                fabric: 1,
+                                price: 1,
+                                productDescription: 1,
+                                variants: {
+                                    $filter: {
+                                        input: "$variants",
+                                        as: "variant",
+                                        cond: {
+                                            $and: [
+                                                color ? { $eq: ["$$variant.color.name", color] } : {},
+                                                size ? { $in: [size, "$$variant.variantSizes.size"] } : {}
+                                            ]
+                                        }
+                                    }
+                                },
+                                allVariants: "$variants",
+                                allSizes: sizeAndColorConfig[groupName].allSizes
+                            }
+                        }
+                    ]);
+
+    
+                    // Collect all other colors with their sizes and quantities
+                    const others = products.map(product => {
+                        const colorsWithSizesAndQuantities = {};
+                        product.allVariants.forEach(variant => {
+                            if (!variant.isDeleted) {
+                                const colorName = variant.color.name;
+                                let sizesAndQty = []; // Temporary array to hold valid sizes
+
+                                // Only add sizes with quantity more than 0
+                                variant.variantSizes.forEach(sizeEntry => {
+                                    if (sizeEntry.quantity > 0) {
+                                        sizesAndQty.push({
+                                            size: sizeEntry.size,
+                                            quantity: sizeEntry.quantity
+                                        });
+                                    }
+                                });
+
+                                // Only add the color if there are sizes with quantities more than 0
+                                if (sizesAndQty.length > 0) {
+                                    colorsWithSizesAndQuantities[colorName] = {
+                                        color: variant.color,
+                                        sizesAndQty: sizesAndQty
+                                    };
+                                }
+                            }
+                        });
+
+                        return Object.values(colorsWithSizesAndQuantities); // Return the structured color objects with sizes and quantities
+                    });
+
+                    const allColors = products.reduce((acc, product) => {
+                        product.allVariants.forEach(variant => {
+                            if (!variant.isDeleted) {
+                                const colorName = variant.color.name;
+                                const hexcode = variant.color.hexcode;
+
+                                // Check if the color has already been added to avoid duplicates
+                                if (!acc.some(color => color.name === colorName)) {
+                                    acc.push({
+                                        name: colorName,
+                                        hexcode: hexcode
+                                    });
+                                }
+                            }
+                        });
+                        return acc;
+                    }, []);
+
+                    products.forEach((product, index) => {
+                        // Remove the 'allVariants' key from each product
+                        delete product.allVariants;
+
+                        product.allColors = allColors;
+
+                        // Add 'available' data for the product from the 'others' array using the same index
+                        product.available = others[index];
+                        // Return the modified product
+                        allProducts.push(product);
+                    });
+                }
+            }
+            return allProducts;
+        } catch (error) {
+            console.error('Error fetching products:', error);
+            // Handle errors appropriately, potentially rethrowing or returning an error response
+            throw new Error('Failed to fetch products by filters.');
+        }
+    }
+
 
 
     async getProductVariantAvaColors(groupName, productId) {

@@ -140,11 +140,34 @@ router.get('/getProductsByFilters', async (req, res, next) => {
     }
 });
 
+router.get('/getAllSchoolNames', async (req, res, next) => {
+    try {
+        const EComServiceObj = new EComService();
+        const result = await EComServiceObj.getAllSchoolNames();
+        res.status(200).send(result)
+    } catch (err) {
+        next(err);
+    }
+});
+
 router.get('/getProductsByGroup', async (req, res, next) => {
     try {
         const { groupName, color, size } = req.query
         const EComServiceObj = new EComService();
         const result = await EComServiceObj.getProductsByGroup(groupName, color, size);
+        res.status(200).send(result)
+    } catch (err) {
+        next(err);
+    }
+});
+
+router.get('/getProductsByGroupAndSchoolName', async (req, res, next) => {
+    try {
+        const groupName = decodeURIComponent(req.query.groupName);
+        const schoolName = decodeURIComponent(req.query.schoolName);
+
+        const EComServiceObj = new EComService();
+        const result = await EComServiceObj.getProductsByGroupAndSchoolName(groupName, schoolName);
         res.status(200).send(result)
     } catch (err) {
         next(err);
