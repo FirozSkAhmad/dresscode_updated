@@ -1428,6 +1428,7 @@ class StoreService {
                 bill.deleteReqStatus = 'REJECTED';
                 bill.dateOfDeleteBillReqValidation = new Date();
                 bill.ValidatedBillDeleteNote = ValidatedBillDeleteNote;
+                bill.isDeleted = true;
                 return {
                     message: 'Bill delete Request REJECTED successfully.'
                 }
@@ -1457,7 +1458,11 @@ class StoreService {
                 {
                     billId: 1,
                     dateOfBill: 1,
+                    deleteReqStatus: 1,
+                    dateOfDeleteBillReq: 1,
+                    dateOfDeleteBillReqValidation: 1,
                     deletedDate: 1,
+                    isDeleted: 1,
                     TotalAmount: 1,
                     discountPercentage: 1,
                     priceAfterDiscount: 1
@@ -1483,7 +1488,11 @@ class StoreService {
                 {
                     billId: 1,
                     dateOfBill: 1,
+                    deleteReqStatus: 1,
+                    dateOfDeleteBillReq: 1,
+                    dateOfDeleteBillReqValidation: 1,
                     deletedDate: 1,
+                    isDeleted: 1,
                     TotalAmount: 1,
                     discountPercentage: 1,
                     priceAfterDiscount: 1,
