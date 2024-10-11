@@ -146,9 +146,24 @@ const billSchema = new mongoose.Schema({
     discountPercentage: { type: Number, required: true },
     priceAfterDiscount: { type: Number, required: true },
     modeOfPayment: { type: String, required: true, trim: true, enum: ['CASH', 'UPI', 'CARD'] },
+    deleteReqStatus: { type: String, trim: true, enum: [null, 'PENDING', 'REJECTED', 'APPROVED'], default: null },
+    dateOfDeleteBillReq: {
+        type: Date,
+        default: null
+    },
+    dateOfDeleteBillReqValidation: {
+        type: Date,
+        default: null
+    },
     isDeleted: {
         type: Boolean,
         default: false
+    },
+    RequestedBillDeleteNote: {
+        type: String, trim: true, default: null
+    },
+    ValidatedBillDeleteNote: {
+        type: String, trim: true, default: null
     },
     dateOfDeletion: {
         type: Date,

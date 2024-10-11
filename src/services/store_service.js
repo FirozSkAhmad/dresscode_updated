@@ -230,10 +230,10 @@ class StoreService {
 
     addVariant(item, products) {
         try {
-    
+
             // Check if the product already exists in the local 'products' array
             let existingProduct = products.find(product => product.productId === item.productId);
-    
+
             if (existingProduct) {
                 const variant = existingProduct.variants.find(v => v.color.name === item.variant.color.name);
                 if (variant) {
@@ -263,7 +263,7 @@ class StoreService {
             throw new Error(`Failed to add or update variant`);
         }
     }
-    
+
 
     async createAssignedInventory(storeId, products) {
         try {
@@ -1382,7 +1382,7 @@ class StoreService {
         }
     }
 
-    async deleteBill(storeId, billId) {
+    async createBillDeleteReq(storeId, billId, RequestedBillDeleteNote) {
         try {
             // Find the bill by storeId and billId first
             const bill = await Bill.findOne({ storeId, billId });
@@ -1394,26 +1394,57 @@ class StoreService {
                 };
             }
 
-            // Check if the bill is already deleted
-            if (bill.isDeleted) {
-                return {
-                    status: 400,
-                    message: 'Bill is already marked as deleted'
-                };
-            }
-
             // If not already deleted, update the isDeleted field to true and set deletedDate
-            bill.isDeleted = true;
-            bill.dateOfDeletion = new Date(); // Set the current date as the deletedDate
+            bill.deleteReqStatus = 'PENDING';
+            bill.dateOfDeleteBillReq = new Date();
+            bill.RequestedBillDeleteNote = RequestedBillDeleteNote;
             await bill.save();
 
             return {
                 status: 200,
-                message: 'Bill deleted successfully',
+                message: 'Bill delete request raised successfully',
                 bill
             };
         } catch (error) {
-            console.error('Error deleting bill:', error.message);
+            console.error('Error while raising bill delete req:', error.message);
+            throw new Error(error.message);
+        }
+    }
+
+    async validateBillDeleteReq(storeId, billId, isApproved, ValidatedBillDeleteNote) {
+        const session = await mongoose.startSession();
+        session.startTransaction();
+
+        try {
+            // 1. Find the Bill Edit Request by editBillReqId
+            const bill = await Bill.findOne({ storeId, billId })
+                .session(session);
+
+            if (!bill) {
+                throw new Error('Bill not found for the provided storeId and billId')
+            }
+
+            if (isApproved == "false") {
+                bill.deleteReqStatus = 'REJECTED';
+                bill.dateOfDeleteBillReqValidation = new Date();
+                bill.ValidatedBillDeleteNote = ValidatedBillDeleteNote;
+                return {
+                    message: 'Bill delete Request REJECTED successfully.'
+                }
+            }
+
+            bill.deleteReqStatus = 'APPROVED';
+            bill.dateOfDeleteBillReqValidation = new Date();
+            bill.ValidatedBillDeleteNote = ValidatedBillDeleteNote;
+
+            return {
+                message: 'Bill delete Request approved successfully.'
+            }
+
+        } catch (error) {
+            await session.abortTransaction();
+            session.endSession();
+            console.error('Error validating bill delete request:', error.message);
             throw new Error(error.message);
         }
     }

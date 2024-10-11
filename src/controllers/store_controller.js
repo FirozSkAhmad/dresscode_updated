@@ -602,9 +602,10 @@ router.post('/create-bill/:storeId', jwtHelperObj.verifyAccessToken, async (req,
     }
 });
 
-router.patch('/delete-bill', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+router.patch('/create-bill-delete-req', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
-        const { storeId, billId } = req.body;
+        const { storeId, billId } = req.query;
+        const { RequestedBillDeleteNote } = req.body;
 
         // Validate that storeId is provided
         if (!storeId) {
@@ -622,6 +623,13 @@ router.patch('/delete-bill', jwtHelperObj.verifyAccessToken, async (req, res, ne
             });
         }
 
+        if (!RequestedBillDeleteNote) {
+            return res.status(400).json({
+                status: 400,
+                message: "Requested Bill Delete Note is required."
+            });
+        }
+
         // Extract the role type from the JWT token added to req by the middleware
         const roleType = req.aud.split(":")[1];
         if (roleType !== "STORE MANAGER") {
@@ -631,10 +639,40 @@ router.patch('/delete-bill', jwtHelperObj.verifyAccessToken, async (req, res, ne
             });
         }
 
-        const result = await storeServiceObj.deleteBill(storeId, billId);
+        const result = await storeServiceObj.createBillDeleteReq(storeId, billId, RequestedBillDeleteNote);
         res.json(result);
     } catch (err) {
         console.error("Error while deleting bill:", err.message);
+        next(err);
+    }
+});
+
+router.patch('/validate-bill-delete-req', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+
+        const { storeId, billId, isApproved } = req.query;
+        const { ValidatedBillDeleteNote } = req.body;
+        // Validate that storeId is provided
+        if (!editBillReqId) {
+            return res.status(400).json({
+                status: 400,
+                message: "Edit Bill Req ID is required."
+            });
+        }
+
+        // Extract the role type from the JWT token added to req by the middleware
+        const roleType = req.aud.split(":")[1];
+        if (!['WAREHOUSE MANAGER'].includes(roleType)) {
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access. Only WAREHOUSE MANAGER can retrieve bill details."
+            });
+        }
+
+        const result = await storeServiceObj.validateBillDeleteReq(storeId, billId, isApproved, ValidatedBillDeleteNote);
+        res.json(result);
+    } catch (err) {
+        console.error("Error while Validating Bill Edit Req:", err.message);
         next(err);
     }
 });
