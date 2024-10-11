@@ -1484,7 +1484,7 @@ class StoreService {
         try {
             // Step 1: Find all deleted bills
             const deletedBills = await Bill.find(
-                { isDeleted: true }, // Query to find bills that are marked as deleted
+                { deleteReqStatus: { $ne: null } }, // Query to find bills that are marked as deleted
                 {
                     billId: 1,
                     dateOfBill: 1,
