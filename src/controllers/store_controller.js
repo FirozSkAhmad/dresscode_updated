@@ -672,7 +672,7 @@ router.patch('/validate-bill-delete-req', jwtHelperObj.verifyAccessToken, async 
         const result = await storeServiceObj.validateBillDeleteReq(storeId, billId, isApproved, ValidatedBillDeleteNote);
         res.json(result);
     } catch (err) {
-        console.error("Error while Validating Bill Edit Req:", err.message);
+        console.error("Error while Validating Bill delete Req:", err.message);
         next(err);
     }
 });

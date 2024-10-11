@@ -1429,6 +1429,7 @@ class StoreService {
                 bill.dateOfDeleteBillReqValidation = new Date();
                 bill.ValidatedBillDeleteNote = ValidatedBillDeleteNote;
                 bill.isDeleted = true;
+                await bill.save();
                 return {
                     message: 'Bill delete Request REJECTED successfully.'
                 }
@@ -1437,6 +1438,11 @@ class StoreService {
             bill.deleteReqStatus = 'APPROVED';
             bill.dateOfDeleteBillReqValidation = new Date();
             bill.ValidatedBillDeleteNote = ValidatedBillDeleteNote;
+
+            await bill.save();
+
+            await session.commitTransaction();
+            session.endSession();
 
             return {
                 message: 'Bill delete Request approved successfully.'
