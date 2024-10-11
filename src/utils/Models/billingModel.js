@@ -165,10 +165,6 @@ const billSchema = new mongoose.Schema({
     ValidatedBillDeleteNote: {
         type: String, trim: true, default: null
     },
-    dateOfDeletion: {
-        type: Date,
-        default: null
-    },
     dateOfBill: {
         type: Date,
         default: Date.now // Automatically sets the current date and time

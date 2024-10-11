@@ -1526,7 +1526,9 @@ class StoreService {
             const result = deletedBills.map(bill => ({
                 billId: bill.billId,
                 dateOfBill: bill.dateOfBill,
-                deletedDate: bill.deletedDate,
+                deleteReqStatus: bill.deleteReqStatus,
+                dateOfDeleteBillReq: bill.dateOfDeleteBillReq,
+                isDeleted: bill.isDeleted,
                 TotalAmount: bill.TotalAmount,
                 discountPercentage: bill.discountPercentage,
                 priceAfterDiscount: bill.priceAfterDiscount,
