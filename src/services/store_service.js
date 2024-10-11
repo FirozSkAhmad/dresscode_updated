@@ -1403,7 +1403,7 @@ class StoreService {
             return {
                 status: 200,
                 message: 'Bill delete request raised successfully',
-                bill
+                // bill
             };
         } catch (error) {
             console.error('Error while raising bill delete req:', error.message);
@@ -1454,7 +1454,7 @@ class StoreService {
         try {
             // Find all deleted bills for the given storeId and return only the required fields
             const deletedBills = await Bill.find(
-                { storeId, isDeleted: true }, // Query to find bills that are marked as deleted
+                { storeId }, // Query to find bills that are marked as deleted
                 {
                     billId: 1,
                     dateOfBill: 1,
