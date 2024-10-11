@@ -652,13 +652,6 @@ router.patch('/validate-bill-delete-req', jwtHelperObj.verifyAccessToken, async 
 
         const { storeId, billId, isApproved } = req.query;
         const { ValidatedBillDeleteNote } = req.body;
-        // Validate that storeId is provided
-        if (!editBillReqId) {
-            return res.status(400).json({
-                status: 400,
-                message: "Edit Bill Req ID is required."
-            });
-        }
 
         // Extract the role type from the JWT token added to req by the middleware
         const roleType = req.aud.split(":")[1];

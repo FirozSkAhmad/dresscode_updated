@@ -1416,7 +1416,7 @@ class StoreService {
         session.startTransaction();
 
         try {
-            // 1. Find the Bill Edit Request by editBillReqId
+  
             const bill = await Bill.findOne({ storeId, billId })
                 .session(session);
 
