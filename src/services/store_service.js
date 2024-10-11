@@ -1454,7 +1454,7 @@ class StoreService {
         try {
             // Find all deleted bills for the given storeId and return only the required fields
             const deletedBills = await Bill.find(
-                { storeId }, // Query to find bills that are marked as deleted
+                { storeId, deleteReqStatus: { $ne: null } }, // Query to find bills that are marked as deleted
                 {
                     billId: 1,
                     dateOfBill: 1,
