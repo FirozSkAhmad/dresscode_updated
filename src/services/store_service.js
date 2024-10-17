@@ -537,7 +537,7 @@ class StoreService {
                     userName: storeDetails.userName,
                     phoneNo: storeDetails.phoneNo,
                     emailID: storeDetails.emailID,
-                    // Exclude sensitive information like password in API responses
+                    password: storeDetails.password
                 }
             };
         } catch (err) {
