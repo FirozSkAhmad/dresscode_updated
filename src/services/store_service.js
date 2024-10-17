@@ -485,22 +485,51 @@ class StoreService {
         session.startTransaction();
         try {
             // Get the store using storeId
-            const storeDetails = await Store.findOne({ storeId: storeId }).session(session);
-
+            const storeDetails = await Store.findOne({ storeId }).session(session);
+    
             if (!storeDetails) {
                 throw new Error("Store not found.");
             }
-
+    
+            // Aggregating the total billed amount, number of active bills, and number of deleted bills
+            const result = await Bill.aggregate([
+                { $match: { storeId } }, // Match bills by storeId
+                {
+                    $group: {
+                        _id: null, // No specific field to group by
+                        totalBilledAmount: {
+                            $sum: {
+                                $cond: [{ $eq: ["$isDeleted", false] }, "$priceAfterDiscount", 0]
+                            }
+                        }, // Sum priceAfterDiscount for non-deleted bills
+                        activeBillCount: {
+                            $sum: { $cond: [{ $eq: ["$isDeleted", false] }, 1, 0] }
+                        }, // Count active bills
+                        deletedBillCount: {
+                            $sum: { $cond: [{ $eq: ["$isDeleted", true] }, 1, 0] }
+                        } // Count deleted bills
+                    }
+                }
+            ]);
+    
+            // Extracting the values, defaulting to 0 if no matching documents are found
+            const { totalBilledAmount = 0, activeBillCount = 0, deletedBillCount = 0 } = result.length > 0 ? result[0] : {};
+    
+            const storeOverview = {
+                storeId,
+                totalBilledAmount,
+                activeBillCount,
+                deletedBillCount
+            };
+    
             // Commit transaction
             await session.commitTransaction();
-            session.endSession();
-
             return {
                 status: 200,
                 message: "Store details retrieved successfully.",
                 data: {
+                    storeOverview,
                     storeName: storeDetails.storeName,
-                    storeId: storeDetails.storeId,
                     storeAddress: storeDetails.storeAddress,
                     city: storeDetails.city,
                     pincode: storeDetails.pincode,
@@ -508,14 +537,15 @@ class StoreService {
                     userName: storeDetails.userName,
                     phoneNo: storeDetails.phoneNo,
                     emailID: storeDetails.emailID,
-                    password: storeDetails.password
+                    // Exclude sensitive information like password in API responses
                 }
             };
         } catch (err) {
             await session.abortTransaction();
-            session.endSession();
             console.error("Error while retrieving store details:", err.message);
-            throw err.message;
+            throw err; // Throw the full error, not just the message
+        } finally {
+            session.endSession(); // Ensure session is always ended
         }
     }
 
@@ -1416,7 +1446,7 @@ class StoreService {
         session.startTransaction();
 
         try {
-  
+
             const bill = await Bill.findOne({ storeId, billId })
                 .session(session);
 
