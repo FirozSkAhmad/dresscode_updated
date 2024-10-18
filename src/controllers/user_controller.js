@@ -110,13 +110,9 @@ router.post('/reset-password', async (req, res, next) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        const data = await userServiceObj.resetPassword(token, newPassword, session);
+        const result = await userServiceObj.resetPassword(token, newPassword, session);
         await session.commitTransaction();
-        res.send({
-            status: 200,
-            message: Constants.SUCCESS,
-            data: data
-        });
+        res.status(201).send(result);
     } catch (err) {
         await session.abortTransaction();
         console.error("Transaction aborted due to an error:", err.message);
