@@ -124,10 +124,10 @@ class UserService {
 
             // Generate a JWT token with user ID for password reset, expires in 1 hour
             const tokenPayload = { aud: userData._id };
-            const resetToken = await this.jwtObject.generateAccessToken(tokenPayload, { expiresIn: '1h' });
+            const resetToken = await this.jwtObject.generateAccessToken(tokenPayload);
 
             // Generate password reset URL
-            const resetUrl = `https://yourapp.com/reset-password?token=${resetToken}`;
+            const resetUrl = `${process.env.RESET_PASSWORD_ROUTE}?token=${resetToken}`;
 
             // Send reset email using Nodemailer
             await this.sendResetEmail(userDetails.email, resetUrl);
