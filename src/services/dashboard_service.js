@@ -4,7 +4,7 @@ const bcrypt = require('bcrypt');
 
 class DashboardService {
     constructor() {
-        this.UserModel = UserModel;
+        this.DashboardUserModel = DashboardUserModel;
         this.jwtObject = new JWTHelper();
     }
 
