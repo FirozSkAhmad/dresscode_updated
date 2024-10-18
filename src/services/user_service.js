@@ -179,8 +179,9 @@ class UserService {
             });
             const userId = decodedToken.aud.split(":")[0];
 
-            // Hash the new password
-            const hashedPassword = await bcrypt.hash(newPassword, 10);
+            // Hash the password
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(password, salt);
 
             // Update the user's password
             await UserModel.updateOne(
