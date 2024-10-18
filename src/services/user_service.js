@@ -123,7 +123,7 @@ class UserService {
             }
 
             // Generate a JWT token with user ID for password reset, expires in 1 hour
-            const tokenPayload = { aud: userData._id };
+            const tokenPayload = userData._id + ":" + userData.name;
             const resetToken = await this.jwtObject.generateAccessToken(tokenPayload);
 
             // Generate password reset URL
@@ -177,8 +177,7 @@ class UserService {
                     resolve(decoded);
                 });
             });
-
-            const userId = decodedToken.aud;  // Extract user ID from token
+            const userId = decodedToken.aud.split(":")[0];
 
             // Hash the new password
             const hashedPassword = await bcrypt.hash(newPassword, 10);
