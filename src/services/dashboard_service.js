@@ -1,17 +1,6 @@
-const UserModel = require('../utils/Models/userModel');
-const OrderModel = require('../utils/Models/orderModel');
-const HealModel = require('../utils/Models/healModel');
-const EliteModel = require('../utils/Models/eliteModel');
-const TogsModel = require('../utils/Models/togsModel');
-const mongoose = require('mongoose');
+const DashboardUserModel = require('../utils/Models/dashboardUserModel');
 const JWTHelper = require('../utils/Helpers/jwt_helper')
 const bcrypt = require('bcrypt');
-const colorCodes = require('../utils/Helpers/data');
-const modelMap = {
-    "HEAL": HealModel,
-    "ELITE": EliteModel,
-    "TOGS": TogsModel,
-};
 
 class DashboardService {
     constructor() {
@@ -23,7 +12,7 @@ class DashboardService {
     async forgotPassword(userDetails, session) {
         try {
             // Check if the user exists by email
-            const userData = await UserModel.findOne({ email: userDetails.email }).session(session);
+            const userData = await DashboardUserModel.findOne({ email: userDetails.email }).session(session);
 
             if (!userData) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("No user exists with the given email");
@@ -37,7 +26,7 @@ class DashboardService {
             const resetUrl = `${process.env.RESET_PASSWORD_DASHBOARD_ROUTE}?token=${resetToken}`;
 
             // Send reset email using Nodemailer
-            await this.sendResetEmail(userDetails.email, resetUrl);
+            await this.sendResetEmail(userDetails.email, resetUrl, userDetails.name, userDetails.phoneNumber, userDetails.roleType);
 
             return { message: "Password reset email sent successfully to admin." };
         } catch (err) {
@@ -47,7 +36,7 @@ class DashboardService {
     }
 
     // Function to send reset password email
-    async sendResetEmail(toEmail, resetUrl) {
+    async sendResetEmail(toEmail, resetUrl, userName, phoneNumber, roleType) {
         const nodemailer = require('nodemailer');
 
         // Create transporter object using SMTP transport
@@ -64,9 +53,19 @@ class DashboardService {
             from: process.env.SENDER_EMAIL_ID,
             to: process.env.ADMIN_EMAIL_ID,
             subject: 'Password Reset Request',
-            html: `<p>You requested a password reset. Click the link below to reset your password:</p>
-               <a href="${resetUrl}">${resetUrl}</a>
-               <p>If you did not request this, please ignore this email.</p>`
+            html: `
+            <p><strong>Password Reset Request</strong></p>
+            <p><strong>User Details:</strong></p>
+            <ul>
+                <li><strong>Name:</strong> ${userName}</li>
+                <li><strong>Email:</strong> ${toEmail}</li>
+                <li><strong>Phone Number:</strong> ${phoneNumber}</li>
+                <li><strong>Role Type:</strong> ${roleType}</li>
+            </ul>
+            <p>They requested a password reset. Click the link below to reset their password:</p>
+            <a href="${resetUrl}">${resetUrl}</a>
+            <p>If this was not requested by the user, please ignore this email.</p>
+        `
         };
 
         // Send email
@@ -84,12 +83,12 @@ class DashboardService {
                 });
             });
             const userId = decodedToken.aud.split(":")[0];
-    
+
             // Validate new password
             if (!newPassword || typeof newPassword !== 'string') {
                 throw new Error("New password is required and must be a valid string.");
             }
-    
+
             // Hash the password
             const salt = await bcrypt.genSalt(10);
             if (!salt) {
@@ -97,20 +96,20 @@ class DashboardService {
             }
             console.log('Salt:', salt);
             const hashedPassword = await bcrypt.hash(newPassword, salt);
-    
+
             // Update the user's password
-            await UserModel.updateOne(
+            await DashboardUserModel.updateOne(
                 { _id: userId },
                 { $set: { password: hashedPassword } },
                 { session: session }
             );
-    
+
             return { message: "Password successfully updated" };
         } catch (err) {
             console.error("Error in resetPassword with transaction: ", err.message);
             throw err;
         }
-    }    
+    }
 
 }
 
