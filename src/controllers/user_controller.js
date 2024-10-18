@@ -89,6 +89,43 @@ router.post('/login', async (req, res, next) => {
     }
 });
 
+router.post('/forgot-password', async (req, res, next) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        const result = await userServiceObj.forgotPassword(req.body, session);
+        await session.commitTransaction();
+        res.status(200).send(result);
+    } catch (err) {
+        await session.abortTransaction();
+        console.error("Transaction aborted due to an error:", err.message);
+        next(err);
+    } finally {
+        session.endSession();
+    }
+});
+
+router.post('/reset-password', async (req, res, next) => {
+    const { token, newPassword } = req.body;
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        const data = await userServiceObj.resetPassword(token, newPassword, session);
+        await session.commitTransaction();
+        res.send({
+            status: 200,
+            message: Constants.SUCCESS,
+            data: data
+        });
+    } catch (err) {
+        await session.abortTransaction();
+        console.error("Transaction aborted due to an error:", err.message);
+        next(err);
+    } finally {
+        session.endSession();
+    }
+});
+
 
 router.post('/refresh-token', async (req, res, next) => {
     const refreshToken = req.body.refreshToken;
