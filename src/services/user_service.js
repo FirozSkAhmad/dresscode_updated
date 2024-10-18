@@ -167,7 +167,6 @@ class UserService {
     }
 
 
-    // Service function to handle password reset
     async resetPassword(token, newPassword, session) {
         try {
             // Verify the JWT token to get user ID
@@ -178,24 +177,33 @@ class UserService {
                 });
             });
             const userId = decodedToken.aud.split(":")[0];
-
+    
+            // Validate new password
+            if (!newPassword || typeof newPassword !== 'string') {
+                throw new Error("New password is required and must be a valid string.");
+            }
+    
             // Hash the password
             const salt = await bcrypt.genSalt(10);
+            if (!salt) {
+                throw new Error("Failed to generate salt.");
+            }
+            console.log('Salt:', salt);
             const hashedPassword = await bcrypt.hash(newPassword, salt);
-
+    
             // Update the user's password
             await UserModel.updateOne(
                 { _id: userId },
                 { $set: { password: hashedPassword } },
                 { session: session }
             );
-
+    
             return { message: "Password successfully updated" };
         } catch (err) {
             console.error("Error in resetPassword with transaction: ", err.message);
             throw err;
         }
-    }
+    }    
 
 
     async getUserDetails(userId) {
