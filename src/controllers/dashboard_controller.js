@@ -20,6 +20,8 @@ const bwipjs = require('bwip-js');
 const axios = require('axios');
 const { startSession } = require('mongoose');
 require('dotenv').config();  // Make sure to require dotenv if you need access to your .env variables
+const DashboardService = require('../services/dashboard_service');
+const dashboardServiceObj = new DashboardService();
 
 const modelMap = {
     "HEAL": HealModel,
@@ -90,6 +92,39 @@ router.post('/dashboardLogin', async (req, res, next) => {
     } catch (err) {
         console.error("Error in loginUser: ", err.message);
         next(err); // Pass to the default error handler
+    }
+});
+
+router.post('/forgot-password', async (req, res, next) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        const result = await dashboardServiceObj.forgotPassword(req.body, session);
+        await session.commitTransaction();
+        res.status(200).send(result);
+    } catch (err) {
+        await session.abortTransaction();
+        console.error("Transaction aborted due to an error:", err.message);
+        next(err);
+    } finally {
+        session.endSession();
+    }
+});
+
+router.post('/reset-password', async (req, res, next) => {
+    const { token, newPassword } = req.body;
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        const result = await dashboardServiceObj.resetPassword(token, newPassword, session);
+        await session.commitTransaction();
+        res.status(201).send(result);
+    } catch (err) {
+        await session.abortTransaction();
+        console.error("Transaction aborted due to an error:", err.message);
+        next(err);
+    } finally {
+        session.endSession();
     }
 });
 

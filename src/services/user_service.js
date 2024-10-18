@@ -127,7 +127,7 @@ class UserService {
             const resetToken = await this.jwtObject.generateAccessToken(tokenPayload);
 
             // Generate password reset URL
-            const resetUrl = `${process.env.RESET_PASSWORD_ROUTE}?token=${resetToken}`;
+            const resetUrl = `${process.env.RESET_PASSWORD_ECOM_ROUTE}?token=${resetToken}`;
 
             // Send reset email using Nodemailer
             await this.sendResetEmail(userDetails.email, resetUrl);
@@ -155,7 +155,7 @@ class UserService {
         // Email content
         const mailOptions = {
             from: process.env.SENDER_EMAIL_ID,
-            to: process.env.ADMIN_EMAIL_ID,
+            to: toEmail,
             subject: 'Password Reset Request',
             html: `<p>You requested a password reset. Click the link below to reset your password:</p>
                <a href="${resetUrl}">${resetUrl}</a>
