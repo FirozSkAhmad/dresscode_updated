@@ -80,9 +80,16 @@ router.post('/dashboardLogin', async (req, res, next) => {
         const accessToken = await jwtHelperObj.generateAccessToken(tokenPayload);
         const refreshToken = await jwtHelperObj.generateRefreshToken(tokenPayload);
 
+        // Set the refresh token in an HTTP-only cookie
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,    // Prevents JavaScript from accessing the cookie
+            secure: true, // Required when sameSite is 'None'
+            sameSite: 'None',
+            path: '/'
+        });
+
         const data = {
             accessToken: accessToken,
-            refreshToken: refreshToken,
             userId: userData._id,
             name: userData.name,
             roleType: userData.roleType
