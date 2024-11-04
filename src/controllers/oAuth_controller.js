@@ -19,7 +19,7 @@ async function verifyToken(req, res, next) {
 
         try {
             // Verify token using JWT for redirection
-            const decoded = jwt.verify(token, process.env.COUPON_SECRET_KEY, { issuer: 'trumsy' });
+            const decoded = global.DATA.PLUGINS.jsonwebtoken.verify(token, process.env.COUPON_SECRET_KEY, { issuer: 'trumsy' });
             req.user = decoded; // Attach decoded user info to req
             next();
         } catch (error) {
