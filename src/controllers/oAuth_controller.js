@@ -62,6 +62,15 @@ router.post("/login/:loginType", verifyToken, async (req, res) => {
 
     const tokenPayload = user._id + ":" + user.name;
     const accessToken = await jwtHelperObj.generateAccessToken(tokenPayload);
+    const refreshToken = await this.jwtObject.generateRefreshToken(tokenPayload);
+
+    // Set the refresh token in an HTTP-only cookie
+    res.cookie('refreshToken', refreshToken, {
+        httpOnly: true,    // Prevents JavaScript from accessing the cookie
+        secure: true, // Required when sameSite is 'None'
+        sameSite: 'None',
+        path: '/'
+    });
 
     const data = {
         accessToken: accessToken,
