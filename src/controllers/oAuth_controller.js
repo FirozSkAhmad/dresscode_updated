@@ -76,3 +76,5 @@ router.post("/login/:loginType", verifyToken, async (req, res) => {
         "data": data
     });
 });
+
+module.exports = router;
