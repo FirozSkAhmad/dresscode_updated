@@ -76,7 +76,7 @@ router.post("/login/:loginType", verifyToken, async (req, res) => {
         accessToken: accessToken,
         userId: user._id,
         name: user.name,
-        name: user.email,
+        email: user.email,
     };
 
     res.status(200).send({
