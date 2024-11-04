@@ -55,8 +55,6 @@ router.post("/login/:loginType", verifyToken, async (req, res) => {
         ]
     });
 
-    console.log(user)
-
     if (!user) {
         user = new UserModel({ uid, name, email });
         await user.save();
