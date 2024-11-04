@@ -108,6 +108,18 @@ router.post('/verifyPayment', jwtHelperObj.verifyAccessToken, async (req, res) =
             order.order_created = true;
             order.paymentId = payment[0]._id;
 
+            // Check and update the coupon status if a coupon was used
+            if (order.couponCode) {
+                const coupon = await CouponModel.findOne({ couponCode: order.couponCode }).session(session);
+
+                if (coupon) {
+                    coupon.status = 'used';
+                    coupon.customerId = order.user; // Assuming order.user is the customerId
+                    coupon.orderId = order._id;
+                    await coupon.save({ session });
+                }
+            }
+
             // Save the changes to the database
             await order.save({ session });
 

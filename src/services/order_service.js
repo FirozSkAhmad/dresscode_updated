@@ -4,6 +4,7 @@ const QuoteModel = require('../utils/Models/quoteModel');
 const HealModel = require('../utils/Models/healModel');
 const EliteModel = require('../utils/Models/eliteModel');
 const TogsModel = require('../utils/Models/togsModel');
+const CouponModel = require('../utils/Models/couponModel');
 const mongoose = require('mongoose');
 const JWTHelper = require('../utils/Helpers/jwt_helper')
 const bcrypt = require('bcrypt');
@@ -23,34 +24,43 @@ class OrderService {
 
     async createOrder(userId, addressId, orderDetails, session) {
         try {
-            const { products: orderProducts } = orderDetails;
-            let totalDiscountAmount = 0; // Initialize total discount amount
-            let totalPriceAfterDiscount = 0; // Initialize total price after discount
-            let totalAmount = 0; // Initialize total amount without discount
+            const { products: orderProducts, couponCode } = orderDetails;
+            let totalDiscountAmount = 0;
+            let totalPriceAfterDiscount = 0;
+            let totalAmount = 0;
+            let couponDiscountPercentage = 0;
+
+            // Check if couponCode is provided and validate it
+            if (couponCode) {
+                const coupon = await CouponModel.findOne({ couponCode, status: 'pending', expiryDate: { $gt: new Date() } });
+
+                if (!coupon) {
+                    throw new Error("Invalid or expired coupon code");
+                }
+
+                // Use the discount percentage from the coupon
+                couponDiscountPercentage = coupon.discountPercentage;
+            }
 
             // Process each product in the order
             const productsProcessed = await Promise.all(orderProducts.map(async (product) => {
                 const { group, productId, color, size, quantityOrdered } = product;
                 const ProductModel = modelMap[group.trim().toUpperCase()];
                 if (!ProductModel) {
-                    throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid product group");
+                    throw new Error("Invalid product group");
                 }
 
-                // Find the product and specific variant
-                const productDoc = await ProductModel.findOne({ "productId": productId, "variants.color.name": color });
+                const productDoc = await ProductModel.findOne({ productId, "variants.color.name": color });
                 if (!productDoc) {
-                    throw new global.DATA.PLUGINS.httperrors.BadRequest("Product or variant not found");
+                    throw new Error("Product or variant not found");
                 }
 
-                // Check stock and update quantity
                 const variant = productDoc.variants.find(v => v.color.name === color);
                 const variantSize = variant.variantSizes.find(v => v.size === size);
                 if (!variantSize || variantSize.quantity < quantityOrdered) {
-                    throw new global.DATA.PLUGINS.httperrors.BadRequest("Insufficient stock for the variant");
+                    throw new Error("Insufficient stock for the variant");
                 }
 
-
-                // Determine the discount percentage based on the quantity ordered
                 let discountPercentage = 0;
                 if (quantityOrdered >= 6 && quantityOrdered <= 10) {
                     discountPercentage = 5;
@@ -60,21 +70,16 @@ class OrderService {
                     discountPercentage = 15;
                 }
 
+                // If coupon is valid, apply additional discount from the coupon
+                discountPercentage += couponDiscountPercentage;
+
                 const totalPrice = Math.round(productDoc.price * quantityOrdered);
-
-                // Calculate discount amount
                 const discountAmount = (totalPrice * discountPercentage) / 100;
-
-                // Calculate total price after discount for this product
                 const priceAfterDiscount = totalPrice - discountAmount;
 
-                const roundedPriceAfterDiscount = Math.round(priceAfterDiscount);
-                const roundedDiscountAmount = Math.round(discountAmount);
-
-                // Accumulate the total amount, total discount, and total price after discount
                 totalAmount += totalPrice;
-                totalDiscountAmount += roundedDiscountAmount;
-                totalPriceAfterDiscount += roundedPriceAfterDiscount;
+                totalDiscountAmount += Math.round(discountAmount);
+                totalPriceAfterDiscount += Math.round(priceAfterDiscount);
 
                 return {
                     group,
@@ -102,15 +107,16 @@ class OrderService {
                 deliveryCharges: 0,
                 TotalAmount: totalAmount,
                 TotalDiscountAmount: totalDiscountAmount,
-                TotalPriceAfterDiscount: totalPriceAfterDiscount
+                TotalPriceAfterDiscount: totalPriceAfterDiscount,
+                couponCode: couponCode || null,
+                couponDiscountPercentage: couponDiscountPercentage || 0
             });
 
             const savedOrder = await newOrder.save({ session });
 
-            // Update the user's orders list
             const user = await UserModel.findById(userId).session(session);
             if (!user) {
-                throw new global.DATA.PLUGINS.httperrors.BadRequest('User not found');
+                throw new Error('User not found');
             }
             user.orders.push(savedOrder._id);
             await user.save({ session });
@@ -121,14 +127,14 @@ class OrderService {
             });
 
             const options = {
-                amount: Math.round(totalPriceAfterDiscount * 100), // Ensures the amount is an integer
+                amount: Math.round(totalPriceAfterDiscount * 100),
                 currency: "INR",
             };
 
-            const order = await instance.orders.create(options);
+            const razorpayOrder = await instance.orders.create(options);
 
             return {
-                razorpay_checkout_order_id: order.id,
+                razorpay_checkout_order_id: razorpayOrder.id,
                 orderId: savedOrder.orderId
             };
         } catch (err) {

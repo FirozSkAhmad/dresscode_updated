@@ -88,7 +88,6 @@ router.get('/store-names', jwtHelperObj.verifyAccessToken, async (req, res) => {
     }
 });
 
-
 router.post('/assign-inventory/:storeId', jwtHelperObj.verifyAccessToken, upload.single('file'), async (req, res, next) => {
     try {
         const { storeId } = req.params;
