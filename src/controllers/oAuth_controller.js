@@ -15,9 +15,7 @@ async function verifyToken(req, res, next) {
             return next(new global.DATA.PLUGINS.httperrors.Unauthorized("Please provide token"));
         }
 
-        const authHeader = req.headers['authorization'];
-        const bearerToken = authHeader.split(' ');
-        const token = bearerToken[1];
+        const token = req.headers.authorization;
 
         try {
             // Verify token using JWT for redirection
