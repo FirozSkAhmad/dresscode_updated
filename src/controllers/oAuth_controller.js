@@ -46,52 +46,61 @@ async function verifyToken(req, res, next) {
 }
 
 router.post("/login/:loginType", verifyToken, async (req, res) => {
-    const { uid, name, email, picture } = req.user;
+    try {
+        const { uid, name, email, picture } = req.user;
 
-    // Find the user by `uid` or `email`
-    let user = await UserModel.findOne({
-        $or: [
-            { uid: uid },
-            { email: email }
-        ]
-    });
+        // Find the user by `uid` or `email`
+        let user = await UserModel.findOne({
+            $or: [
+                { uid: uid },
+                { email: email }
+            ]
+        });
 
-    // If the user doesn't exist, create a new one
-    if (!user) {
-        user = new UserModel({ uid, name, email });
-        await user.save();
-    } else if (!user.uid) {
-        // If user exists but doesn't have a `uid`, add it
-        user.uid = uid;
-        await user.save();
+        // If the user doesn't exist, create a new one
+        if (!user) {
+            user = new UserModel({ uid, name, email });
+            await user.save();
+        } else if (!user.uid) {
+            // If user exists but doesn't have a `uid`, add it
+            user.uid = uid;
+            await user.save();
+        }
+
+        // Generate tokens
+        const tokenPayload = user._id + ":" + user.name;
+        const accessToken = await jwtHelperObj.generateAccessToken(tokenPayload);
+        const refreshToken = await jwtHelperObj.generateRefreshToken(tokenPayload);
+
+        // Set the refresh token in an HTTP-only cookie
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,    // Prevents JavaScript from accessing the cookie
+            secure: true,      // Required when sameSite is 'None'
+            sameSite: 'None',
+            path: '/'
+        });
+
+        // Prepare response data
+        const data = {
+            accessToken: accessToken,
+            userId: user._id,
+            name: user.name,
+            email: user.email,
+        };
+
+        return res.status(200).send({
+            "message": Constants.SUCCESS,
+            "data": data
+        });
+    } catch (error) {
+        console.error("Error during login:", error.message);
+        return res.status(500).send({
+            "message": "An error occurred during login",
+            "error": error.message
+        });
     }
-
-    // Generate tokens
-    const tokenPayload = user._id + ":" + user.name;
-    const accessToken = await jwtHelperObj.generateAccessToken(tokenPayload);
-    const refreshToken = await jwtHelperObj.generateRefreshToken(tokenPayload);
-
-    // Set the refresh token in an HTTP-only cookie
-    res.cookie('refreshToken', refreshToken, {
-        httpOnly: true,    // Prevents JavaScript from accessing the cookie
-        secure: true,      // Required when sameSite is 'None'
-        sameSite: 'None',
-        path: '/'
-    });
-
-    // Prepare response data
-    const data = {
-        accessToken: accessToken,
-        userId: user._id,
-        name: user.name,
-        email: user.email,
-    };
-
-    res.status(200).send({
-        "message": Constants.SUCCESS,
-        "data": data
-    });
 });
+
 
 
 module.exports = router;
