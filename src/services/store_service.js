@@ -486,11 +486,11 @@ class StoreService {
         try {
             // Get the store using storeId
             const storeDetails = await Store.findOne({ storeId }).session(session);
-    
+
             if (!storeDetails) {
                 throw new Error("Store not found.");
             }
-    
+
             // Aggregating the total billed amount, number of active bills, and number of deleted bills
             const result = await Bill.aggregate([
                 { $match: { storeId } }, // Match bills by storeId
@@ -511,17 +511,17 @@ class StoreService {
                     }
                 }
             ]);
-    
+
             // Extracting the values, defaulting to 0 if no matching documents are found
             const { totalBilledAmount = 0, activeBillCount = 0, deletedBillCount = 0 } = result.length > 0 ? result[0] : {};
-    
+
             const storeOverview = {
                 storeId,
                 totalBilledAmount,
                 activeBillCount,
                 deletedBillCount
             };
-    
+
             // Commit transaction
             await session.commitTransaction();
             return {
@@ -1459,6 +1459,10 @@ class StoreService {
                 bill.dateOfDeleteBillReqValidation = new Date();
                 bill.ValidatedBillDeleteNote = ValidatedBillDeleteNote;
                 await bill.save();
+
+                await session.commitTransaction();
+                session.endSession();
+                
                 return {
                     message: 'Bill delete Request REJECTED successfully.'
                 }
