@@ -11,6 +11,7 @@ const mongoose = require('mongoose');
 const HealModel = require('../utils/Models/healModel');
 const EliteModel = require('../utils/Models/eliteModel');
 const TogsModel = require('../utils/Models/togsModel');
+const CouponModel = require('../utils/Models/couponModel.js');
 
 // Mapping from group to Product Model
 const modelMap = {
