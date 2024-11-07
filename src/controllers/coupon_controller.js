@@ -5,9 +5,33 @@ const uuid = require('uuid');  // For unique coupon code generation
 const Coupon = require('../utils/Models/couponModel');
 const JwtHelper = require('../utils/Helpers/jwt_helper')
 const jwtHelperObj = new JwtHelper();
+const crypto = require('crypto');
+
+
+const generateUniqueCouponCode = async () => {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let couponCode = '';
+    let isUnique = false;
+
+    while (!isUnique) {
+        // Generate an 8-character coupon code
+        couponCode = '';
+        for (let i = 0; i < 8; i++) {
+            couponCode += characters.charAt(Math.floor(Math.random() * characters.length));
+        }
+
+        // Check if the coupon code already exists in the database
+        const existingCoupon = await mongoose.model('Coupon').findOne({ couponCode });
+        if (!existingCoupon) {
+            isUnique = true; // Set flag to true if code is unique
+        }
+    }
+
+    return couponCode;
+}
 
 // API to verify JWT token and create coupon if permitted
-router.post('/generate-coupon', async (req, res, next) => {
+router.post('/generate-token', async (req, res, next) => {
     try {
         // Payload containing the discount percentage
         const payload = req.body;
@@ -29,7 +53,7 @@ router.post('/generate-coupon', async (req, res, next) => {
 });
 
 
-// API to verify JWT token and create coupon if permitted
+// API to verify JWT token and create a coupon if permitted
 router.post('/request-coupon', async (req, res, next) => {
     if (!req.headers['authorization']) {
         return next(new global.DATA.PLUGINS.httperrors.Unauthorized("Please provide token"));
@@ -52,11 +76,11 @@ router.post('/request-coupon', async (req, res, next) => {
             return res.status(400).json({ message: 'Invalid discount percentage in token' });
         }
 
-        // Generate unique coupon code and set expiration
-        const couponCode = uuid.v4();  // Unique code generation
+        // Generate a unique coupon code
+        const couponCode = await generateUniqueCouponCode();  // Custom unique code generation
         const expiryDate = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);  // 2-day expiration
 
-        // Save coupon in the database with status 'pending'
+        // Save the coupon in the database with status 'pending'
         const newCoupon = new Coupon({
             couponCode,
             discountPercentage,
