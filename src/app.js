@@ -96,7 +96,7 @@ class App {
                 });
 
                 // Log the response or handle it as needed
-                console.log("Called Shiprocket API Successfully");
+                console.log("Successfully called the Shiprocket API");
             } catch (error) {
                 console.error("Error during Shiprocket API call:", error.message);
             }
