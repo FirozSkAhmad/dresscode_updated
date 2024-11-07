@@ -5,6 +5,8 @@ const IndexRoute = require('./routes');
 const PluginsLoader = require('./utils/Plugins');
 const http = require('http');
 const cookieParser = require('cookie-parser');
+const axios = require('axios'); // To make HTTP requests
+const cron = require('node-cron'); // For scheduling tasks
 
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS
@@ -71,9 +73,37 @@ class App {
                 });
             });
 
+            // Schedule API call every 12 hours using node-cron
+            this.scheduleShiprocketApiCall();
+
         } catch (error) {
             console.error("An error occurred during app initialization:", error);
         }
+    }
+
+    // Method to schedule API call
+    scheduleShiprocketApiCall() {
+        // Schedule the task to run every 12 hours
+        cron.schedule('0 */12 * * *', async () => {
+            try {
+                console.log("Scheduled API call to Shiprocket triggered");
+
+                // Make the request using axios
+                const response = await axios.get('https://apiv2.shiprocket.in/v1/external/courier/courierListWithCounts', {
+                    headers: {
+                        'Authorization': `Bearer ${process.env.SHIPROCKET_API_TOKEN}`
+                    }
+                });
+
+                // Log the response or handle it as needed
+                console.log("Called Shiprocket API");
+            } catch (error) {
+                console.error("Error during Shiprocket API call:", error.message);
+            }
+        }, {
+            scheduled: true,
+            timezone: "UTC" // Adjust timezone if necessary
+        });
     }
 
     async listen() {
