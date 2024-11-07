@@ -84,7 +84,7 @@ class App {
     // Method to schedule API call
     scheduleShiprocketApiCall() {
         // Schedule the task to run every 12 hours
-        cron.schedule('45 7,19 * * *', async () => {
+        cron.schedule('0 8,20 * * *', async () => {
             try {
                 console.log("Scheduled API call to Shiprocket triggered");
 
@@ -102,7 +102,7 @@ class App {
             }
         }, {
             scheduled: true,
-            timezone: "UTC" // Adjust timezone if necessary
+            timezone: "Asia/Kolkata" // Sets the timezone to Indian Standard Time (IST)
         });
     }
 
