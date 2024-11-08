@@ -161,7 +161,11 @@ const userSchema = new mongoose.Schema({
     returnOrders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'ReturnOrders' }],
     quotes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Quote' }],
     cart: [cartItemSchema],
-    wishlist: [wishlistItemSchema]
+    wishlist: [wishlistItemSchema],
+    coupons: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Coupon'
+    }]
 });
 
 // Pre-save middleware to enforce conditional requirements

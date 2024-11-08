@@ -6,7 +6,15 @@ const Coupon = require('../utils/Models/couponModel');
 const JwtHelper = require('../utils/Helpers/jwt_helper')
 const jwtHelperObj = new JwtHelper();
 const crypto = require('crypto');
+const HealModel = require('../utils/Models/healModel');
+const EliteModel = require('../utils/Models/eliteModel');
+const TogsModel = require('../utils/Models/togsModel');
 
+const modelMap = {
+    "HEAL": HealModel,
+    "ELITE": EliteModel,
+    "TOGS": TogsModel,
+};
 
 const generateUniqueCouponCode = async () => {
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -67,8 +75,8 @@ router.post('/request-coupon', async (req, res, next) => {
         // Verify JWT token and ensure it's issued by 'trumsy'
         const decoded = jwt.verify(token, process.env.COUPON_SECRET_KEY, { issuer: 'trumsy' });
 
-        // Extract and convert discount percentage to a number
-        let { discountPercentage } = decoded;
+        // Extract values from the decoded token
+        let { discountPercentage, group, styleCoat } = decoded;
         discountPercentage = parseFloat(discountPercentage); // Convert to number
 
         // Validate discountPercentage
@@ -80,17 +88,45 @@ router.post('/request-coupon', async (req, res, next) => {
         const couponCode = await generateUniqueCouponCode();  // Custom unique code generation
         const expiryDate = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);  // 2-day expiration
 
-        // Save the coupon in the database with status 'pending'
+        let linkedGroup = null;
+        let linkedStyleCoat = null;
+
+        // If group and styleCoat are provided, find and link the coupon to the specific product
+        if (group && styleCoat) {
+            const ProductModel = modelMap[group.trim().toUpperCase()];
+            if (ProductModel) {
+                // Find the product variant that matches the group and styleCoat
+                const product = await ProductModel.findOne({ "variants.variantSizes.styleCoat": styleCoat });
+                if (product) {
+                    linkedGroup = group;
+                    linkedStyleCoat = styleCoat; // Link the coupon to the specific group and styleCoat
+                } else {
+                    return res.status(404).json({ message: 'Product with specified group and styleCoat not found' });
+                }
+            } else {
+                return res.status(400).json({ message: 'Invalid product group' });
+            }
+        }
+
+        // Save the coupon in the database with linkage to the specific group and styleCoat if provided
         const newCoupon = new Coupon({
             couponCode,
             discountPercentage,
             status: 'pending',
             expiryDate,
+            linkedGroup: linkedGroup || null, // Link the group if found, otherwise set to null
+            linkedStyleCoat: linkedStyleCoat || null // Link the styleCoat if found, otherwise set to null
         });
 
         await newCoupon.save();
 
-        res.status(201).json({ message: 'Coupon generated successfully', couponCode, discountPercentage });
+        res.status(201).json({
+            message: 'Coupon generated successfully',
+            couponCode,
+            discountPercentage,
+            linkedGroup,
+            linkedStyleCoat
+        });
     } catch (error) {
         console.error('Error generating coupon:', error);
         res.status(400).json({ message: 'Invalid token or request' });

@@ -23,29 +23,36 @@ const couponSchema = new mongoose.Schema({
     },
     customerId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',  // Reference to the Customer model, if applicable
+        ref: 'User',
         default: null
     },
     orderId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Order',  // Reference to the Order model, if applicable
+        ref: 'Order',
         default: null
     },
-    createdAt: {
+    usedDate: {
         type: Date,
-        default: Date.now
+        default: null // This will be set when the coupon status is changed to 'used'
     },
-    updatedAt: {
-        type: Date,
-        default: Date.now
+    linkedGroup: {
+        type: String,
+        default: null // Optional: Set default to null if not linked to a specific group
+    },
+    linkedStyleCoat: {
+        type: String,
+        default: null // Optional: Set default to null if not linked to a specific styleCoat
     }
-});
+}, { timestamps: true }); // Enable timestamps for createdAt and updatedAt
 
-// Middleware to update 'updatedAt' on each save
+// Middleware to set 'usedDate' when status is changed to 'used'
 couponSchema.pre('save', function (next) {
-    this.updatedAt = Date.now();
+    if (this.isModified('status') && this.status === 'used' && !this.usedDate) {
+        this.usedDate = new Date();
+    }
     next();
 });
 
 module.exports = mongoose.model("Coupon", couponSchema);
+
 

@@ -5,6 +5,7 @@ const router = express.Router()
 const JwtHelper = require('../utils/Helpers/jwt_helper')
 const jwtHelperObj = new JwtHelper();
 const Constants = require('../utils/Constants/response_messages')
+const Coupon = require('../utils/Models/couponModel');
 
 async function verifyToken(req, res, next) {
     const { loginType } = req.params;
@@ -47,7 +48,7 @@ async function verifyToken(req, res, next) {
 
 router.post("/login/:loginType", verifyToken, async (req, res) => {
     try {
-        const { uid, name, email, picture } = req.user;
+        const { uid, name, email, picture, group, styleCoat, couponCode } = req.user;
 
         // Find the user by `uid` or `email`
         let user = await UserModel.findOne({
@@ -80,6 +81,35 @@ router.post("/login/:loginType", verifyToken, async (req, res) => {
             path: '/'
         });
 
+        // Associate the provided coupon code with the user
+        if (couponCode) {
+            // Find the coupon in the database
+            const coupon = await Coupon.findOne({ couponCode });
+
+            if (coupon) {
+                // Link the coupon to the user if not already linked
+                if (!coupon.customerId) {
+                    coupon.customerId = user._id;
+
+                    // Optionally update linkedGroup and linkedStyleCoat if provided
+                    if (group && styleCoat) {
+                        coupon.linkedGroup = group;
+                        coupon.linkedStyleCoat = styleCoat;
+                    }
+
+                    await coupon.save(); // Save the updated coupon
+                }
+
+                // Add the coupon to the user's list of coupons if not already present
+                if (!user.coupons.includes(coupon._id)) {
+                    user.coupons.push(coupon._id);
+                    await user.save();
+                }
+            } else {
+                console.warn(`Coupon with code ${couponCode} not found`);
+            }
+        }
+
         // Prepare response data
         const data = {
             accessToken: accessToken,
@@ -100,7 +130,5 @@ router.post("/login/:loginType", verifyToken, async (req, res) => {
         });
     }
 });
-
-
 
 module.exports = router;

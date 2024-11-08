@@ -177,12 +177,12 @@ class UserService {
                 });
             });
             const userId = decodedToken.aud.split(":")[0];
-    
+
             // Validate new password
             if (!newPassword || typeof newPassword !== 'string') {
                 throw new Error("New password is required and must be a valid string.");
             }
-    
+
             // Hash the password
             const salt = await bcrypt.genSalt(10);
             if (!salt) {
@@ -190,21 +190,70 @@ class UserService {
             }
             console.log('Salt:', salt);
             const hashedPassword = await bcrypt.hash(newPassword, salt);
-    
+
             // Update the user's password
             await UserModel.updateOne(
                 { _id: userId },
                 { $set: { password: hashedPassword } },
                 { session: session }
             );
-    
+
             return { message: "Password successfully updated" };
         } catch (err) {
             console.error("Error in resetPassword with transaction: ", err.message);
             throw err;
         }
-    }    
+    }
 
+    async getUserCoupons(uid) {
+        try {
+            // Find the user by uid and populate the associated coupons
+            const user = await UserModel.findOne({ uid }).populate({
+                path: 'coupons', // Assumes `coupons` is an array of coupon references in the User schema
+                select: 'couponCode discountPercentage status expiryDate linkedGroup linkedStyleCoat usedDate' // Optional: Select specific fields
+            });
+
+            if (!user) {
+                throw new Error('User not found');
+            }
+
+            // If the user has no associated coupons
+            if (!user.coupons || user.coupons.length === 0) {
+                throw new Error('No coupons found for this user');
+            }
+
+            return user.coupons;
+        } catch (error) {
+            console.error('Error fetching coupons for user:', error.message);
+            throw error;
+        }
+    }
+
+    async getUserActiveCoupons(uid) {
+        try {
+            // Find the user by uid and populate only "pending" (active) coupons
+            const user = await UserModel.findOne({ uid }).populate({
+                path: 'coupons',
+                match: { status: 'pending' }, // Filter for active (pending) status
+                select: 'couponCode discountPercentage status expiryDate linkedGroup linkedStyleCoat usedDate' // Optional: Select specific fields
+            });
+    
+            if (!user) {
+                throw new Error('User not found');
+            }
+    
+            // If the user has no associated active coupons
+            if (!user.coupons || user.coupons.length === 0) {
+                throw new Error('No active coupons found for this user');
+            }
+    
+            return user.coupons;
+        } catch (error) {
+            console.error('Error fetching active coupons for user:', error.message);
+            throw error;
+        }
+    }
+    
 
     async getUserDetails(userId) {
         try {

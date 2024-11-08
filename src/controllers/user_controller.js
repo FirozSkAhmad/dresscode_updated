@@ -158,6 +158,43 @@ router.post('/refresh-token', async (req, res, next) => {
 });
 
 
+// API to get all coupons for a given uid
+router.get('/user-coupons/:uid', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    const { uid } = req.params;
+
+    try {
+        // Call the service function to get user coupons
+        const coupons = await userServiceObj.getUserCoupons(uid);
+
+        res.status(200).json({
+            message: 'Coupons retrieved successfully',
+            coupons
+        });
+    } catch (error) {
+        console.error('Error fetching coupons for user:', error.message);
+        res.status(404).json({ message: error.message });
+    }
+});
+
+// API to get all active (pending) coupons for a given uid
+router.get('/user-active-coupons/:uid', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    const { uid } = req.params;
+
+    try {
+        // Call the service function to get user active coupons
+        const activeCoupons = await userServiceObj.getUserActiveCoupons(uid);
+
+        res.status(200).json({
+            message: 'Active coupons retrieved successfully',
+            coupons: activeCoupons
+        });
+    } catch (error) {
+        console.error('Error fetching active coupons for user:', error.message);
+        res.status(404).json({ message: error.message });
+    }
+});
+
+
 // GET endpoint to retrieve specific details for a user
 router.get('/:userId/getUserDetails', jwtHelperObj.verifyAccessToken, async (req, res) => {
     const { userId } = req.params;
