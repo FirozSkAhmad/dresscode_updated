@@ -73,13 +73,13 @@ class OrderService {
                 // If coupon is valid, apply additional discount from the coupon
                 discountPercentage += couponDiscountPercentage;
 
-                const totalPrice = Math.round(productDoc.price * quantityOrdered);
+                const totalPrice = productDoc.price * quantityOrdered; // Do not round intermediate values
                 const discountAmount = (totalPrice * discountPercentage) / 100;
                 const priceAfterDiscount = totalPrice - discountAmount;
 
                 totalAmount += totalPrice;
-                totalDiscountAmount += Math.round(discountAmount);
-                totalPriceAfterDiscount += Math.round(priceAfterDiscount);
+                totalDiscountAmount += discountAmount;
+                totalPriceAfterDiscount += priceAfterDiscount;
 
                 return {
                     group,
@@ -95,9 +95,15 @@ class OrderService {
                     logoUrl: product.logoUrl,
                     logoPosition: product.logoPosition,
                     discountPercentage,
-                    discountAmount
+                    discountAmount: parseFloat(discountAmount.toFixed(2)), // Format to 2 decimal places
+                    priceAfterDiscount: parseFloat(priceAfterDiscount.toFixed(2)) // Format to 2 decimal places
                 };
             }));
+
+            // Format totals to 2 decimal places before saving
+            const formattedTotalAmount = parseFloat(totalAmount.toFixed(2));
+            const formattedTotalDiscountAmount = parseFloat(totalDiscountAmount.toFixed(2));
+            const formattedTotalPriceAfterDiscount = parseFloat(totalPriceAfterDiscount.toFixed(2));
 
             // Create and save the order
             const newOrder = new OrderModel({
@@ -105,9 +111,9 @@ class OrderService {
                 address: addressId,
                 products: productsProcessed,
                 deliveryCharges: 0,
-                TotalAmount: totalAmount,
-                TotalDiscountAmount: totalDiscountAmount,
-                TotalPriceAfterDiscount: totalPriceAfterDiscount,
+                TotalAmount: formattedTotalAmount,
+                TotalDiscountAmount: formattedTotalDiscountAmount,
+                TotalPriceAfterDiscount: formattedTotalPriceAfterDiscount,
                 couponCode: couponCode || null,
                 couponDiscountPercentage: couponDiscountPercentage || 0
             });
@@ -127,7 +133,7 @@ class OrderService {
             });
 
             const options = {
-                amount: Math.round(totalPriceAfterDiscount * 100),
+                amount: formattedTotalPriceAfterDiscount * 100, // Convert to paise (integer for Razorpay)
                 currency: "INR",
             };
 
@@ -142,6 +148,7 @@ class OrderService {
             throw new Error(err.message || "An internal server error occurred");
         }
     }
+
 
     async createQuote(userId, quoteDetails) {
         const { group, productId, color, size } = quoteDetails;
