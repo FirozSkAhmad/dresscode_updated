@@ -21,7 +21,7 @@ const generateUniqueCouponCode = async () => {
         }
 
         // Check if the coupon code already exists in the database
-        const existingCoupon = await mongoose.model('Coupon').findOne({ couponCode });
+        const existingCoupon = await Coupon.model('Coupon').findOne({ couponCode });
         if (!existingCoupon) {
             isUnique = true; // Set flag to true if code is unique
         }
