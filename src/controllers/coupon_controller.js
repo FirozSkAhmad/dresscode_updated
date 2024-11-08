@@ -139,7 +139,7 @@ router.get('/check-coupon/:couponCode', jwtHelperObj.verifyAccessToken, async (r
 
         // Check if the coupon is in 'pending' status and thus available for use
         if (coupon.status !== 'pending') {
-            return res.status(400).json({ message: 'Coupon is not available for use' });
+            return res.status(400).json({ message: 'This coupon is already used.' });
         }
 
         // Coupon is valid and can be used; respond with discount percentage
