@@ -291,7 +291,7 @@ class UserService {
             const user = await UserModel.findById(userId).populate({
                 path: 'coupons',
                 match: matchConditions,
-                select: 'couponCode discountPercentage status expiryDate linkedGroup linkedProductId usedDate' // Optional: Select specific fields
+                select: 'couponCode discountPercentage status expiryDate linkedGroup linkedProductId' // Optional: Select specific fields
             });
 
             if (!user) {
