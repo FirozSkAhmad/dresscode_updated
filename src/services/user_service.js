@@ -264,6 +264,74 @@ class UserService {
         }
     }
 
+    async getCartActiveCoupons(userId, filters) {
+        try {
+            // Build match conditions dynamically
+            const matchConditions = {
+                status: 'pending',
+                $or: filters.map(filter => ({
+                    $and: [
+                        {
+                            $or: [
+                                { linkedGroup: { $eq: filter.group } },
+                                { linkedGroup: null }
+                            ]
+                        },
+                        {
+                            $or: [
+                                { linkedProductId: { $eq: filter.productId } },
+                                { linkedProductId: null }
+                            ]
+                        }
+                    ]
+                }))
+            };
+
+            // Find the user by userId and populate only "pending" (active) coupons
+            const user = await UserModel.findById(userId).populate({
+                path: 'coupons',
+                match: matchConditions,
+                select: 'couponCode discountPercentage status expiryDate linkedGroup linkedProductId usedDate' // Optional: Select specific fields
+            });
+
+            if (!user) {
+                throw new Error('User not found');
+            }
+
+            // If the user has no associated active coupons
+            if (!user.coupons || user.coupons.length === 0) {
+                throw new Error('No active coupons found for this user');
+            }
+
+            // Categorize coupons into two categories and add details for individual products
+            const couponsApplicableToAllProducts = [];
+            const couponsApplicableToIndividualProducts = [];
+
+            user.coupons.forEach(coupon => {
+                if (coupon.linkedGroup === null && coupon.linkedProductId === null) {
+                    couponsApplicableToAllProducts.push(coupon);
+                } else {
+                    // Add information about the applicable group and productId
+                    const applicableCoupon = {
+                        ...coupon._doc,
+                        applicableTo: {
+                            group: coupon.linkedGroup,
+                            productId: coupon.linkedProductId
+                        }
+                    };
+                    couponsApplicableToIndividualProducts.push(applicableCoupon);
+                }
+            });
+
+            return {
+                couponsApplicableToAllProducts,
+                couponsApplicableToIndividualProducts
+            };
+        } catch (error) {
+            console.error('Error fetching active coupons for user:', error.message);
+            throw error;
+        }
+    }
 
 
     async getUserDetails(userId) {

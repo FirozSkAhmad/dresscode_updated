@@ -178,7 +178,7 @@ router.get('/:userId/user-coupons', jwtHelperObj.verifyAccessToken, async (req, 
 // API to get all active (pending) coupons for a given uid
 router.get('/:userId/user-active-coupons', jwtHelperObj.verifyAccessToken, async (req, res) => {
     const { userId } = req.params;
-    const { group, productId } = req.query; // optional filtering
+    const { group, productId } = req.query; // optional filtering 
 
     // Validate required parameters
     if (!group || !productId) {
@@ -192,6 +192,31 @@ router.get('/:userId/user-active-coupons', jwtHelperObj.verifyAccessToken, async
         res.status(200).json({
             message: 'Active coupons retrieved successfully',
             coupons: activeCoupons
+        });
+    } catch (error) {
+        console.error('Error fetching active coupons for user:', error.message);
+        res.status(404).json({ message: error.message });
+    }
+});
+
+// API to get all active (pending) coupons for a given uid with multiple filters
+router.post('/:userId/cart-active-coupons', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    const { userId } = req.params;
+    const filters = req.body; // Array of objects with { group, productId }
+
+    // Validate the request body
+    if (!Array.isArray(filters) || filters.length === 0) {
+        return res.status(400).json({ message: 'Filters are required and must be an array of objects' });
+    }
+
+    try {
+        // Call the service function to get categorized user active coupons
+        const categorizedCoupons = await userServiceObj.getCartActiveCoupons(userId, filters);
+
+        res.status(200).json({
+            message: 'Active coupons retrieved successfully',
+            couponsApplicableToAllProducts: categorizedCoupons.couponsApplicableToAllProducts,
+            couponsApplicableToIndividualProducts: categorizedCoupons.couponsApplicableToIndividualProducts
         });
     } catch (error) {
         console.error('Error fetching active coupons for user:', error.message);
