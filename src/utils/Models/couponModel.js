@@ -39,9 +39,9 @@ const couponSchema = new mongoose.Schema({
         type: String,
         default: null // Optional: Set default to null if not linked to a specific group
     },
-    linkedStyleCoat: {
+    linkedProductId: {
         type: String,
-        default: null // Optional: Set default to null if not linked to a specific styleCoat
+        default: null // Optional: Set default to null if not linked to a specific product
     }
 }, { timestamps: true }); // Enable timestamps for createdAt and updatedAt
 
@@ -54,5 +54,4 @@ couponSchema.pre('save', function (next) {
 });
 
 module.exports = mongoose.model("Coupon", couponSchema);
-
 

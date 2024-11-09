@@ -76,7 +76,7 @@ router.post('/request-coupon', async (req, res, next) => {
         const decoded = jwt.verify(token, process.env.COUPON_SECRET_KEY, { issuer: 'trumsy' });
 
         // Extract values from the decoded token
-        let { discountPercentage, group, styleCoat } = decoded;
+        let { discountPercentage, group, productId } = decoded;
         discountPercentage = parseFloat(discountPercentage); // Convert to number
 
         // Validate discountPercentage
@@ -89,33 +89,33 @@ router.post('/request-coupon', async (req, res, next) => {
         const expiryDate = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);  // 2-day expiration
 
         let linkedGroup = null;
-        let linkedStyleCoat = null;
+        let linkedProductId = null;
 
-        // If group and styleCoat are provided, find and link the coupon to the specific product
-        if (group && styleCoat) {
+        // If group and productId are provided, find and link the coupon to the specific product
+        if (group && productId) {
             const ProductModel = modelMap[group.trim().toUpperCase()];
             if (ProductModel) {
-                // Find the product variant that matches the group and styleCoat
-                const product = await ProductModel.findOne({ "variants.variantSizes.styleCoat": styleCoat });
+                // Find the product that matches the group and productId
+                const product = await ProductModel.findOne({ productId });
                 if (product) {
                     linkedGroup = group;
-                    linkedStyleCoat = styleCoat; // Link the coupon to the specific group and styleCoat
+                    linkedProductId = productId; // Link the coupon to the specific group and productId
                 } else {
-                    return res.status(404).json({ message: 'Product with specified group and styleCoat not found' });
+                    return res.status(404).json({ message: 'Product with specified group and productId not found' });
                 }
             } else {
                 return res.status(400).json({ message: 'Invalid product group' });
             }
         }
 
-        // Save the coupon in the database with linkage to the specific group and styleCoat if provided
+        // Save the coupon in the database with linkage to the specific group and productId if provided
         const newCoupon = new Coupon({
             couponCode,
             discountPercentage,
             status: 'pending',
             expiryDate,
             linkedGroup: linkedGroup || null, // Link the group if found, otherwise set to null
-            linkedStyleCoat: linkedStyleCoat || null // Link the styleCoat if found, otherwise set to null
+            linkedProductId: linkedProductId || null // Link the productId if found, otherwise set to null
         });
 
         await newCoupon.save();
@@ -125,13 +125,14 @@ router.post('/request-coupon', async (req, res, next) => {
             couponCode,
             discountPercentage,
             linkedGroup,
-            linkedStyleCoat
+            linkedProductId
         });
     } catch (error) {
         console.error('Error generating coupon:', error);
         res.status(400).json({ message: 'Invalid token or request' });
     }
 });
+
 
 // API to get all coupons data
 router.get('/all-coupons-data', jwtHelperObj.verifyAccessToken, async (req, res) => {
@@ -146,7 +147,7 @@ router.get('/all-coupons-data', jwtHelperObj.verifyAccessToken, async (req, res)
         }
 
         // Retrieve all coupons with specified fields
-        const coupons = await Coupon.find({}, 'couponCode discountPercentage status expiryDate customerId orderId createdAt updatedAt');
+        const coupons = await Coupon.find({}, 'couponCode discountPercentage status expiryDate customerId orderId usedDate linkedGroup linkedProductId');
 
         res.status(200).json({ coupons });
     } catch (error) {
@@ -157,6 +158,12 @@ router.get('/all-coupons-data', jwtHelperObj.verifyAccessToken, async (req, res)
 
 router.get('/check-coupon/:couponCode', jwtHelperObj.verifyAccessToken, async (req, res) => {
     const { couponCode } = req.params;
+    const { group, productId } = req.body;
+
+    // Validate required parameters
+    if (!group || !productId) {
+        return res.status(400).json({ message: 'Group and productId are required' });
+    }
 
     try {
         // Check if the coupon exists in the database
@@ -178,6 +185,13 @@ router.get('/check-coupon/:couponCode', jwtHelperObj.verifyAccessToken, async (r
             return res.status(400).json({ message: 'This coupon is already used.' });
         }
 
+        // Check if the coupon is linked to a specific group and productId, if applicable
+        if (coupon.linkedGroup && coupon.linkedProductId) {
+            if (coupon.linkedGroup !== group || coupon.linkedProductId !== productId) {
+                return res.status(400).json({ message: 'This coupon is not applicable for the specified group and productId' });
+            }
+        }
+
         // Coupon is valid and can be used; respond with discount percentage
         res.status(200).json({
             message: 'Coupon is valid and available for use',
@@ -189,6 +203,7 @@ router.get('/check-coupon/:couponCode', jwtHelperObj.verifyAccessToken, async (r
         res.status(500).json({ message: 'Internal server error' });
     }
 });
+
 
 module.exports = router;
 

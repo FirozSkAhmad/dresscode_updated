@@ -157,14 +157,13 @@ router.post('/refresh-token', async (req, res, next) => {
     }
 });
 
-
 // API to get all coupons for a given uid
-router.get('/user-coupons/:uid', jwtHelperObj.verifyAccessToken, async (req, res) => {
-    const { uid } = req.params;
+router.get('/:userId/user-coupons', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    const { userId } = req.params;
 
     try {
         // Call the service function to get user coupons
-        const coupons = await userServiceObj.getUserCoupons(uid);
+        const coupons = await userServiceObj.getUserCoupons(userId);
 
         res.status(200).json({
             message: 'Coupons retrieved successfully',
@@ -177,12 +176,13 @@ router.get('/user-coupons/:uid', jwtHelperObj.verifyAccessToken, async (req, res
 });
 
 // API to get all active (pending) coupons for a given uid
-router.get('/user-active-coupons/:uid', jwtHelperObj.verifyAccessToken, async (req, res) => {
-    const { uid } = req.params;
+router.get('/:userId/user-active-coupons', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    const { userId } = req.params;
+    const { group, productId } = req.body; // optional filtering
 
     try {
         // Call the service function to get user active coupons
-        const activeCoupons = await userServiceObj.getUserActiveCoupons(uid);
+        const activeCoupons = await userServiceObj.getUserActiveCoupons(userId, group, productId);
 
         res.status(200).json({
             message: 'Active coupons retrieved successfully',

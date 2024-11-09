@@ -205,12 +205,12 @@ class UserService {
         }
     }
 
-    async getUserCoupons(uid) {
+    async getUserCoupons(userId) {
         try {
             // Find the user by uid and populate the associated coupons
-            const user = await UserModel.findOne({ uid }).populate({
+            const user = await UserModel.findById(userId).populate({
                 path: 'coupons', // Assumes `coupons` is an array of coupon references in the User schema
-                select: 'couponCode discountPercentage status expiryDate linkedGroup linkedStyleCoat usedDate' // Optional: Select specific fields
+                select: 'couponCode discountPercentage status expiryDate linkedGroup linkedProductId usedDate' // Optional: Select specific fields
             });
 
             if (!user) {
@@ -229,31 +229,42 @@ class UserService {
         }
     }
 
-    async getUserActiveCoupons(uid) {
+    async getUserActiveCoupons(userId, group = null, productId = null) {
         try {
-            // Find the user by uid and populate only "pending" (active) coupons
-            const user = await UserModel.findOne({ uid }).populate({
+            // Find the user by userId and populate only "pending" (active) coupons
+            const user = await UserModel.findById(userId).populate({
                 path: 'coupons',
-                match: { status: 'pending' }, // Filter for active (pending) status
-                select: 'couponCode discountPercentage status expiryDate linkedGroup linkedStyleCoat usedDate' // Optional: Select specific fields
+                match: {
+                    status: 'pending',
+                    $or: [
+                        { linkedGroup: { $eq: group } }, // Matches specific group if provided
+                        { linkedGroup: null } // Also includes coupons with no linkedGroup
+                    ],
+                    $or: [
+                        { linkedProductId: { $eq: productId } }, // Matches specific productId if provided
+                        { linkedProductId: null } // Also includes coupons with no linkedProductId
+                    ]
+                },
+                select: 'couponCode discountPercentage status expiryDate linkedGroup linkedProductId usedDate' // Optional: Select specific fields
             });
-    
+
             if (!user) {
                 throw new Error('User not found');
             }
-    
+
             // If the user has no associated active coupons
             if (!user.coupons || user.coupons.length === 0) {
                 throw new Error('No active coupons found for this user');
             }
-    
+
             return user.coupons;
         } catch (error) {
             console.error('Error fetching active coupons for user:', error.message);
             throw error;
         }
     }
-    
+
+
 
     async getUserDetails(userId) {
         try {
