@@ -178,7 +178,7 @@ router.get('/:userId/user-coupons', jwtHelperObj.verifyAccessToken, async (req, 
 // API to get all active (pending) coupons for a given uid
 router.get('/:userId/user-active-coupons', jwtHelperObj.verifyAccessToken, async (req, res) => {
     const { userId } = req.params;
-    const { group, productId } = req.body; // optional filtering
+    const { group, productId } = req.query; // optional filtering
 
     try {
         // Call the service function to get user active coupons
