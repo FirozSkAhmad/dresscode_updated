@@ -229,7 +229,7 @@ class UserService {
         }
     }
 
-    async getUserActiveCoupons(userId, group = null, productId = null) {
+    async getUserActiveCoupons(userId, group, productId) {
         try {
             // Find the user by userId and populate only "pending" (active) coupons
             const user = await UserModel.findById(userId).populate({

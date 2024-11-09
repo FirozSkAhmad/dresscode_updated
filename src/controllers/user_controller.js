@@ -180,6 +180,11 @@ router.get('/:userId/user-active-coupons', jwtHelperObj.verifyAccessToken, async
     const { userId } = req.params;
     const { group, productId } = req.query; // optional filtering
 
+    // Validate required parameters
+    if (!group || !productId) {
+        return res.status(400).json({ message: 'Group and productId are required' });
+    }
+
     try {
         // Call the service function to get user active coupons
         const activeCoupons = await userServiceObj.getUserActiveCoupons(userId, group, productId);
