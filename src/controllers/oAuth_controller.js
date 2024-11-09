@@ -6,7 +6,6 @@ const JwtHelper = require('../utils/Helpers/jwt_helper');
 const jwtHelperObj = new JwtHelper();
 const Constants = require('../utils/Constants/response_messages');
 const Coupon = require('../utils/Models/couponModel');
-const global = require('../utils/global'); // Assuming global is imported from utils/global
 
 async function verifyToken(req, res, next) {
     const { loginType } = req.params;
