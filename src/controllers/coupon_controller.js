@@ -156,54 +156,5 @@ router.get('/all-coupons-data', jwtHelperObj.verifyAccessToken, async (req, res)
     }
 });
 
-router.get('/check-coupon/:couponCode', jwtHelperObj.verifyAccessToken, async (req, res) => {
-    const { couponCode } = req.params;
-    const { group, productId } = req.body;
-
-    // Validate required parameters
-    if (!group || !productId) {
-        return res.status(400).json({ message: 'Group and productId are required' });
-    }
-
-    try {
-        // Check if the coupon exists in the database
-        const coupon = await Coupon.findOne({ couponCode });
-
-        // If coupon does not exist, send a 404 response
-        if (!coupon) {
-            return res.status(404).json({ message: 'Coupon not found' });
-        }
-
-        // Check if the coupon has expired
-        const currentDate = new Date();
-        if (coupon.expiryDate < currentDate) {
-            return res.status(400).json({ message: 'Coupon has expired' });
-        }
-
-        // Check if the coupon is in 'pending' status and thus available for use
-        if (coupon.status !== 'pending') {
-            return res.status(400).json({ message: 'This coupon is already used.' });
-        }
-
-        // Check if the coupon is linked to a specific group and productId, if applicable
-        if (coupon.linkedGroup && coupon.linkedProductId) {
-            if (coupon.linkedGroup !== group || coupon.linkedProductId !== productId) {
-                return res.status(400).json({ message: 'This coupon is not applicable for the specified group and productId' });
-            }
-        }
-
-        // Coupon is valid and can be used; respond with discount percentage
-        res.status(200).json({
-            message: 'Coupon is valid and available for use',
-            couponCode,
-            discountPercentage: coupon.discountPercentage
-        });
-    } catch (error) {
-        console.error('Error checking coupon:', error);
-        res.status(500).json({ message: 'Internal server error' });
-    }
-});
-
-
 module.exports = router;
 
