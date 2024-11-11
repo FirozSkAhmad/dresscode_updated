@@ -236,6 +236,7 @@ class UserService {
                 path: 'coupons',
                 match: {
                     status: 'pending',
+                    expiryDate: { $gt: new Date() }, // Add expiry date filter
                     $or: [
                         { linkedGroup: { $eq: group } }, // Matches specific group if provided
                         { linkedGroup: null } // Also includes coupons with no linkedGroup
