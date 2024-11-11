@@ -257,7 +257,12 @@ class UserService {
                 throw new Error('No active coupons found for this user');
             }
 
-            return user.coupons;
+            return user.coupons.filter((value, index, self) =>
+                index === self.findIndex((t) => (
+                    t.couponCode === value.couponCode && t._id.toString() === value._id.toString()
+                ))
+            );
+
         } catch (error) {
             console.error('Error fetching active coupons for user:', error.message);
             throw error;
