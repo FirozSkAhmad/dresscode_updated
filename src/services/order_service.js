@@ -29,19 +29,24 @@ class OrderService {
             let totalPriceAfterDiscount = 0;
             let totalAmount = 0;
             let couponDiscountPercentage = 0;
-    
+
             // Check if couponCode is provided and validate it
             if (couponCode) {
-                const coupon = await CouponModel.findOne({ couponCode, status: 'pending', expiryDate: { $gt: new Date() }, customerId: userId });
-    
+                const coupon = await CouponModel.findOne({
+                    couponCode,
+                    status: 'pending',
+                    expiryDate: { $gt: new Date() },
+                    customerId: ObjectId(userId) // Convert userId string to ObjectId
+                });
+
                 if (!coupon) {
                     throw new Error("Invalid, expired, or unauthorized coupon code for the customer");
                 }
-    
+
                 // Use the discount percentage from the coupon
                 couponDiscountPercentage = coupon.discountPercentage;
             }
-    
+
             // Process each product in the order
             const productsProcessed = await Promise.all(orderProducts.map(async (product) => {
                 const { group, productId, color, size, quantityOrdered } = product;
@@ -49,18 +54,18 @@ class OrderService {
                 if (!ProductModel) {
                     throw new Error("Invalid product group");
                 }
-    
+
                 const productDoc = await ProductModel.findOne({ productId, "variants.color.name": color });
                 if (!productDoc) {
                     throw new Error("Product or variant not found");
                 }
-    
+
                 const variant = productDoc.variants.find(v => v.color.name === color);
                 const variantSize = variant.variantSizes.find(v => v.size === size);
                 if (!variantSize || variantSize.quantity < quantityOrdered) {
                     throw new Error("Insufficient stock for the variant");
                 }
-    
+
                 let discountPercentage = 0;
                 if (quantityOrdered >= 6 && quantityOrdered <= 10) {
                     discountPercentage = 5;
@@ -69,21 +74,21 @@ class OrderService {
                 } else if (quantityOrdered >= 21 && quantityOrdered <= 35) {
                     discountPercentage = 15;
                 }
-    
+
                 // Calculate price and discounts
                 const totalPrice = productDoc.price * quantityOrdered;
                 const initialDiscountAmount = (totalPrice * discountPercentage) / 100;
                 const priceAfterInitialDiscount = totalPrice - initialDiscountAmount;
-    
+
                 // Apply additional discount from the coupon on the already discounted price
                 const couponDiscountAmount = (priceAfterInitialDiscount * couponDiscountPercentage) / 100;
                 const finalPriceAfterDiscount = priceAfterInitialDiscount - couponDiscountAmount;
-    
+
                 // Accumulate totals
                 totalAmount += totalPrice;
                 totalDiscountAmount += initialDiscountAmount + couponDiscountAmount;
                 totalPriceAfterDiscount += finalPriceAfterDiscount;
-    
+
                 return {
                     group,
                     productId,
@@ -104,12 +109,12 @@ class OrderService {
                     priceAfterDiscount: parseFloat(finalPriceAfterDiscount.toFixed(2))
                 };
             }));
-    
+
             // Format totals to 2 decimal places before saving
             const formattedTotalAmount = parseFloat(totalAmount.toFixed(2));
             const formattedTotalDiscountAmount = parseFloat(totalDiscountAmount.toFixed(2));
             const formattedTotalPriceAfterDiscount = parseFloat(totalPriceAfterDiscount.toFixed(2));
-    
+
             // Create and save the order
             const newOrder = new OrderModel({
                 user: userId,
@@ -122,35 +127,35 @@ class OrderService {
                 couponCode: couponCode || null,
                 couponDiscountPercentage: couponDiscountPercentage || 0
             });
-    
+
             const savedOrder = await newOrder.save({ session });
-    
+
             // Update the coupon if it was used
             if (couponCode) {
                 coupon.status = 'used';
                 coupon.orderId = savedOrder._id;
                 await coupon.save({ session });
             }
-    
+
             const user = await UserModel.findById(userId).session(session);
             if (!user) {
                 throw new Error('User not found');
             }
             user.orders.push(savedOrder._id);
             await user.save({ session });
-    
+
             const instance = new Razorpay({
                 key_id: process.env.RAZORPAY_KEY_ID,
                 key_secret: process.env.RAZORPAY_SECRET,
             });
-    
+
             const options = {
                 amount: formattedTotalPriceAfterDiscount * 100, // Convert to paise (integer for Razorpay)
                 currency: "INR",
             };
-    
+
             const razorpayOrder = await instance.orders.create(options);
-    
+
             return {
                 razorpay_checkout_order_id: razorpayOrder.id,
                 orderId: savedOrder.orderId
