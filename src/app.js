@@ -106,6 +106,30 @@ class App {
         });
     }
 
+    // Method to schedule coupon expiration check
+    scheduleCouponExpirationCheck() {
+        // Schedule the task to run every hour
+        cron.schedule('0 * * * *', async () => {
+            try {
+                console.log("Scheduled coupon expiration check triggered");
+
+                // Find and update coupons that have expired
+                const result = await Coupon.updateMany(
+                    { status: 'pending', expiryDate: { $lt: new Date() } },
+                    { $set: { status: 'expired' } }
+                );
+
+                // Log the number of coupons updated
+                console.log(`Coupon expiration check completed. ${result.modifiedCount} coupon(s) were marked as expired.`);
+            } catch (error) {
+                console.error("Error during coupon expiration check:", error.message);
+            }
+        }, {
+            scheduled: true,
+            timezone: "Asia/Kolkata" // Sets the timezone to Indian Standard Time (IST)
+        });
+    }
+
     async listen() {
         this.server.listen(4200, (err) => {
             if (err) {
