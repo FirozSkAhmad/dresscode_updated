@@ -146,7 +146,7 @@ class OrderService {
             console.log("amount", formattedTotalPriceAfterDiscount * 100)
 
             const options = {
-                amount: formattedTotalPriceAfterDiscount * 100, // Convert to paise (integer for Razorpay)
+                amount: Math.floor(formattedTotalPriceAfterDiscount * 100), // Convert to paise (integer for Razorpay)
                 currency: "INR",
             };
 
