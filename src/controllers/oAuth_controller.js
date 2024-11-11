@@ -90,10 +90,11 @@ router.post("/login/:loginType", verifyToken, async (req, res) => {
                 }
 
                 // Add the coupon to the user's list of coupons if not already present
-                if (!user.coupons.includes(coupon._id)) {
-                    user.coupons.push(coupon._id);
-                    await user.save();
-                }
+                await UserModel.findOneAndUpdate(
+                    { _id: user._id, coupons: { $ne: coupon._id } }, // Check if coupon does not already exist in the array
+                    { $addToSet: { coupons: coupon._id } }, // Add only if not already present
+                    { new: true } // Return the updated document
+                );
             } else {
                 console.warn(`Coupon with code ${couponCode} not found`);
             }
