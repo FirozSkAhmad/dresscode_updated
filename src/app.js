@@ -7,6 +7,7 @@ const http = require('http');
 const cookieParser = require('cookie-parser');
 const axios = require('axios'); // To make HTTP requests
 const cron = require('node-cron'); // For scheduling tasks
+const Coupon = require('./utils/Models/couponModel'); // Import the Coupon model
 
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS
