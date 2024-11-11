@@ -142,6 +142,9 @@ class OrderService {
                 key_secret: process.env.RAZORPAY_SECRET,
             });
 
+            console.log("formattedTotalPriceAfterDiscount", formattedTotalPriceAfterDiscount)
+            console.log("amount", formattedTotalPriceAfterDiscount * 100)
+
             const options = {
                 amount: formattedTotalPriceAfterDiscount * 100, // Convert to paise (integer for Razorpay)
                 currency: "INR",
