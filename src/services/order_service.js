@@ -37,7 +37,7 @@ class OrderService {
                     couponCode,
                     status: 'pending',
                     expiryDate: { $gt: new Date() },
-                    customerId: ObjectId(userId) // Convert userId string to ObjectId
+                    customerId: new ObjectId(userId) // Convert userId string to ObjectId
                 });
 
                 if (!coupon) {
