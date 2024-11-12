@@ -1001,7 +1001,7 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
     } catch (error) {
         await session.abortTransaction();
         session.endSession();
-        console.error("Failed to send order to Shiprocket or update database:", error.message);
+        console.error("Failed to send order to Shiprocket or update database:", error.response?.data || error.message);
         res.status(500).send({ message: "Failed to process request", error: error.message });
     }
 });
