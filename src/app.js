@@ -110,7 +110,7 @@ class App {
     // Method to schedule coupon expiration check
     scheduleCouponExpirationCheck() {
         // Schedule the task to run every hour
-        cron.schedule('0 * * * *', async () => {
+        cron.schedule('30 8 * * *', async () => {
             try {
                 console.log("Scheduled coupon expiration check triggered");
 
