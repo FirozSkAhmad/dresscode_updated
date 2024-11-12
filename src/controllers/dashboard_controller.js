@@ -911,7 +911,7 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
             weight: data.boxWeight
         };
 
-        console.log(requiredData)
+        console.log("requiredData", requiredData)
 
         // Configure Axios for the API request to Shiprocket
         const createOrderResponse = await axios.post(process.env.SHIPROCKET_API_URL + '/v1/external/orders/create/adhoc', requiredData, {
@@ -921,7 +921,7 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
             }
         });
 
-        console.log(createOrderResponse)
+        console.log("createOrderResponse", createOrderResponse)
 
         // Data for courier assignment
         const assignCourierData = {
