@@ -103,9 +103,11 @@ router.post("/login/:loginType", verifyToken, async (req, res) => {
         // Prepare response data
         const data = {
             accessToken,
+            uid,
             userId: user._id,
             name: user.name,
             email: user.email,
+            gLogin: true
         };
 
         return res.status(200).send({

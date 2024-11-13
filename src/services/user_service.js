@@ -103,6 +103,8 @@ class UserService {
                 name: userData.name,
                 email: userData.email,
                 phoneNumber: userData.phoneNumber,
+                uid: null,
+                gLogin: false
             };
 
             return data;
@@ -289,27 +291,27 @@ class UserService {
                     ]
                 }))
             };
-    
+
             // Find the user by userId and populate only "pending" (active) coupons
             const user = await UserModel.findById(userId).populate({
                 path: 'coupons',
                 match: matchConditions,
                 select: 'couponCode discountPercentage status expiryDate linkedGroup linkedProductId' // Optional: Select specific fields
             });
-    
+
             if (!user) {
                 throw new Error('User not found');
             }
-    
+
             // If the user has no associated active coupons
             if (!user.coupons || user.coupons.length === 0) {
                 throw new Error('No active coupons found for this user');
             }
-    
+
             // Categorize coupons into two categories and add details for individual products
             const couponsApplicableToAllProducts = [];
             const couponsApplicableToIndividualProducts = [];
-    
+
             user.coupons.forEach(coupon => {
                 if (coupon.linkedGroup === null && coupon.linkedProductId === null) {
                     couponsApplicableToAllProducts.push(coupon);
@@ -325,7 +327,7 @@ class UserService {
                     couponsApplicableToIndividualProducts.push(applicableCoupon);
                 }
             });
-    
+
             return {
                 couponsApplicableToAllProducts,
                 couponsApplicableToIndividualProducts
@@ -335,7 +337,7 @@ class UserService {
             throw error;
         }
     }
-    
+
 
 
     async getUserDetails(userId) {
