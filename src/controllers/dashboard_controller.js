@@ -426,7 +426,7 @@ router.get('/:groupName/getAllActiveProducts', jwtHelperObj.verifyAccessToken, a
 router.get('/getOrders', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
         // Find orders where deliveryStatus is not "Canceled"
-        const orders = await OrderModel.find({ deliveryStatus: { $ne: 'Canceled' } }, 'orderId dateOfOrder status -_id').exec();
+        const orders = await OrderModel.find({ deliveryStatus: { $ne: 'Canceled' }, order_created: { $ne: false } }, 'orderId dateOfOrder status -_id').exec();
 
         res.status(200).send({
             message: "Orders retrieved successfully",
