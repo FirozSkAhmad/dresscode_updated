@@ -60,6 +60,27 @@ router.post('/generate-token', async (req, res, next) => {
     }
 });
 
+router.post('/generateThirdToken', async (req, res, next) => {
+    try {
+        // Payload containing the discount percentage
+        const payload = req.body;
+
+        // Options for JWT - set expiration and issuer
+        const options = {
+            expiresIn: '1d',  // Token expiration (1 day)
+            issuer: 'trumsy'  // Issuer identifier
+        };
+
+        // Generate and return the JWT token
+
+        const token = jwt.sign(payload, process.env.COUPON_SECRET_KEY, options);
+
+        return res.status(201).json({ token })
+    } catch (error) {
+        throw new Error(`Error generating token: ${error.message}`);
+    }
+});
+
 
 // API to verify JWT token and create a coupon if permitted
 router.post('/request-coupon', async (req, res, next) => {
