@@ -553,7 +553,7 @@ class StoreService {
         const session = await mongoose.startSession();
         session.startTransaction();
         try {
-            const assignedInventories = await AssignedInventory.find({ storeId: storeId }, 'assignedInventoryId assignedDate receivedDate status totalAmountOfAssigned')
+            const assignedInventories = await AssignedInventory.find({ storeId: storeId }, 'assignedInventoryId assignedDate receivedDate status totalAmountOfAssigned').sort({ assignedDate: -1 })
                 .exec();
 
             if (assignedInventories.length === 0) {
@@ -586,6 +586,8 @@ class StoreService {
         session.startTransaction();
         try {
             const assignedInventories = await AssignedInventory.find({}, 'assignedInventoryId assignedDate receivedDate status totalAmountOfAssigned storeId')
+                .sort({ assignedDate: -1 })
+                .session(session) // Ensure the query uses the session
                 .exec();
 
             if (assignedInventories.length === 0) {
@@ -596,7 +598,7 @@ class StoreService {
             // Step 2: Get unique storeIds from assignedInventories
             const storeIds = [...new Set(assignedInventories.map(assignedInventory => assignedInventory.storeId))];
             // Step 3: Fetch store names for the retrieved storeIds
-            const stores = await Store.find({ storeId: { $in: storeIds } }, { storeId: 1, storeName: 1 });
+            const stores = await Store.find({ storeId: { $in: storeIds } }, { storeId: 1, storeName: 1 }).session(session);// Ensure the query uses the session
 
             // Step 4: Create a storeId-to-storeName map for quick lookup
             const storeMap = stores.reduce((map, store) => {
@@ -798,7 +800,7 @@ class StoreService {
 
     async getRaisedInventoryRequestsByStore(storeId) {
         try {
-            const raisedInventories = await RaisedInventory.find({ storeId }, 'raisedInventoryId raisedDate approvedDate rejectedDate receivedDate status totalAmountOfAssigned')
+            const raisedInventories = await RaisedInventory.find({ storeId }, 'raisedInventoryId raisedDate approvedDate rejectedDate receivedDate status totalAmountOfAssigned').sort({ raisedDate: -1 })
                 .exec();
 
             if (raisedInventories.length === 0) {
@@ -824,7 +826,7 @@ class StoreService {
     async getRaisedInventoryRequests() {
         try {
             const raisedInventories = await RaisedInventory.find({}, 'raisedInventoryId raisedDate approvedDate rejectedDate receivedDate status totalAmountOfAssigned')
-                .exec();
+                .sort({ raisedDate: -1 }).exec();
 
             if (raisedInventories.length === 0) {
                 return []
@@ -1462,7 +1464,7 @@ class StoreService {
 
                 await session.commitTransaction();
                 session.endSession();
-                
+
                 return {
                     message: 'Bill delete Request REJECTED successfully.'
                 }
@@ -1507,7 +1509,7 @@ class StoreService {
                     discountPercentage: 1,
                     priceAfterDiscount: 1
                 } // Projection to return only specific fields
-            );
+            ).sort({ dateOfDeleteBillReq: -1 });
 
             if (!deletedBills.length) {
                 return []
@@ -1538,7 +1540,7 @@ class StoreService {
                     priceAfterDiscount: 1,
                     storeId: 1 // Include storeId to use it later for fetching storeName
                 }
-            );
+            ).sort({ dateOfDeleteBillReq: -1 });
 
             if (!deletedBills.length) {
                 return [];
@@ -1590,7 +1592,7 @@ class StoreService {
                     discountPercentage: 1,
                     priceAfterDiscount: 1
                 } // Projection to return only specific fields
-            );
+            ).sort({ dateOfBill: -1 });;
 
             if (!deletedBills.length) {
                 return [];
@@ -1641,7 +1643,7 @@ class StoreService {
                     priceAfterDiscount: 1,
                     editStatus: 1
                 } // Projection to return only specific fields
-            );
+            ).sort({ dateOfBill: -1 });
 
             if (!Bills.length) {
                 return []
@@ -2031,7 +2033,7 @@ class StoreService {
                     dateOfBillEditReq: 1,
                     dateOfBill: 1,
                 } // Projection to return only specific fields
-            );
+            ).sort({ dateOfBillEditReq: -1 });
 
             if (!BillEditReqs.length) {
                 return []
@@ -2054,7 +2056,7 @@ class StoreService {
                 dateOfValidate: 1,
                 dateOfBillEditReq: 1,
                 dateOfBill: 1,
-            });
+            }).sort({ dateOfBillEditReq: -1 });
 
             if (!BillEditReqs.length) {
                 return []; // Return empty array if no BillEditReqs are found

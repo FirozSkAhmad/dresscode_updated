@@ -9,7 +9,7 @@ class UplodedHistoryService {
 
     async getUploadedInvHistory() {
         try {
-            const histories = await UploadedHistory.find({}).select('uploadedDate totalAmountOfUploaded -_id').lean();
+            const histories = await UploadedHistory.find({}).sort({ uploadedDate: -1 }).select('uploadedDate totalAmountOfUploaded -_id').lean();
             const formattedHistories = histories.map(history => ({
                 UploadID: history._id, // Assuming you want to show the MongoDB ObjectId as "Upload ID"
                 DateOfUpload: history.uploadedDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),

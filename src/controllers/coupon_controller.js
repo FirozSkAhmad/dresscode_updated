@@ -168,7 +168,7 @@ router.get('/all-coupons-data', jwtHelperObj.verifyAccessToken, async (req, res)
         }
 
         // Retrieve all coupons with specified fields
-        const coupons = await Coupon.find({}, 'couponCode discountPercentage status expiryDate customerId orderId usedDate linkedGroup linkedProductId');
+        const coupons = await Coupon.find({}, 'couponCode discountPercentage status expiryDate customerId orderId usedDate linkedGroup linkedProductId').sort({ createdAt: -1 });;
 
         res.status(200).json({ coupons });
     } catch (error) {

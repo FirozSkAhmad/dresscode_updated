@@ -138,7 +138,7 @@ router.post('/reset-password', async (req, res, next) => {
 // GET endpoint to retrieve upload history summaries
 router.get('/uploadHistories', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
-        const histories = await UploadedHistoryModel.find({}, 'uploadedId uploadedDate totalAmountOfUploaded -_id').exec();
+        const histories = await UploadedHistoryModel.find({}, 'uploadedId uploadedDate totalAmountOfUploaded -_id').sort({ uploadedDate: -1 }).exec();
         res.status(200).send({
             message: "Upload histories retrieved successfully",
             data: histories
@@ -426,7 +426,7 @@ router.get('/:groupName/getAllActiveProducts', jwtHelperObj.verifyAccessToken, a
 router.get('/getOrders', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
         // Find orders where deliveryStatus is not "Canceled"
-        const orders = await OrderModel.find({ deliveryStatus: { $ne: 'Canceled' }, order_created: { $ne: false } }, 'orderId dateOfOrder status -_id').exec();
+        const orders = await OrderModel.find({ deliveryStatus: { $ne: 'Canceled' }, order_created: { $ne: false } }, 'orderId dateOfOrder status -_id').sort({ dateOfOrder: -1 }).exec();
 
         res.status(200).send({
             message: "Orders retrieved successfully",
@@ -441,7 +441,7 @@ router.get('/getOrders', jwtHelperObj.verifyAccessToken, async (req, res) => {
 
 router.get('/getReturnOders', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
-        const returnOrders = await ReturnOrdersModel.find({}, 'returnOrderId dateOfOrder dateOfCanceled dateOfRefunded status -_id').exec();
+        const returnOrders = await ReturnOrdersModel.find({}, 'returnOrderId dateOfOrder dateOfCanceled dateOfRefunded status -_id').sort({ dateOfOrder: -1 }).exec();
         res.status(200).send({
             message: "Return Orders retrieved successfully",
             return_orders: returnOrders
@@ -629,7 +629,7 @@ router.get('/getReturnOrderDetails/:returnOrderId', jwtHelperObj.verifyAccessTok
 router.get('/getOders', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
         // Find orders where deliveryStatus is not "Canceled"
-        const orders = await OrderModel.find({ deliveryStatus: { $ne: 'Canceled' }, order_created: { $ne: false } }, 'orderId dateOfOrder status -_id').exec();
+        const orders = await OrderModel.find({ deliveryStatus: { $ne: 'Canceled' }, order_created: { $ne: false } }, 'orderId dateOfOrder status -_id').sort({ dateOfOrder: -1 }).exec();
 
         res.status(200).send({
             message: "Orders retrieved successfully",
@@ -647,7 +647,7 @@ router.get('/getCanceledOrders', jwtHelperObj.verifyAccessToken, async (req, res
         const orders = await OrderModel.find(
             { deliveryStatus: 'Canceled', order_created: { $ne: false }, refund_payment_status: 'Pending' },
             'orderId dateOfOrder status -_id'
-        ).exec();
+        ).sort({ dateOfOrder: -1 }).exec();
 
         res.status(200).send({
             message: "Canceled orders retrieved successfully",
@@ -708,7 +708,7 @@ router.get('/getRefundedOrders', jwtHelperObj.verifyAccessToken, async (req, res
         const orders = await OrderModel.find(
             { deliveryStatus: 'Canceled', order_created: { $ne: false }, refund_payment_status: 'Completed' },
             'orderId dateOfOrder dateOfRefunded status -_id'
-        ).exec();
+        ).sort({ dateOfRefunded: -1 }).exec();
 
         res.status(200).send({
             message: "Canceled Refunded retrieved successfully",
@@ -724,7 +724,7 @@ router.get('/getRefundedOrders', jwtHelperObj.verifyAccessToken, async (req, res
 router.get('/getCanceledOrders', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
         // Find orders where deliveryStatus is "Canceled"
-        const orders = await OrderModel.find({ deliveryStatus: 'Canceled', refund_payment_status: null, order_created: { $ne: false } }, 'orderId dateOfOrder dateOfCanceled status -_id').exec();
+        const orders = await OrderModel.find({ deliveryStatus: 'Canceled', refund_payment_status: null, order_created: { $ne: false } }, 'orderId dateOfOrder dateOfCanceled status -_id').sort({ dateOfCanceled: -1 }).exec();
 
         res.status(200).send({
             message: "Cancled Orders retrieved successfully",
@@ -739,6 +739,7 @@ router.get('/getCanceledOrders', jwtHelperObj.verifyAccessToken, async (req, res
 router.get('/getQuotes', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
         const quotesWithUserDetails = await QuoteModel.find()
+            .sort({ dateOfQuoteRecived: -1 }) // Sort by dateOfQuoteRecived in descending order
             .populate({
                 path: 'user',
                 select: 'name email phoneNumber -_id'  // Selecting specific user fields

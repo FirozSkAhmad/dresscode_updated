@@ -89,7 +89,7 @@ class StoreService {
                 return { success: false, message: 'Store not found or no assigned history' };
             }
 
-            const assignedHistories = store.assignedIds.map(item => item.assignedId);
+            const assignedHistories = store.assignedIds.map(item => item.assignedId).filter(history => history).sort((a, b) => new Date(b.assignedDate) - new Date(a.assignedDate));;
             return { success: true, data: assignedHistories };
         } catch (err) {
             console.error('Error retrieving assigned history:', err);

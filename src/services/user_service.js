@@ -212,7 +212,8 @@ class UserService {
             // Find the user by uid and populate the associated coupons
             const user = await UserModel.findById(userId).populate({
                 path: 'coupons', // Assumes `coupons` is an array of coupon references in the User schema
-                select: 'couponCode discountPercentage status expiryDate linkedGroup linkedProductId usedDate' // Optional: Select specific fields
+                select: 'couponCode discountPercentage status expiryDate linkedGroup linkedProductId usedDate', // Optional: Select specific fields
+                options: { sort: { expiryDate: 1 } }
             });
 
             if (!user) {
@@ -516,7 +517,7 @@ class UserService {
             }
 
             // Filter addresses where isDeleted is false
-            const activeAddresses = user.addresses.filter(addr => !addr.isDeleted);
+            const activeAddresses = user.addresses.filter(addr => !addr.isDeleted).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
             return activeAddresses;
         } catch (err) {
             console.error("Error retrieving active addresses:", err.message);
@@ -562,7 +563,8 @@ class UserService {
             const user = await UserModel.findById(userId)
                 .populate({
                     path: 'orders',
-                    match: { deliveryStatus: { $ne: 'Canceled' }, order_created: { $ne: false } }  // Filter out "Canceled" orders
+                    match: { deliveryStatus: { $ne: 'Canceled' }, order_created: { $ne: false } },  // Filter out "Canceled" orders
+                    options: { sort: { dateOfOrder: -1 } }
                 });
 
             if (!user) {
@@ -722,7 +724,7 @@ class UserService {
                     path: 'returnOrders',
                     populate: {
                         path: 'paymentId', // Populate the paymentId within the returnOrders
-                    }
+                    },
                 });
 
             if (!user) {
