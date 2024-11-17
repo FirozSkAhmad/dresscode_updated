@@ -50,12 +50,7 @@ router.post("/login/:loginType", verifyToken, async (req, res) => {
         const { uid, name, email, picture, couponCode } = req.user;
 
         // Find or create the user by `uid` or `email`
-        let user = await UserModel.findOne({
-            $or: [
-                { uid: uid },
-                { email: email }
-            ]
-        });
+        let user = await UserModel.findOne({ email: email });
 
         if (!user) {
             user = new UserModel({ uid, name, email });
