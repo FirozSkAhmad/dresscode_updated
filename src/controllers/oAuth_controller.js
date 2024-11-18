@@ -47,7 +47,7 @@ async function verifyToken(req, res, next) {
 
 router.post("/login/:loginType", verifyToken, async (req, res) => {
     try {
-        const { uid, name, email, picture, couponCode } = req.user;
+        const { uid, name, email, picture, couponCode } = req.body;
 
         // Find or create the user by `uid` or `email`
         let user = await UserModel.findOne({ email: email });
