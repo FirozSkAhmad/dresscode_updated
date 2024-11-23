@@ -186,7 +186,7 @@ router.get('/uploadedHistory/:uploadedId/products', jwtHelperObj.verifyAccessTok
 });
 
 // GET endpoint to get the overview of stock (quantity and amount) and orders (group-wise and total)
-router.get('/getOverview', async (req, res) => {
+router.get('/getOverview', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
         // Fetch all upload histories for stock overview
         const uploadHistories = await UploadedHistoryModel.find({});
