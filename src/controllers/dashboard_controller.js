@@ -33,7 +33,7 @@ router.post('/createDashboardUser', async (req, res) => {
     const session = await mongoose.startSession(); // Start a new session for the transaction
     session.startTransaction(); // Start the transaction
     try {
-        const { name, email, phoneNumber, password, roleType } = req.body;
+        const { name, email, phoneNumber, password, roleType, role } = req.body;
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
@@ -42,7 +42,8 @@ router.post('/createDashboardUser', async (req, res) => {
             email: email.toLowerCase(), // Ensure the email is stored in lowercase
             phoneNumber,
             password: hashedPassword,
-            roleType
+            roleType,
+            role
         };
 
         const newUser = await DashboardUserModel.create([userPayload], { session: session }); // Include the session in the create operation

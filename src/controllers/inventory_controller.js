@@ -10,7 +10,7 @@ router.post('/uploadInventory', jwtHelperObj.verifyAccessToken, async (req, res,
     try {
         const role_type = req.aud.split(":")[1]
         const user_name = req.aud.split(":")[2]
-        if (["WAREHOUSE_MANAGER"].includes(role_type)) {
+        if (["WAREHOUSE MANAGER"].includes(role_type)) {
             const { category } = req.body;
             if (!category) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("required category")

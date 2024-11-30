@@ -39,6 +39,12 @@ const dashboardUserSchema = new mongoose.Schema({
         required: true,
         trim: true,
         enum: ['WAREHOUSE MANAGER', 'SUPER ADMIN', 'STORE MANAGER'],
+    },
+    role: {
+        type: String,
+        required: true,
+        trim: true,
+        enum: ['SUPER ADMIN','PRODUCT MANGER', 'CUSTOMER CARE'],
     }
 });
 
