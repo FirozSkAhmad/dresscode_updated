@@ -93,7 +93,8 @@ router.post('/dashboardLogin', async (req, res, next) => {
             accessToken: accessToken,
             userId: userData._id,
             name: userData.name,
-            roleType: userData.roleType
+            roleType: userData.roleType,
+            role:userData.role
         };
 
         res.send({ status: 200, message: "Success", data: data });
