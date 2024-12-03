@@ -48,6 +48,7 @@ class OrderService {
                 couponDiscountPercentage = coupon.discountPercentage;
             }
 
+            let slabDiscountPercentage = 0;
             // Process each product in the order
             const productsProcessed = await Promise.all(orderProducts.map(async (product) => {
                 const { group, productId, color, size, quantityOrdered } = product;
@@ -68,7 +69,6 @@ class OrderService {
                 }
 
                 // Calculate slab discount percentage based on quantity
-                let slabDiscountPercentage = 0;
                 if (quantityOrdered >= 6 && quantityOrdered <= 10) {
                     slabDiscountPercentage = 5;
                 } else if (quantityOrdered >= 11 && quantityOrdered <= 20) {
