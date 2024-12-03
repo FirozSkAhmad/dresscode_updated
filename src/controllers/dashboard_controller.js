@@ -94,7 +94,7 @@ router.post('/dashboardLogin', async (req, res, next) => {
             userId: userData._id,
             name: userData.name,
             roleType: userData.roleType,
-            role:userData.role
+            role: userData.role
         };
 
         res.send({ status: 200, message: "Success", data: data });
@@ -529,6 +529,11 @@ router.get('/getOrderDetails/:orderId', jwtHelperObj.verifyAccessToken, async (r
                 status: order.status,
                 dateOfOrder: order.dateOfOrder,
                 deliveryCharges: order.deliveryCharges,
+                slabDiscountPercentage: order.slabDiscountPercentage,
+                slabDiscountAmount: order.slabDiscountAmount,
+                couponCode: order.couponCode,
+                couponDiscountPercentage: order.couponDiscountPercentage,
+                couponDiscountAmount: order.couponDiscountAmount,
                 TotalDiscountAmount: order.TotalDiscountAmount,
                 TotalPriceAfterDiscount: order.TotalPriceAfterDiscount,
                 estimatedDelivery: order.estimatedDelivery,
