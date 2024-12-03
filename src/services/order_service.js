@@ -131,7 +131,7 @@ class OrderService {
                 products: productsProcessed,
                 deliveryCharges: 0,
                 TotalAmount: formattedTotalAmount,
-                slabDiscountPercentage: 0, // Set to 0 if no global slab discount percentage
+                slabDiscountPercentage: slabDiscountPercentage || 0, // Set to 0 if no global slab discount percentage
                 slabDiscountAmount: formattedTotalSlabDiscountAmount,
                 couponCode: couponCode || null,
                 couponDiscountPercentage: couponDiscountPercentage || 0,
