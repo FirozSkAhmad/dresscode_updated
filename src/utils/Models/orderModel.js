@@ -71,12 +71,24 @@ const orderSchema = new mongoose.Schema({
         required: true
     },
     products: [productsSchema],
+    slabDiscountPercentage: {
+        type: Number,
+        default: 0
+    },
+    slabDiscountAmount: {
+        type: Number,
+        default: 0
+    },
     couponCode: {
         type: String,
         trim: true,
         default: null
     },
     couponDiscountPercentage: {
+        type: Number,
+        default: 0
+    },
+    couponDiscountAmount: {
         type: Number,
         default: 0
     },

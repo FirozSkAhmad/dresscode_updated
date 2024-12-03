@@ -25,9 +25,10 @@ class OrderService {
     async createOrder(userId, addressId, orderDetails, session) {
         try {
             const { products: orderProducts, couponCode } = orderDetails;
-            let totalDiscountAmount = 0;
-            let totalPriceAfterDiscount = 0;
             let totalAmount = 0;
+            let totalSlabDiscountAmount = 0;
+            let totalCouponDiscountAmount = 0;
+            let totalPriceAfterDiscount = 0;
             let couponDiscountPercentage = 0;
 
             // Check if couponCode is provided and validate it
@@ -66,27 +67,34 @@ class OrderService {
                     throw new Error("Insufficient stock for the variant");
                 }
 
-                let discountPercentage = 0;
+                // Calculate slab discount percentage based on quantity
+                let slabDiscountPercentage = 0;
                 if (quantityOrdered >= 6 && quantityOrdered <= 10) {
-                    discountPercentage = 5;
+                    slabDiscountPercentage = 5;
                 } else if (quantityOrdered >= 11 && quantityOrdered <= 20) {
-                    discountPercentage = 10;
+                    slabDiscountPercentage = 10;
                 } else if (quantityOrdered >= 21 && quantityOrdered <= 35) {
-                    discountPercentage = 15;
+                    slabDiscountPercentage = 15;
                 }
 
-                // Calculate price and discounts
                 const totalPrice = productDoc.price * quantityOrdered;
-                const initialDiscountAmount = (totalPrice * discountPercentage) / 100;
-                const priceAfterInitialDiscount = totalPrice - initialDiscountAmount;
 
-                // Apply additional discount from the coupon on the already discounted price
-                const couponDiscountAmount = (priceAfterInitialDiscount * couponDiscountPercentage) / 100;
-                const finalPriceAfterDiscount = priceAfterInitialDiscount - couponDiscountAmount;
+                // Calculate slab discount amount
+                const slabDiscountAmount = (totalPrice * slabDiscountPercentage) / 100;
+
+                // Calculate price after slab discount
+                const priceAfterSlabDiscount = totalPrice - slabDiscountAmount;
+
+                // Calculate coupon discount amount
+                const couponDiscountAmount = (priceAfterSlabDiscount * couponDiscountPercentage) / 100;
+
+                // Final price after both discounts
+                const finalPriceAfterDiscount = priceAfterSlabDiscount - couponDiscountAmount;
 
                 // Accumulate totals
                 totalAmount += totalPrice;
-                totalDiscountAmount += initialDiscountAmount + couponDiscountAmount;
+                totalSlabDiscountAmount += slabDiscountAmount;
+                totalCouponDiscountAmount += couponDiscountAmount;
                 totalPriceAfterDiscount += finalPriceAfterDiscount;
 
                 return {
@@ -102,8 +110,8 @@ class OrderService {
                     imgUrl: product.imgUrl,
                     logoUrl: product.logoUrl,
                     logoPosition: product.logoPosition,
-                    discountPercentage,
-                    initialDiscountAmount: parseFloat(initialDiscountAmount.toFixed(2)),
+                    slabDiscountPercentage,
+                    slabDiscountAmount: parseFloat(slabDiscountAmount.toFixed(2)),
                     couponDiscountPercentage,
                     couponDiscountAmount: parseFloat(couponDiscountAmount.toFixed(2)),
                     priceAfterDiscount: parseFloat(finalPriceAfterDiscount.toFixed(2))
@@ -112,7 +120,8 @@ class OrderService {
 
             // Format totals to 2 decimal places before saving
             const formattedTotalAmount = parseFloat(totalAmount.toFixed(2));
-            const formattedTotalDiscountAmount = parseFloat(totalDiscountAmount.toFixed(2));
+            const formattedTotalSlabDiscountAmount = parseFloat(totalSlabDiscountAmount.toFixed(2));
+            const formattedTotalCouponDiscountAmount = parseFloat(totalCouponDiscountAmount.toFixed(2));
             const formattedTotalPriceAfterDiscount = parseFloat(totalPriceAfterDiscount.toFixed(2));
 
             // Create and save the order
@@ -122,10 +131,13 @@ class OrderService {
                 products: productsProcessed,
                 deliveryCharges: 0,
                 TotalAmount: formattedTotalAmount,
-                TotalDiscountAmount: formattedTotalDiscountAmount,
-                TotalPriceAfterDiscount: formattedTotalPriceAfterDiscount,
+                slabDiscountPercentage: 0, // Set to 0 if no global slab discount percentage
+                slabDiscountAmount: formattedTotalSlabDiscountAmount,
                 couponCode: couponCode || null,
-                couponDiscountPercentage: couponDiscountPercentage || 0
+                couponDiscountPercentage: couponDiscountPercentage || 0,
+                couponDiscountAmount: formattedTotalCouponDiscountAmount,
+                TotalDiscountAmount: formattedTotalSlabDiscountAmount + formattedTotalCouponDiscountAmount,
+                TotalPriceAfterDiscount: formattedTotalPriceAfterDiscount
             });
 
             const savedOrder = await newOrder.save({ session });
@@ -141,9 +153,6 @@ class OrderService {
                 key_id: process.env.RAZORPAY_KEY_ID,
                 key_secret: process.env.RAZORPAY_SECRET,
             });
-
-            console.log("formattedTotalPriceAfterDiscount", formattedTotalPriceAfterDiscount)
-            console.log("amount", formattedTotalPriceAfterDiscount * 100)
 
             const options = {
                 amount: Math.floor(formattedTotalPriceAfterDiscount * 100), // Convert to paise (integer for Razorpay)
@@ -161,8 +170,6 @@ class OrderService {
             throw new Error(err.message || "An internal server error occurred");
         }
     }
-
-
 
     async createQuote(userId, quoteDetails) {
         const { group, productId, color, size } = quoteDetails;

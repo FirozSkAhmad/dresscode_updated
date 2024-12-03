@@ -107,7 +107,7 @@ router.post('/request-coupon', async (req, res, next) => {
 
         // Generate a unique coupon code
         const couponCode = await generateUniqueCouponCode();  // Custom unique code generation
-        const expiryDate = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);  // 2-day expiration
+        const expiryDate = new Date(Date.now() + 56 * 24 * 60 * 60 * 1000); // 56-day expiration
 
         let linkedGroup = null;
         let linkedProductId = null;
