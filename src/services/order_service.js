@@ -30,25 +30,24 @@ class OrderService {
             let totalCouponDiscountAmount = 0;
             let totalPriceAfterDiscount = 0;
             let couponDiscountPercentage = 0;
-
-            // Check if couponCode is provided and validate it
+    
+            // Validate coupon if provided
+            let coupon = null;
             if (couponCode) {
-                const coupon = await CouponModel.findOne({
+                coupon = await CouponModel.findOne({
                     couponCode,
                     status: 'pending',
                     expiryDate: { $gt: new Date() },
                     customerId: userId
                 });
-
+    
                 if (!coupon) {
                     throw new Error("Invalid, expired, or unauthorized coupon code for the customer");
                 }
-
-                // Use the discount percentage from the coupon
+    
                 couponDiscountPercentage = coupon.discountPercentage;
             }
-
-            let slabDiscountPercentage = 0;
+    
             // Process each product in the order
             const productsProcessed = await Promise.all(orderProducts.map(async (product) => {
                 const { group, productId, color, size, quantityOrdered } = product;
@@ -56,19 +55,20 @@ class OrderService {
                 if (!ProductModel) {
                     throw new Error("Invalid product group");
                 }
-
+    
                 const productDoc = await ProductModel.findOne({ productId, "variants.color.name": color });
                 if (!productDoc) {
                     throw new Error("Product or variant not found");
                 }
-
+    
                 const variant = productDoc.variants.find(v => v.color.name === color);
                 const variantSize = variant.variantSizes.find(v => v.size === size);
                 if (!variantSize || variantSize.quantity < quantityOrdered) {
                     throw new Error("Insufficient stock for the variant");
                 }
-
+    
                 // Calculate slab discount percentage based on quantity
+                let slabDiscountPercentage = 0;
                 if (quantityOrdered >= 6 && quantityOrdered <= 10) {
                     slabDiscountPercentage = 5;
                 } else if (quantityOrdered >= 11 && quantityOrdered <= 20) {
@@ -76,27 +76,22 @@ class OrderService {
                 } else if (quantityOrdered >= 21 && quantityOrdered <= 35) {
                     slabDiscountPercentage = 15;
                 }
-
+    
                 const totalPrice = productDoc.price * quantityOrdered;
-
-                // Calculate slab discount amount
+    
+                // Calculate discounts
                 const slabDiscountAmount = (totalPrice * slabDiscountPercentage) / 100;
-
-                // Calculate price after slab discount
                 const priceAfterSlabDiscount = totalPrice - slabDiscountAmount;
-
-                // Calculate coupon discount amount
+    
                 const couponDiscountAmount = (priceAfterSlabDiscount * couponDiscountPercentage) / 100;
-
-                // Final price after both discounts
                 const finalPriceAfterDiscount = priceAfterSlabDiscount - couponDiscountAmount;
-
+    
                 // Accumulate totals
                 totalAmount += totalPrice;
                 totalSlabDiscountAmount += slabDiscountAmount;
                 totalCouponDiscountAmount += couponDiscountAmount;
                 totalPriceAfterDiscount += finalPriceAfterDiscount;
-
+    
                 return {
                     group,
                     productId,
@@ -112,64 +107,72 @@ class OrderService {
                     logoPosition: product.logoPosition,
                     slabDiscountPercentage,
                     slabDiscountAmount: parseFloat(slabDiscountAmount.toFixed(2)),
-                    couponDiscountPercentage,
-                    couponDiscountAmount: parseFloat(couponDiscountAmount.toFixed(2)),
-                    priceAfterDiscount: parseFloat(finalPriceAfterDiscount.toFixed(2))
+                    return: false, // Default to false
+                    return_status: "N/A"
                 };
             }));
-
-            // Format totals to 2 decimal places before saving
+    
+            // Calculate and format totals
             const formattedTotalAmount = parseFloat(totalAmount.toFixed(2));
             const formattedTotalSlabDiscountAmount = parseFloat(totalSlabDiscountAmount.toFixed(2));
             const formattedTotalCouponDiscountAmount = parseFloat(totalCouponDiscountAmount.toFixed(2));
             const formattedTotalPriceAfterDiscount = parseFloat(totalPriceAfterDiscount.toFixed(2));
-
-            // Create and save the order
+    
+            // Create the order
             const newOrder = new OrderModel({
                 user: userId,
                 address: addressId,
                 products: productsProcessed,
                 deliveryCharges: 0,
                 TotalAmount: formattedTotalAmount,
-                slabDiscountPercentage: slabDiscountPercentage || 0, // Set to 0 if no global slab discount percentage
-                slabDiscountAmount: formattedTotalSlabDiscountAmount,
+                totalSlabDiscountAmount: formattedTotalSlabDiscountAmount,
                 couponCode: couponCode || null,
                 couponDiscountPercentage: couponDiscountPercentage || 0,
                 couponDiscountAmount: formattedTotalCouponDiscountAmount,
                 TotalDiscountAmount: formattedTotalSlabDiscountAmount + formattedTotalCouponDiscountAmount,
                 TotalPriceAfterDiscount: formattedTotalPriceAfterDiscount
             });
-
+    
             const savedOrder = await newOrder.save({ session });
-
+    
+            // Update coupon if used
+            if (coupon) {
+                coupon.status = 'used';
+                coupon.orderId = savedOrder._id;
+                await coupon.save({ session });
+            }
+    
+            // Associate the order with the user
             const user = await UserModel.findById(userId).session(session);
             if (!user) {
                 throw new Error('User not found');
             }
             user.orders.push(savedOrder._id);
             await user.save({ session });
-
+    
+            // Generate Razorpay order
             const instance = new Razorpay({
                 key_id: process.env.RAZORPAY_KEY_ID,
                 key_secret: process.env.RAZORPAY_SECRET,
             });
-
+    
             const options = {
-                amount: Math.floor(formattedTotalPriceAfterDiscount * 100), // Convert to paise (integer for Razorpay)
+                amount: Math.floor(formattedTotalPriceAfterDiscount * 100), // Convert to paise
                 currency: "INR",
             };
-
+    
             const razorpayOrder = await instance.orders.create(options);
-
+    
             return {
                 razorpay_checkout_order_id: razorpayOrder.id,
                 orderId: savedOrder.orderId
             };
         } catch (err) {
-            console.error("Error in createOrder: ", err);
+            console.error("Error in createOrder:", err);
             throw new Error(err.message || "An internal server error occurred");
         }
     }
+    
 
     async createQuote(userId, quoteDetails) {
         const { group, productId, color, size } = quoteDetails;

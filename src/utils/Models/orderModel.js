@@ -27,11 +27,11 @@ const productsSchema = new mongoose.Schema({
     logoPosition: {
         type: String, trim: true, default: null
     },
-    discountPercentage: {
+    slabDiscountPercentage: {
         type: Number,
         default: 0
     },
-    discountAmount: {
+    slabDiscountAmount: {
         type: Number,
         default: 0
     },
@@ -71,14 +71,11 @@ const orderSchema = new mongoose.Schema({
         required: true
     },
     products: [productsSchema],
-    slabDiscountPercentage: {
+    deliveryCharges: {
         type: Number,
         default: 0
     },
-    slabDiscountAmount: {
-        type: Number,
-        default: 0
-    },
+    TotalAmount: { type: Number, required: true },
     couponCode: {
         type: String,
         trim: true,
@@ -92,11 +89,10 @@ const orderSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
-    deliveryCharges: {
+    totalSlabDiscountAmount: {
         type: Number,
         default: 0
     },
-    TotalAmount: { type: Number, required: true },
     TotalDiscountAmount: { type: Number, required: true },
     TotalPriceAfterDiscount: { type: Number, required: true },
     dateOfOrder: { type: Date, default: Date.now },

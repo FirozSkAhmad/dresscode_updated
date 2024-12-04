@@ -453,6 +453,8 @@ router.get('/getOrderDetails/:orderId', jwtHelperObj.verifyAccessToken, async (r
                 price: product.price,
                 logoUrl: product.logoUrl,
                 logoPosition: product.logoPosition,
+                slabDiscountPercentage: product.slabDiscountPercentage,
+                slabDiscountAmount: product.slabDiscountAmount,
                 productDetails: productDetails,
             };
         });
@@ -477,11 +479,10 @@ router.get('/getOrderDetails/:orderId', jwtHelperObj.verifyAccessToken, async (r
                 dateOfOrder: order.dateOfOrder,
                 deliveryCharges: order.deliveryCharges,
                 TotalAmount: order.TotalAmount,
-                slabDiscountPercentage: order.slabDiscountPercentage,
-                slabDiscountAmount: order.slabDiscountAmount,
                 couponCode: order.couponCode,
                 couponDiscountPercentage: order.couponDiscountPercentage,
                 couponDiscountAmount: order.couponDiscountAmount,
+                totalSlabDiscountAmount: order.totalSlabDiscountAmount,
                 TotalDiscountAmount: order.TotalDiscountAmount,
                 TotalPriceAfterDiscount: order.TotalPriceAfterDiscount,
                 estimatedDelivery: order.estimatedDelivery,
