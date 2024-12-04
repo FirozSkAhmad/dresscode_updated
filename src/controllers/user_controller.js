@@ -476,11 +476,18 @@ router.get('/getOrderDetails/:orderId', jwtHelperObj.verifyAccessToken, async (r
                 deliveryStatus: order.deliveryStatus,
                 dateOfOrder: order.dateOfOrder,
                 deliveryCharges: order.deliveryCharges,
-                discountPercentage: order.discountPercentage,
+                TotalAmount: order.TotalAmount,
+                slabDiscountPercentage: order.slabDiscountPercentage,
+                slabDiscountAmount: order.slabDiscountAmount,
+                couponCode: order.couponCode,
+                couponDiscountPercentage: order.couponDiscountPercentage,
+                couponDiscountAmount: order.couponDiscountAmount,
+                TotalDiscountAmount: order.TotalDiscountAmount,
                 TotalPriceAfterDiscount: order.TotalPriceAfterDiscount,
                 estimatedDelivery: order.estimatedDelivery,
                 shiprocket_order_id: order.shiprocket_order_id,
-                shiprocket_shipment_id: order.shiprocket_shipment_id
+                shiprocket_shipment_id: order.shiprocket_shipment_id,
+                shiprocket_awb_code: order.shiprocket_awb_code
             }
         });
     } catch (error) {

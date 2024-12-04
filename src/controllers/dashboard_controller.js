@@ -529,6 +529,7 @@ router.get('/getOrderDetails/:orderId', jwtHelperObj.verifyAccessToken, async (r
                 status: order.status,
                 dateOfOrder: order.dateOfOrder,
                 deliveryCharges: order.deliveryCharges,
+                TotalAmount: order.TotalAmount,
                 slabDiscountPercentage: order.slabDiscountPercentage,
                 slabDiscountAmount: order.slabDiscountAmount,
                 couponCode: order.couponCode,
