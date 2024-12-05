@@ -537,7 +537,6 @@ class UserService {
     }
 
     async enhanceOrderWithProductDetails(order) {
-
         const productsWithDetails = await Promise.all(order.products.map(async (product) => {
             const ProductModel = modelMap[product.group];
             if (!ProductModel) {
@@ -547,15 +546,20 @@ class UserService {
             const productDetails = await ProductModel.findOne({ productId: product.productId })
                 .select('-variants -reviews -isDeleted -createdAt -updatedAt -__v');
 
+            const priceAfterSlabDiscount = parseFloat(
+                (product.price * product.quantityOrdered - product.slabDiscountAmount).toFixed(2)
+            );
+
             return {
                 ...product.toObject(),
-                productDetails: productDetails ? productDetails.toObject() : {}
-                // Include more complex logic here if needed
+                productDetails: productDetails ? productDetails.toObject() : {},
+                priceAfterSlabDiscount // Include the calculated field
             };
         }));
 
         return productsWithDetails;
     }
+
 
     async getUserOrdersWithProductDetails(userId) {
         try {
