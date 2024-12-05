@@ -1019,18 +1019,10 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
 router.post('/manifests/generate', async (req, res) => {
     const reqData = req.body;
 
-    const authorizationHeader = req.headers['authorization'];
-
-    if (!authorizationHeader) {
-        return res.status(401).json({ error: 'No authorization token provided' });
-    }
-
-    const token = authorizationHeader.split(' ')[1]; // Assuming the token is prefixed by 'Bearer'
-
     try {
         const response = await axios.post(`https://apiv2.shiprocket.in/v1/external/manifests/generate`, reqData, {
             headers: {
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${process.env.SHIPROCKET_API_TOKEN}`
             }
         });
         // Process the response normally
@@ -1055,18 +1047,10 @@ router.post('/manifests/generate', async (req, res) => {
 router.post('/generate/label', async (req, res) => {
     const reqData = req.body;
 
-    const authorizationHeader = req.headers['authorization'];
-
-    if (!authorizationHeader) {
-        return res.status(401).json({ error: 'No authorization token provided' });
-    }
-
-    const token = authorizationHeader.split(' ')[1]; // Assuming the token is prefixed by 'Bearer'
-    console.log(token)
     try {
         const response = await axios.post(`https://apiv2.shiprocket.in/v1/external/courier/generate/label`, reqData, {
             headers: {
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${process.env.SHIPROCKET_API_TOKEN}`
             }
         });
 
@@ -1082,18 +1066,10 @@ router.post('/generate/label', async (req, res) => {
 router.post('/print/invoice', async (req, res) => {
     const reqData = req.body;
 
-    const authorizationHeader = req.headers['authorization'];
-
-    if (!authorizationHeader) {
-        return res.status(401).json({ error: 'No authorization token provided' });
-    }
-
-    const token = authorizationHeader.split(' ')[1]; // Assuming the token is prefixed by 'Bearer'
-
     try {
         const response = await axios.post(`https://apiv2.shiprocket.in/v1/external/orders/print/invoice`, reqData, {
             headers: {
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${process.env.SHIPROCKET_API_TOKEN}`
             }
         });
 
@@ -1109,18 +1085,10 @@ router.post('/print/invoice', async (req, res) => {
 router.get('/track/awb/:awb_code', async (req, res) => {
     const { awb_code } = req.params;
 
-    const authorizationHeader = req.headers['authorization'];
-
-    if (!authorizationHeader) {
-        return res.status(401).json({ error: 'No authorization token provided' });
-    }
-
-    const token = authorizationHeader.split(' ')[1]; // Assuming the token is prefixed by 'Bearer'
-
     try {
         const response = await axios.get(`https://apiv2.shiprocket.in/v1/external/courier/track/awb/${awb_code}`, {
             headers: {
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${process.env.SHIPROCKET_API_TOKEN}`
             }
         });
 
