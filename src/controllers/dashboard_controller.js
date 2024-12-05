@@ -868,7 +868,7 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
             const productDoc = await ProductModel.findOne({ productId: product.productId });
             const variant = productDoc.variants.find(v => v.color.name === product.color.name);
             const variantSize = variant.variantSizes.find(v => v.size === product.size);
-            const unitDiscount = (product.discountAmount / product.quantityOrdered)
+            const unitDiscount = (product.slabDiscountAmount / product.quantityOrdered)
 
             return {
                 groupName: product.group,
