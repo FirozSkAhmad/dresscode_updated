@@ -1062,7 +1062,7 @@ router.post('/generate/label', async (req, res) => {
     }
 
     const token = authorizationHeader.split(' ')[1]; // Assuming the token is prefixed by 'Bearer'
-
+    console.log(token)
     try {
         const response = await axios.post(`https://apiv2.shiprocket.in/v1/external/courier/generate/label`, reqData, {
             headers: {
