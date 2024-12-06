@@ -11,6 +11,8 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 const StoreService = require('../services/store_service');
 const storeServiceObj = new StoreService();
+const { parse } = require('json2csv');
+const ExcelJS = require('exceljs');
 
 // Function to verify if the uploaded file is a CSV
 function isCsvFile(file) {
@@ -972,6 +974,158 @@ router.get('/get-bill-edit-req-details/:editBillReqId', jwtHelperObj.verifyAcces
         next(err);
     }
 });
+
+
+router.get('/download-bill-edit-reqs', async (req, res, next) => {
+    try {
+
+        // const { isApproved } = req.query//true, false, pending
+
+        // Fetch all bill edit requests with detailed information
+        const billEditRequests = await storeServiceObj.getDetailedBillEditReqs();//isApproved
+
+        // Create a new workbook and worksheet
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Bill Edit Requests');
+
+        // Define columns with widths
+        worksheet.columns = [
+            { header: 'Edit Bill Req ID', key: 'editBillReqId', width: 20 },
+            { header: 'Store ID', key: 'storeId', width: 20 },
+            { header: 'Is Approved', key: 'isApproved', width: 15 },
+            { header: 'Date of Validation', key: 'dateOfValidate', width: 20 },
+            { header: 'Date of Bill Edit Req', key: 'dateOfBillEditReq', width: 25 },
+            { header: 'Date of Bill', key: 'dateOfBill', width: 20 },
+            { header: 'Req Note', key: 'reqNote', width: 25 },
+            { header: 'Validate Note', key: 'validateNote', width: 25 },
+            { header: 'Invoice URL', key: 'invoiceUrl', width: 30 },
+            { header: 'Approved Invoice URL', key: 'approvedInvoiceUrl', width: 30 },
+            { header: 'Customer ID', key: 'customerId', width: 25 },
+            { header: 'B.Customer Name', key: 'billedCustomerName', width: 25 },
+            { header: 'B.Customer Phone', key: 'billedCustomerPhone', width: 20 },
+            { header: 'B.Customer Email', key: 'billedCustomerEmail', width: 30 },
+            { header: 'R.Customer Name', key: 'requestedCustomerName', width: 25 },
+            { header: 'R.Customer Phone', key: 'requestedCustomerPhone', width: 20 },
+            { header: 'R.Customer Email', key: 'requestedCustomerEmail', width: 30 },
+            { header: 'B.Product ID', key: 'billedProductId', width: 20 },
+            { header: 'R.Product ID', key: 'requestedProductId', width: 20 },
+            { header: 'B.Variant ID', key: 'billedVariantId', width: 20 },
+            { header: 'R.Variant ID', key: 'requestedVariantId', width: 20 },
+            { header: 'B.Variant Color', key: 'billedVariantColor', width: 15 },
+            { header: 'R.Variant Color', key: 'requestedVariantColor', width: 15 },
+            { header: 'B.Variant Size', key: 'billedVariantSize', width: 15 },
+            { header: 'R.Variant Size', key: 'requestedVariantSize', width: 15 },
+            { header: 'B.Variant Billed Quantity', key: 'billedQuantity', width: 15 },
+            { header: 'R.Variant Billed Quantity', key: 'requestedBilledQuantity', width: 15 },
+            { header: 'B.Total Amount', key: 'billedTotalAmount', width: 15 },
+            { header: 'R.Total Amount', key: 'requestedTotalAmount', width: 15 },
+            { header: 'B.Discount Percentage', key: 'billedDiscountPercentage', width: 20 },
+            { header: 'R.Discount Percentage', key: 'requestedDiscountPercentage', width: 20 },
+            { header: 'B.Price After Discount', key: 'billedPriceAfterDiscount', width: 20 },
+            { header: 'R.Price After Discount', key: 'requestedPriceAfterDiscount', width: 20 },
+        ];
+
+        billEditRequests.forEach(request => {
+            const billedCustomer = request.currentBill?.customer || {};
+            const requestedBillCustomer = request.requestedBillEdit?.customer || {};
+            const billedProducts = request.currentBill?.products || [];
+            const requestedProducts = request.requestedBillEdit?.products || [];
+
+            // Ensure both arrays have the same length for comparison
+            const maxProducts = Math.max(billedProducts.length, requestedProducts.length);
+
+            for (let i = 0; i < maxProducts; i++) {
+                const billedProduct = billedProducts[i] || {}; // Default to an empty object if no product exists
+                const requestedProduct = requestedProducts[i] || {}; // Default to an empty object if no product exists
+
+                const billedVariant = billedProduct.variants?.[0] || {};
+                const requestedVariant = requestedProduct.variants?.[0] || {};
+
+                worksheet.addRow({
+                    editBillReqId: i === 0 ? request.requestedBillEdit.editBillReqId : '', // Blank for subsequent rows
+                    storeId: i === 0 ? request.requestedBillEdit.storeId || 'N/A' : '',
+                    isApproved: i === 0 ? request.requestedBillEdit.isApproved === null ? 'PENDING' : request.requestedBillEdit.isApproved : '',
+                    dateOfValidate: i === 0 ? request.requestedBillEdit.dateOfValidate === null ? '--' : request.requestedBillEdit.dateOfValidate : '',
+                    dateOfBillEditReq: i === 0 ? request.requestedBillEdit.dateOfBillEditReq : '',
+                    dateOfBill: i === 0 ? request.requestedBillEdit.dateOfBill : '',
+                    reqNote: i === 0 ? request.requestedBillEdit.reqNote || 'N/A' : '',
+                    validateNote: i === 0 ? request.requestedBillEdit.validateNote || 'N/A' : '',
+                    invoiceUrl: i === 0 ? request.currentBill.invoiceUrl || 'N/A' : '',
+                    approvedInvoiceUrl: i === 0 ? request.requestedBillEdit.approvedInvoiceUrl || 'N/A' : '',
+                    customerId: i === 0 ? billedCustomer.customerId || 'N/A' : '',
+                    billedCustomerName: i === 0 ? billedCustomer.customerName || 'N/A' : '',
+                    requestedCustomerName: i === 0
+                        ? billedCustomer.customerName === requestedBillCustomer.customerName
+                            ? '-'
+                            : requestedBillCustomer.customerName || 'N/A'
+                        : '',
+                    billedCustomerPhone: i === 0 ? billedCustomer.customerPhone || 'N/A' : '',
+                    requestedCustomerPhone: i === 0
+                        ? billedCustomer.customerPhone === requestedBillCustomer.customerPhone
+                            ? '-'
+                            : requestedBillCustomer.customerPhone || 'N/A'
+                        : '',
+                    billedCustomerEmail: i === 0 ? billedCustomer.customerEmail || 'N/A' : '',
+                    requestedCustomerEmail: i === 0
+                        ? billedCustomer.customerEmail === requestedBillCustomer.customerEmail
+                            ? '-'
+                            : requestedBillCustomer.customerEmail || 'N/A'
+                        : '',
+                    billedProductId: billedProduct.productId || 'N/A',
+                    requestedProductId: billedProduct.productId === requestedProduct.productId
+                        ? '-'
+                        : requestedProduct.productId || 'N/A',
+                    billedVariantId: billedVariant.variantId || 'N/A',
+                    requestedVariantId: billedVariant.variantId === requestedVariant.variantId
+                        ? '-'
+                        : requestedVariant.variantId || 'N/A',
+                    billedVariantColor: billedVariant.color?.name || 'N/A',
+                    requestedVariantColor: billedVariant.color?.name === requestedVariant.color?.name
+                        ? '-'
+                        : requestedVariant.color?.name || 'N/A',
+                    billedVariantSize: billedVariant.variantSizes?.[0]?.size || 'N/A',
+                    requestedVariantSize: billedVariant.variantSizes?.[0]?.size === requestedVariant.variantSizes?.[0]?.size
+                        ? '-'
+                        : requestedVariant.variantSizes?.[0]?.size || 'N/A',
+                    billedQuantity: billedVariant.variantSizes?.[0]?.billedQuantity || 'N/A',
+                    requestedBilledQuantity: billedVariant.variantSizes?.[0]?.billedQuantity === requestedVariant.variantSizes?.[0]?.billedQuantity
+                        ? '-'
+                        : requestedVariant.variantSizes?.[0]?.billedQuantity || 'N/A',
+                    billedTotalAmount: i === 0 ? request.currentBill.TotalAmount || 'N/A' : '',
+                    requestedTotalAmount: i === 0
+                        ? request.currentBill.TotalAmount === request.requestedBillEdit.TotalAmount
+                            ? '-'
+                            : request.requestedBillEdit.TotalAmount || 'N/A'
+                        : '',
+                    billedDiscountPercentage: i === 0 ? request.currentBill.discountPercentage || 'N/A' : '',
+                    requestedDiscountPercentage: i === 0
+                        ? request.currentBill.discountPercentage === request.requestedBillEdit.discountPercentage
+                            ? '-'
+                            : request.requestedBillEdit.discountPercentage || 'N/A'
+                        : '',
+                    billedPriceAfterDiscount: i === 0 ? request.currentBill.priceAfterDiscount || 'N/A' : '',
+                    requestedPriceAfterDiscount: i === 0
+                        ? request.currentBill.priceAfterDiscount === request.requestedBillEdit.priceAfterDiscount
+                            ? '-'
+                            : request.requestedBillEdit.priceAfterDiscount || 'N/A'
+                        : '',
+                });
+            }
+        });
+
+        // Set headers for the file download
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename="bill_edit_requests.xlsx"');
+
+        // Write the Excel file to the response
+        await workbook.xlsx.write(res);
+        res.end();
+    } catch (err) {
+        console.error("Error while generating Excel for bill edit reqs:", err.message);
+        next(err);
+    }
+});
+
 
 
 router.patch('/validate-bill-edit-req', jwtHelperObj.verifyAccessToken, async (req, res, next) => {

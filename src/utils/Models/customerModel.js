@@ -1,7 +1,16 @@
 const mongoose = require('mongoose');
+const crypto = require('crypto'); 
 const Schema = mongoose.Schema;
 
 const customerSchema = new Schema({
+    customerId: {
+        type: String,
+        trim: true,
+        unique: true,
+        default: () => {
+            return crypto.randomBytes(3).toString("hex").toUpperCase().slice(0, 6);
+        },
+    },
     customerName: {
         type: String,
         required: true,

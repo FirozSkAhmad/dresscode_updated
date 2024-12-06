@@ -2123,7 +2123,6 @@ class StoreService {
         }
     }
 
-
     // Helper function to fetch real-time quantityInStore for a bill's products
     async fetchRealTimeQuantity(bill) {
         for (const product of bill.products) {
@@ -2159,6 +2158,97 @@ class StoreService {
             }
         }
     }
+
+    async getDetailedBillEditReqs() {//isApproved
+        try {
+
+            // // Parse the `isApproved` parameter correctly
+            // let approvedFilter = {};
+            // if (isApproved === "true") {
+            //     approvedFilter.isApproved = true; // Update the filter
+            // } else if (isApproved === "false") {
+            //     approvedFilter.isApproved = false; // Update the filter
+            // } else if (isApproved === "pending") {
+            //     approvedFilter.isApproved = null; // Update the filter
+            // }
+
+            // Fetch all bill edit requests
+            const billEditReqs = await BillEditReq.find({})//approvedFilter
+                .populate('customer', 'customerId customerName customerPhone customerEmail')
+                .lean();
+
+            if (!billEditReqs.length) {
+                return [];
+            }
+
+            const detailedBillEditReqs = await Promise.all(billEditReqs.map(async (billEditReq) => {
+                // Fetch current or old bill details based on approval status
+                let currentBill;
+                if (billEditReq.isApproved === null || billEditReq.isApproved === false) {
+                    currentBill = await Bill.findById(billEditReq.bill)
+                        .populate({
+                            path: 'customer',
+                            select: 'customerId customerName customerPhone customerEmail'
+                        })
+                        .lean();
+                } else {
+                    currentBill = await OldBill.findById(billEditReq.bill)
+                        .populate({
+                            path: 'customer',
+                            select: 'customerId customerName customerPhone customerEmail'
+                        })
+                        .lean();
+                }
+
+                // Add real-time quantityInStore for each product in the requested bill edit
+                await this.fetchRealTimeQuty(billEditReq);
+
+                return {
+                    currentBill,
+                    requestedBillEdit: billEditReq
+                };
+            }));
+
+            return detailedBillEditReqs;
+        } catch (error) {
+            console.error('Error fetching detailed bill edit requests:', error.message);
+            throw new Error(error.message);
+        }
+    }
+
+    // Helper function to fetch real-time quantityInStore
+    async fetchRealTimeQuty(bill) {
+        for (const product of bill.products) {
+            for (const variant of product.variants) {
+                for (const variantSize of variant.variantSizes) {
+                    const store = await Store.findOne({
+                        'products.productId': product.productId,
+                        'products.variants.variantId': variant.variantId,
+                        'products.variants.variantSizes.size': variantSize.size
+                    }, {
+                        'products': 1 // Fetch all products matching the condition
+                    });
+
+                    if (store && store.products.length) {
+                        const storeProduct = store.products.find(p => p.productId === product.productId);
+
+                        if (storeProduct) {
+                            const matchedVariant = storeProduct.variants.find(v => v.variantId === variant.variantId);
+
+                            if (matchedVariant) {
+                                const matchedSize = matchedVariant.variantSizes.find(vs => vs.size === variantSize.size);
+
+                                if (matchedSize) {
+                                    variantSize.quantityInStore = matchedSize.quantity;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     async validateBillEditReq(editBillReqId, isApproved, validateNote) {
         const session = await mongoose.startSession();
         session.startTransaction();

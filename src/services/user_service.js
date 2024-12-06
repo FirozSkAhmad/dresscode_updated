@@ -209,10 +209,10 @@ class UserService {
 
     async getUserCoupons(userId) {
         try {
-            // Find the user by uid and populate the associated coupons
+            // Find the user by userId and populate the associated coupons
             const user = await UserModel.findById(userId).populate({
                 path: 'coupons', // Assumes `coupons` is an array of coupon references in the User schema
-                select: 'couponCode discountPercentage status expiryDate linkedGroup linkedProductId usedDate', // Optional: Select specific fields
+                select: 'couponCode discountPercentage expiryDate linkedGroup linkedProductId usedDate', // Exclude `status`
                 options: { sort: { expiryDate: 1 } }
             });
 
@@ -225,7 +225,26 @@ class UserService {
                 throw new Error('No coupons found for this user');
             }
 
-            return user.coupons;
+            const currentDate = new Date();
+
+            // Update `coupons` array directly with dynamic `status`
+            user.coupons = user.coupons.map(coupon => {
+                let dynamicStatus;
+                if (coupon.usedDate) {
+                    dynamicStatus = 'used';
+                } else if (currentDate > coupon.expiryDate) {
+                    dynamicStatus = 'expired';
+                } else {
+                    dynamicStatus = 'pending';
+                }
+
+                return {
+                    ...coupon.toObject(),
+                    status: dynamicStatus // Inject the dynamic `status` into the coupon object
+                };
+            });
+
+            return user.coupons; // Return the updated coupons array
         } catch (error) {
             console.error('Error fetching coupons for user:', error.message);
             throw error;
@@ -584,6 +603,12 @@ class UserService {
                 }
 
                 return {
+                    userDetails: {
+                        name: user.name,
+                        email: user.email,
+                        gender: user.gender ? user.gender : "N/A",
+                        phoneNumber: user.phoneNumber ? user.phoneNumber : "N/A"
+                    },
                     ...order.toObject(),
                     products: productsWithDetails,
                     addressDetails: addressDetails.toObject()
