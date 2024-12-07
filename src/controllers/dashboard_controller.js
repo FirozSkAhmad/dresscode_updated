@@ -966,6 +966,9 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
             weight: data.boxWeight
         };
 
+        console.log("requiredData", requiredData)
+        console.log("SHIPROCKET_API_TOKEN", process.env.SHIPROCKET_API_TOKEN)
+
         // Configure Axios for the API request to Shiprocket
         const createOrderResponse = await axios.post(process.env.SHIPROCKET_API_URL + '/v1/external/orders/create/adhoc', requiredData, {
             headers: {
@@ -973,6 +976,8 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
                 'Authorization': `Bearer ${process.env.SHIPROCKET_API_TOKEN}`
             }
         });
+
+        console.log("createOrderResponse", createOrderResponse)
 
         // Data for courier assignment
         const assignCourierData = {
@@ -992,25 +997,14 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
         const pickupData = {
             shipment_id: [createOrderResponse.data.shipment_id]
         };
-        let generatePickupResponse;
-        // Third API call to generate a pickup
-        try {
-            generatePickupResponse = await axios.post(
-                `${process.env.SHIPROCKET_API_URL}/v1/external/courier/generate/pickup`,
-                pickupData,
-                {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${process.env.SHIPROCKET_API_TOKEN}`
-                    }
-                }
-            );
-        } catch (error) {
-            console.error("Failed to generate pickup:", error.response?.data || error.message);
-            console.log("Payload:", pickupData);
-            throw new Error("Failed to generate pickup. Check Shiprocket API logs for details.");
-        }
 
+        // Third API call to generate a pickup
+        const generatePickupResponse = await axios.post(process.env.SHIPROCKET_API_URL + '/v1/external/courier/generate/pickup', pickupData, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.SHIPROCKET_API_TOKEN}`
+            }
+        });
 
         const existingBox = await dimensionsModel.findOne({
             boxLength: data.boxLength,
@@ -1047,13 +1041,10 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
             { orderId: orderId },
             updateData,
             { new: true, session }
-        ).populate('user');
+        );
 
         await session.commitTransaction();
         session.endSession();
-
-        // Send shipping notification email
-        // sendShippingNotificationEmail(updatedOrder, addressDetails, products);
 
         // Respond with all the Shiprocket API responses and the updated order details
         res.status(200).json({
@@ -1065,7 +1056,6 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
     } catch (error) {
         await session.abortTransaction();
         session.endSession();
-        console.log(error);
         console.error("Failed to send order to Shiprocket or update database:", error.response?.data || error.message);
         res.status(500).send({ message: "Failed to process request", error: error.message });
     }
