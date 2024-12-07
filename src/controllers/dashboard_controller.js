@@ -988,31 +988,18 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
             }
         });
 
-        console.log(assignCourierResponse)
-
         // Prepare data for generating a pickup
         const pickupData = {
             shipment_id: [createOrderResponse.data.shipment_id]
         };
-        let generatePickupResponse;
-        // Third API call to generate a pickup
-        try {
-            generatePickupResponse = await axios.post(
-                `${process.env.SHIPROCKET_API_URL}/v1/external/courier/generate/pickup`,
-                pickupData,
-                {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${process.env.SHIPROCKET_API_TOKEN}`
-                    }
-                }
-            );
-        } catch (error) {
-            console.error("Failed to generate pickup:", error.response?.data || error.message);
-            console.log("Payload:", pickupData);
-            throw new Error("Failed to generate pickup. Check Shiprocket API logs for details.");
-        }
 
+        // Third API call to generate a pickup
+        const generatePickupResponse = await axios.post(process.env.SHIPROCKET_API_URL + '/v1/external/courier/generate/pickup', pickupData, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.SHIPROCKET_API_TOKEN}`
+            }
+        });
 
         const existingBox = await dimensionsModel.findOne({
             boxLength: data.boxLength,
@@ -1067,40 +1054,39 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
     } catch (error) {
         await session.abortTransaction();
         session.endSession();
-        console.log(error);
         console.error("Failed to send order to Shiprocket or update database:", error.response?.data || error.message);
         res.status(500).send({ message: "Failed to process request", error: error.message });
     }
 });
 
-async function sendShippingNotificationEmail(order, address) {
-    const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-            user: process.env.SENDER_EMAIL_ID,
-            pass: process.env.SENDER_PASSWORD
-        }
-    });
+// async function sendShippingNotificationEmail(order, address) {
+//     const transporter = nodemailer.createTransport({
+//         service: 'gmail',
+//         auth: {
+//             user: process.env.SENDER_EMAIL_ID,
+//             pass: process.env.SENDER_PASSWORD
+//         }
+//     });
 
-    const emailContent = `
-        <h2>Shipping Confirmation</h2>
-        <p>Dear ${address.firstName},</p>
-        <p>We're excited to let you know that your order <strong>${order.orderId}</strong> has been successfully processed and assigned to our courier partner.</p>
-        <p>You can view the complete details of your order and track its status by logging in to your account on DressCode eCommerce.</p>
-        <p><strong>Login here:</strong> <a href="https://ecom.dress-code.in/login" target="_blank">https://ecom.dress-code.in/login</a></p>
-        <p>Thank you for shopping with DressCode. We look forward to serving you again!</p>
-        <p>Best regards,<br>The DressCode Team</p>
-    `;
+//     const emailContent = `
+//         <h2>Shipping Confirmation</h2>
+//         <p>Dear ${address.firstName},</p>
+//         <p>We're excited to let you know that your order <strong>${order.orderId}</strong> has been successfully processed and assigned to our courier partner.</p>
+//         <p>You can view the complete details of your order and track its status by logging in to your account on DressCode eCommerce.</p>
+//         <p><strong>Login here:</strong> <a href="https://ecom.dress-code.in/login" target="_blank">https://ecom.dress-code.in/login</a></p>
+//         <p>Thank you for shopping with DressCode. We look forward to serving you again!</p>
+//         <p>Best regards,<br>The DressCode Team</p>
+//     `;
 
-    await transporter.sendMail({
-        from: process.env.SENDER_EMAIL_ID,
-        to: address.email,
-        subject: "Your Order is On the Way!",
-        html: emailContent
-    });
+//     await transporter.sendMail({
+//         from: process.env.SENDER_EMAIL_ID,
+//         to: address.email,
+//         subject: "Your Order is On the Way!",
+//         html: emailContent
+//     });
 
-    console.log("Shipping confirmation email sent successfully.");
-}
+//     console.log("Shipping confirmation email sent successfully.");
+// }
 
 router.post('/manifests/generate', async (req, res) => {
     const reqData = req.body;
