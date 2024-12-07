@@ -71,7 +71,6 @@ router.post('/verifyPayment', jwtHelperObj.verifyAccessToken, async (req, res) =
             // Find the order by orderId
             const order = await OrderModel.findOne({ orderId })
                 .populate('user', 'name email') // Populate user fields needed for the email
-                .populate('address')
                 .session(session);
 
             if (!order) {

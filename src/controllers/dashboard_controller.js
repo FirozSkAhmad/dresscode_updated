@@ -680,7 +680,6 @@ router.patch('/updateRefundStatus/:orderId', jwtHelperObj.verifyAccessToken, asy
         // Find the order by orderId within the session
         const order = await OrderModel.findOne({ orderId: orderId })
             .populate('user', 'name email') // Populate user fields needed for the email
-            .populate('address')
             .session(session);
 
         if (!order) {
