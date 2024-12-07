@@ -69,7 +69,10 @@ router.post('/verifyPayment', jwtHelperObj.verifyAccessToken, async (req, res) =
             }], { session });
 
             // Find the order by orderId
-            const order = await OrderModel.findOne({ orderId }).session(session);
+            const order = await OrderModel.findOne({ orderId })
+                .populate('user', 'name email') // Populate user fields needed for the email
+                .populate('address')
+                .session(session);
 
             if (!order) {
                 await session.abortTransaction();

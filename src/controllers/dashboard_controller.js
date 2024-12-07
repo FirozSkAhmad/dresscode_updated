@@ -678,7 +678,10 @@ router.patch('/updateRefundStatus/:orderId', jwtHelperObj.verifyAccessToken, asy
 
 
         // Find the order by orderId within the session
-        const order = await OrderModel.findOne({ orderId: orderId }).session(session);
+        const order = await OrderModel.findOne({ orderId: orderId })
+            .populate('user', 'name email') // Populate user fields needed for the email
+            .populate('address')
+            .session(session);
 
         if (!order) {
             await session.abortTransaction();
@@ -1039,7 +1042,7 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
             { orderId: orderId },
             updateData,
             { new: true, session }
-        );
+        ).populate('user');
 
         await session.commitTransaction();
         session.endSession();
@@ -1303,11 +1306,14 @@ router.patch('/return-order/:returnOrderId/update-refund-status', jwtHelperObj.v
             { returnOrderId: returnOrderId },
             { refund_payment_status: refund_payment_status },
             { new: true }  // Return the updated document
-        );
+        ).populate('user');
 
         if (!updatedReturnOrder) {
             return res.status(404).json({ message: 'Return order not found' });
         }
+
+        // Send refund status notification email
+        sendRefundNotificationEmail(updatedReturnOrder);
 
         res.json({
             message: 'Refund payment status updated successfully',
@@ -1319,31 +1325,43 @@ router.patch('/return-order/:returnOrderId/update-refund-status', jwtHelperObj.v
     }
 });
 
-router.patch('/return-order/:returnOrderId/update-refund-status', jwtHelperObj.verifyAccessToken, async (req, res) => {
-    const { returnOrderId } = req.params;
-    const { refund_payment_status } = req.body;
-
+// Function to send refund notification email
+async function sendRefundNotificationEmail(returnOrder) {
     try {
-        // Find the return order by returnOrderId and update refund_payment_status
-        const updatedReturnOrder = await ReturnOrdersModel.findOneAndUpdate(
-            { returnOrderId: returnOrderId },
-            { refund_payment_status: refund_payment_status },
-            { new: true }  // Return the updated document
-        );
-
-        if (!updatedReturnOrder) {
-            return res.status(404).json({ message: 'Return order not found' });
-        }
-
-        res.json({
-            message: 'Refund payment status updated successfully',
-            returnOrder: updatedReturnOrder
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: process.env.SENDER_EMAIL_ID,
+                pass: process.env.SENDER_PASSWORD
+            }
         });
-    } catch (err) {
-        console.error('Error updating refund payment status:', err);
-        res.status(500).json({ message: 'Internal server error' });
+
+        const emailContent = `
+            <h2>Refund Payment Status Update</h2>
+            <p>Dear ${returnOrder.user.name},</p>
+            <p>We would like to inform you that the refund status for your return order with ID <strong>${returnOrder.returnOrderId}</strong> has been updated.</p>
+            <p><strong>New Refund Status:</strong> ${returnOrder.refund_payment_status}</p>
+            <p>To view more details, please log in to your account using the link below:</p>
+            <p><a href="https://ecom.dress-code.in/login" target="_blank">https://ecom.dress-code.in/login</a></p>
+            <p>If you have any questions or concerns, please contact our support team.</p>
+            <br>
+            <p>Thank you for choosing DressCode E-commerce!</p>
+            <p>Best regards,</p>
+            <p>The DressCode Team</p>
+        `;
+
+        await transporter.sendMail({
+            from: process.env.SENDER_EMAIL_ID,
+            to: returnOrder.user.email,
+            subject: "Refund Payment Status Updated",
+            html: emailContent
+        });
+
+        console.log("Refund notification email sent successfully.");
+    } catch (error) {
+        console.error("Failed to send refund notification email:", error.message);
     }
-});
+}
 
 function formatDate(isoDateString) {
     const date = new Date(isoDateString);
