@@ -187,7 +187,7 @@ async function sendOrderConfirmationEmail(order) {
             <p>Dear ${order.user.name},</p>
             <p>Thank you for placing an order with us! Your order ID is <strong>${order.orderId}</strong>.</p>
             <p>To view your order details, please log in to your account using the link below:</p>
-            <p><a href="https://ecom.dress-code.in/login" target="_blank">https://ecom.dress-code.in/login</a></p>
+            <p><a href="https://ecom.dress-code.in/login" target="_blank">Click here to log in</a></p>
             <p>If you have any questions or concerns, feel free to contact our support team.</p>
             <br>
             <p>Thank you for choosing DressCode E-commerce!</p>

@@ -733,7 +733,6 @@ class UserService {
             <p>Your order with ID <strong>${order.orderId}</strong> has been successfully canceled.</p>
             <p>You can log in to your DressCode account to review your order details or manage your account:</p>
             <p><a href="https://ecom.dress-code.in/login" target="_blank">Click here to log in</a></p>
-            <br>
             <p>If you have any questions, feel free to contact our support team.</p>
             <br>
             <p>Thank you,</p>
