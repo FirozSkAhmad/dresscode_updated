@@ -1042,7 +1042,7 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
         session.endSession();
 
         // Send shipping notification email
-        sendShippingNotificationEmail(updatedOrder, addressDetails, products);
+        // sendShippingNotificationEmail(updatedOrder, addressDetails, products);
 
         // Respond with all the Shiprocket API responses and the updated order details
         res.status(200).json({
