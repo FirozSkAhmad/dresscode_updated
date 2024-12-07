@@ -22,6 +22,7 @@ const { startSession } = require('mongoose');
 require('dotenv').config();  // Make sure to require dotenv if you need access to your .env variables
 const DashboardService = require('../services/dashboard_service');
 const dashboardServiceObj = new DashboardService();
+const nodemailer = require('nodemailer');
 
 const modelMap = {
     "HEAL": HealModel,
@@ -697,6 +698,9 @@ router.patch('/updateRefundStatus/:orderId', jwtHelperObj.verifyAccessToken, asy
         await session.commitTransaction();
         session.endSession();
 
+        // Send refund confirmation email
+        sendRefundConfirmationEmail(order);
+
         res.status(200).send({
             message: `Refund payment status updated successfully.`,
         });
@@ -710,6 +714,45 @@ router.patch('/updateRefundStatus/:orderId', jwtHelperObj.verifyAccessToken, asy
         res.status(500).send({ message: "Failed to update refund payment status", error: error.message });
     }
 });
+
+// Function to send refund confirmation email
+async function sendRefundConfirmationEmail(order) {
+    try {
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: process.env.SENDER_EMAIL_ID,
+                pass: process.env.SENDER_PASSWORD
+            }
+        });
+
+        const emailContent = `
+            <h2>Refund Processed Successfully</h2>
+            <p>Dear ${order.user.name},</p>
+            <p>We are pleased to inform you that your refund for the order with ID <strong>${order.orderId}</strong> has been successfully processed.</p>
+            <p>The refund was completed on <strong>${new Date(order.dateOfRefunded).toLocaleString()}</strong>.</p>
+            <p>You can log in to your DressCode account to review your order details or manage your account:</p>
+            <p><a href="https://ecom.dress-code.in/login" target="_blank">Click here to log in</a></p>
+            <br>
+            <p>If you have any questions or concerns, feel free to contact our support team.</p>
+            <br>
+            <p>Thank you,</p>
+            <p>The DressCode Team</p>
+        `;
+
+        await transporter.sendMail({
+            from: process.env.SENDER_EMAIL_ID,
+            to: order.user.email,
+            subject: "Refund Processed Successfully",
+            html: emailContent
+        });
+
+        console.log("Refund confirmation email sent successfully.");
+    } catch (error) {
+        console.error("Failed to send refund confirmation email:", error.message);
+    }
+}
+
 
 router.get('/getRefundedOrders', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
@@ -1001,6 +1044,9 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
         await session.commitTransaction();
         session.endSession();
 
+        // Send shipping notification email
+        sendShippingNotificationEmail(updatedOrder, addressDetails, products);
+
         // Respond with all the Shiprocket API responses and the updated order details
         res.status(200).json({
             shiprocketOrderResponse: createOrderResponse.data,
@@ -1015,6 +1061,35 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
         res.status(500).send({ message: "Failed to process request", error: error.message });
     }
 });
+
+async function sendShippingNotificationEmail(order, address) {
+    const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: process.env.SENDER_EMAIL_ID,
+            pass: process.env.SENDER_PASSWORD
+        }
+    });
+
+    const emailContent = `
+        <h2>Shipping Confirmation</h2>
+        <p>Dear ${address.firstName},</p>
+        <p>We're excited to let you know that your order <strong>${order.orderId}</strong> has been successfully processed and assigned to our courier partner.</p>
+        <p>You can view the complete details of your order and track its status by logging in to your account on DressCode eCommerce.</p>
+        <p><strong>Login here:</strong> <a href="https://ecom.dress-code.in/login" target="_blank">https://ecom.dress-code.in/login</a></p>
+        <p>Thank you for shopping with DressCode. We look forward to serving you again!</p>
+        <p>Best regards,<br>The DressCode Team</p>
+    `;
+
+    await transporter.sendMail({
+        from: process.env.SENDER_EMAIL_ID,
+        to: address.email,
+        subject: "Your Order is On the Way!",
+        html: emailContent
+    });
+
+    console.log("Shipping confirmation email sent successfully.");
+}
 
 router.post('/manifests/generate', async (req, res) => {
     const reqData = req.body;

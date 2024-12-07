@@ -12,6 +12,7 @@ const HealModel = require('../utils/Models/healModel');
 const EliteModel = require('../utils/Models/eliteModel');
 const TogsModel = require('../utils/Models/togsModel');
 const CouponModel = require('../utils/Models/couponModel.js');
+const nodemailer = require('nodemailer');
 
 // Mapping from group to Product Model
 const modelMap = {
@@ -128,6 +129,9 @@ router.post('/verifyPayment', jwtHelperObj.verifyAccessToken, async (req, res) =
             await session.commitTransaction();
             session.endSession();
 
+            // Send confirmation email
+            sendOrderConfirmationEmail(order);
+
             res.status(200).json({
                 success: true,
                 message: Constants.SUCCESS,
@@ -165,5 +169,42 @@ router.post('/verifyPayment', jwtHelperObj.verifyAccessToken, async (req, res) =
         });
     }
 });
+
+async function sendOrderConfirmationEmail(order) {
+    try {
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: process.env.SENDER_EMAIL_ID,
+                pass: process.env.SENDER_PASSWORD
+            }
+        });
+
+        const emailContent = `
+            <h2>Order Confirmation</h2>
+            <p>Dear ${order.user.name},</p>
+            <p>Thank you for placing an order with us! Your order ID is <strong>${order.orderId}</strong>.</p>
+            <p>To view your order details, please log in to your account using the link below:</p>
+            <p><a href="https://ecom.dress-code.in/login" target="_blank">https://ecom.dress-code.in/login</a></p>
+            <p>If you have any questions or concerns, feel free to contact our support team.</p>
+            <br>
+            <p>Thank you for choosing DressCode E-commerce!</p>
+            <p>Best regards,</p>
+            <p>The DressCode Team</p>
+        `;
+
+        await transporter.sendMail({
+            from: process.env.SENDER_EMAIL_ID,
+            to: order.user.email,
+            subject: "Your Order Confirmation",
+            html: emailContent
+        });
+
+        console.log("Order confirmation email sent successfully.");
+    } catch (error) {
+        console.error("Failed to send order confirmation email:", error.message);
+    }
+}
+
 
 module.exports = router;

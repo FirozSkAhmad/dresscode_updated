@@ -7,6 +7,7 @@ const mongoose = require('mongoose');
 const JWTHelper = require('../utils/Helpers/jwt_helper')
 const bcrypt = require('bcrypt');
 const colorCodes = require('../utils/Helpers/data');
+const nodemailer = require('nodemailer');
 const modelMap = {
     "HEAL": HealModel,
     "ELITE": EliteModel,
@@ -695,6 +696,9 @@ class UserService {
             await session.commitTransaction();
             session.endSession();
 
+            // Send cancellation email
+            sendCancellationEmail(order);
+
             return { success: true, order: order.toObject() };
 
         } catch (error) {
@@ -709,6 +713,44 @@ class UserService {
             throw error;
         }
     }
+
+    // Function to send cancellation email
+    async sendCancellationEmail(order) {
+        try {
+            const transporter = nodemailer.createTransport({
+                service: 'gmail',
+                auth: {
+                    user: process.env.SENDER_EMAIL_ID,
+                    pass: process.env.SENDER_PASSWORD
+                }
+            });
+
+            const emailContent = `
+            <h2>Order Cancellation Confirmation</h2>
+            <p>Dear ${order.user.name},</p>
+            <p>Your order with ID <strong>${order.orderId}</strong> has been successfully canceled.</p>
+            <p>You can log in to your DressCode account to review your order details or manage your account:</p>
+            <p><a href="https://ecom.dress-code.in/login" target="_blank">Click here to log in</a></p>
+            <br>
+            <p>If you have any questions, feel free to contact our support team.</p>
+            <br>
+            <p>Thank you,</p>
+            <p>The DressCode Team</p>
+        `;
+
+            await transporter.sendMail({
+                from: process.env.SENDER_EMAIL_ID,
+                to: order.user.email,
+                subject: "Order Cancellation Confirmation",
+                html: emailContent
+            });
+
+            console.log("Cancellation email sent successfully.");
+        } catch (error) {
+            console.error("Failed to send cancellation email:", error.message);
+        }
+    }
+
 
     async getUserCanceledOrdersWithProductDetails(userId) {
         try {
