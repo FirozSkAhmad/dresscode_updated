@@ -992,14 +992,25 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
         const pickupData = {
             shipment_id: [createOrderResponse.data.shipment_id]
         };
-
+        let generatePickupResponse;
         // Third API call to generate a pickup
-        const generatePickupResponse = await axios.post(process.env.SHIPROCKET_API_URL + '/v1/external/courier/generate/pickup', pickupData, {
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${process.env.SHIPROCKET_API_TOKEN}`
-            }
-        });
+        try {
+            generatePickupResponse = await axios.post(
+                `${process.env.SHIPROCKET_API_URL}/v1/external/courier/generate/pickup`,
+                pickupData,
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${process.env.SHIPROCKET_API_TOKEN}`
+                    }
+                }
+            );
+        } catch (error) {
+            console.error("Failed to generate pickup:", error.response?.data || error.message);
+            console.log("Payload:", pickupData);
+            throw new Error("Failed to generate pickup. Check Shiprocket API logs for details.");
+        }
+
 
         const existingBox = await dimensionsModel.findOne({
             boxLength: data.boxLength,
