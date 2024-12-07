@@ -699,7 +699,7 @@ class UserService {
             session.endSession();
 
             // Send cancellation email
-            sendCancellationEmail(order);
+            this.sendCancellationEmail(order);
 
             return { success: true, order: order.toObject() };
 
