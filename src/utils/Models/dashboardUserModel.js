@@ -44,7 +44,7 @@ const dashboardUserSchema = new mongoose.Schema({
         type: String,
         required: true,
         trim: true,
-        enum: ['SUPER ADMIN','PRODUCT MANAGER', 'CUSTOMER CARE'],
+        enum: ['SUPER ADMIN', 'PRODUCT MANAGER', 'CUSTOMER CARE', 'INVENTORY MANAGER'],
     }
 });
 
