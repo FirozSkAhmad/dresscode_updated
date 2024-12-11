@@ -70,7 +70,7 @@ router.post("/login/:loginType", verifyToken, async (req, res) => {
             httpOnly: true,
             secure: true,
             sameSite: 'None',
-            maxAge: 420000,  // 7 minutes in milliseconds
+            maxAge: 604800000, // 7 days in milliseconds
             path: '/'
         });
 

@@ -9,7 +9,7 @@ class JWTHelper {
             const payload = {}
             const secret = process.env.ACCESS_TOKEN_SECRETKEY
             const options = {
-                expiresIn: '3m',
+                expiresIn: '1h',
                 issuer: 'DressCodeApplication',
                 audience: tokenPayload,
             }
@@ -29,7 +29,7 @@ class JWTHelper {
             const payload = {}
             const secret = process.env.REFRESH_TOKEN_SECRETKEY
             const options = {
-                expiresIn: '7m',
+                expiresIn: '7d',
                 issuer: 'DressCodeApplication',
                 audience: tokenPayload,
             }
