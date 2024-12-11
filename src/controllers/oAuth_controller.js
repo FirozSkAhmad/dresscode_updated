@@ -70,6 +70,7 @@ router.post("/login/:loginType", verifyToken, async (req, res) => {
             httpOnly: true,
             secure: true,
             sameSite: 'None',
+            maxAge: 420000,  // 7 minutes in milliseconds
             path: '/'
         });
 
@@ -98,6 +99,7 @@ router.post("/login/:loginType", verifyToken, async (req, res) => {
         // Prepare response data
         const data = {
             accessToken,
+            refreshToken,
             uid,
             userId: user._id,
             name: user.name,
