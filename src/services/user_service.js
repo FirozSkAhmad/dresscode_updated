@@ -95,9 +95,10 @@ class UserService {
                 httpOnly: true,  // Prevents JavaScript from accessing the cookie
                 secure: true,    // Requires HTTPS to be enabled
                 sameSite: 'None', // Allows the cookie to be sent on cross-site requests
-                maxAge: 600000, // 10 minutes in milliseconds
+                maxAge: 900000,  // 15 minutes in milliseconds
                 path: '/'
             });
+
 
             const data = {
                 accessToken: accessToken,
