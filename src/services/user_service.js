@@ -92,9 +92,10 @@ class UserService {
 
             // Set the refresh token in an HTTP-only cookie
             res.cookie('refreshToken', refreshToken, {
-                httpOnly: true,    // Prevents JavaScript from accessing the cookie
-                secure: true, // Required when sameSite is 'None'
-                sameSite: 'None',
+                httpOnly: true,  // Prevents JavaScript from accessing the cookie
+                secure: true,    // Requires HTTPS to be enabled
+                sameSite: 'None', // Allows the cookie to be sent on cross-site requests
+                maxAge: 600000, // 10 minutes in milliseconds
                 path: '/'
             });
 
