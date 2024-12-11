@@ -91,15 +91,16 @@ class UserService {
             const refreshToken = await this.jwtObject.generateRefreshToken(tokenPayload);
 
             // Set the refresh token in an HTTP-only cookie
-            res.cookie('refreshToken', refreshToken, {
-                httpOnly: true,    // Prevents JavaScript from accessing the cookie
-                secure: true, // Required when sameSite is 'None'
-                sameSite: 'None',
-                path: '/'
-            });
+            // res.cookie('refreshToken', refreshToken, {
+            //     httpOnly: true,    // Prevents JavaScript from accessing the cookie
+            //     secure: true, // Required when sameSite is 'None'
+            //     sameSite: 'None',
+            //     path: '/'
+            // });
 
             const data = {
                 accessToken: accessToken,
+                refreshToken: refreshToken,
                 userId: userData._id,
                 name: userData.name,
                 email: userData.email,
