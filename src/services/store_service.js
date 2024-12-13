@@ -2482,6 +2482,8 @@ class StoreService {
         }
     }
     async getStoreOverview(storeId) {
+        const session = await mongoose.startSession();
+        session.startTransaction();
         try {
             // Get the store using storeId
             const storeDetails = await Store.findOne({ storeId }).session(session);
@@ -2518,7 +2520,8 @@ class StoreService {
             const commissionPercentage = storeDetails.commissionPercentage || 0;
             const commissionEarned = (totalBilledAmount * commissionPercentage) / 100;
 
-
+            // Commit transaction
+            await session.commitTransaction();
             return {
                 storeId,
                 totalBilledAmount,
@@ -2528,9 +2531,12 @@ class StoreService {
                 commissionEarned
             };
         } catch (error) {
+            await session.abortTransaction();
             // Handle any errors that occur during the database query
             console.error("Error fetching store overview:", error);
             throw new Error("Could not fetch store overview");
+        } finally {
+            session.endSession(); // Ensure session is always ended
         }
     }
 
