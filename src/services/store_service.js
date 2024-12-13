@@ -2507,11 +2507,18 @@ class StoreService {
             // Extracting the values, defaulting to 0 if no matching documents are found
             const { totalBilledAmount = 0, activeBillCount = 0, deletedBillCount = 0 } = result.length > 0 ? result[0] : {};
 
+            // Calculate commission earned
+            const commissionPercentage = storeDetails.commissionPercentage || 0;
+            const commissionEarned = (totalBilledAmount * commissionPercentage) / 100;
+
+
             return {
                 storeId,
                 totalBilledAmount,
                 activeBillCount,
-                deletedBillCount
+                deletedBillCount,
+                commissionPercentage,
+                commissionEarned
             };
         } catch (error) {
             // Handle any errors that occur during the database query
