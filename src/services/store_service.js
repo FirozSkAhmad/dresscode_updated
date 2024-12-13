@@ -56,6 +56,54 @@ class StoreService {
         return await newStore.save();
     };
 
+    async updateStore(storeId, updatedData, res) {
+        // Check for uniqueness of userName, phoneNo, or emailID
+        const existingStore = await Store.findOne({
+            $or: [
+                { storeName: updatedData.storeName },
+                { userName: updatedData.userName },
+                { phoneNo: updatedData.phoneNo },
+                { emailID: updatedData.emailID }
+            ],
+            _id: { $ne: storeId } // Exclude the current store being updated
+        });
+
+        if (existingStore) {
+            return res.status(400).json({
+                success: false,
+                message: 'storeName, User Name, Phone No, or Email ID already exists.'
+            });
+        }
+
+        // Check if password is provided and hash it
+        if (updatedData.password) {
+            updatedData.password = await bcrypt.hash(updatedData.password, 10);
+        }
+
+        // Find the store by storeId and update
+        const updatedStore = await Store.findOneAndUpdate(
+            { storeId },
+            {
+                ...updatedData,
+                storeName: updatedData.storeName.toUpperCase(), // Convert storeName to uppercase
+            },
+            { new: true }
+        );
+
+        if (!updatedStore) {
+            return res.status(404).json({
+                success: false,
+                message: 'Store not found.'
+            });
+        }
+
+        return {
+            success: true,
+            statusCode: 200,
+            store: updatedStore
+        };
+    }
+
     async loginUser(userDetails, session, res) {
         try {
             const storeData = await Store.findOne({ emailID: userDetails.emailID }).session(session);

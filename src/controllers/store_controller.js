@@ -70,6 +70,46 @@ router.post('/create-store', jwtHelperObj.verifyAccessToken, async (req, res) =>
     }
 });
 
+router.put('/update-store/:storeId', jwtHelperObj.verifyAccessToken, async (req, res) => {
+    try {
+        const roleType = req.aud.split(":")[1]; // Middleware decodes JWT and adds it to req
+        if (roleType !== "WAREHOUSE MANAGER") {
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access. Only Warehouse Manager can update data."
+            });
+        }
+
+        const { storeId } = req.params;
+        const updatedData = req.body;
+
+        // Validate request data
+        const validationErrors = validateStoreData(updatedData);
+        if (validationErrors.length > 0) {
+            return res.status(400).json({ errors: validationErrors });
+        }
+
+        // Call the service layer to update the store
+        const serviceResponse = await storeServiceObj.updateStore(storeId, updatedData, res);
+
+        // Check the service response
+        if (!serviceResponse.success) {
+            return res.status(serviceResponse.statusCode).json({
+                message: serviceResponse.message
+            });
+        }
+
+        res.status(serviceResponse.statusCode).json({
+            message: 'Store updated successfully',
+            store: serviceResponse.store
+        });
+    } catch (error) {
+        console.error('Error updating store:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
 // Define the route to get all store names
 router.get('/store-names', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
