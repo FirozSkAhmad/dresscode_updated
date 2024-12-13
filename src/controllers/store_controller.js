@@ -70,7 +70,8 @@ router.post('/create-store', jwtHelperObj.verifyAccessToken, async (req, res) =>
     }
 });
 
-router.put('/update-store/:storeId', jwtHelperObj.verifyAccessToken, async (req, res) => {
+// Controller for updating store
+router.patch('/update-store/:storeId', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
         const roleType = req.aud.split(":")[1]; // Middleware decodes JWT and adds it to req
         if (roleType !== "WAREHOUSE MANAGER") {
@@ -81,31 +82,30 @@ router.put('/update-store/:storeId', jwtHelperObj.verifyAccessToken, async (req,
         }
 
         const { storeId } = req.params;
-        const updatedData = req.body;
+        const updateFields = req.body; // Only send the fields to be updated
 
-        // Validate request data
-        const validationErrors = validateStoreData(updatedData);
-        if (validationErrors.length > 0) {
-            return res.status(400).json({ errors: validationErrors });
+        // Ensure at least one field is provided for update
+        if (Object.keys(updateFields).length === 0) {
+            return res.status(400).json({ message: "No fields provided for update." });
         }
 
         // Call the service layer to update the store
-        const serviceResponse = await storeServiceObj.updateStore(storeId, updatedData);
+        const serviceResponse = await storeServiceObj.updateStore(storeId, updateFields);
 
         // Check the service response
         if (!serviceResponse.success) {
-            return res.status(serviceResponse.statusCode).json({
+            return res.status(serviceResponse.statusCode).send({
                 message: serviceResponse.message
             });
         }
 
-        res.status(serviceResponse.statusCode).json({
+        res.status(serviceResponse.statusCode).send({
             message: 'Store updated successfully',
             store: serviceResponse.store
         });
     } catch (error) {
         console.error('Error updating store:', error.message);
-        res.status(500).json({ error: error.message });
+        res.status(500).send({ error: error.message });
     }
 });
 

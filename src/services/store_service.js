@@ -56,39 +56,37 @@ class StoreService {
         return await newStore.save();
     };
 
-    async updateStore(storeId, updatedData) {
-        // Check for uniqueness of userName, phoneNo, or emailID
-        const existingStore = await Store.findOne({
-            $or: [
-                { storeName: updatedData.storeName },
-                { userName: updatedData.userName },
-                { phoneNo: updatedData.phoneNo },
-                { emailID: updatedData.emailID }
-            ],
-            _id: { $ne: storeId } // Exclude the current store being updated
-        });
+    // Service for updating store
+    async updateStore(storeId, updateFields) {
+        // Validate if the fields provided are unique
+        if (updateFields.storeName || updateFields.userName || updateFields.phoneNo || updateFields.emailID) {
+            const existingStore = await Store.findOne({
+                $or: [
+                    { storeName: updateFields.storeName },
+                    { userName: updateFields.userName },
+                    { phoneNo: updateFields.phoneNo },
+                    { emailID: updateFields.emailID }
+                ],
+                _id: { $ne: storeId } // Exclude the current store being updated
+            });
 
-        if (existingStore) {
-            return {
-                statusCode: 400,
-                success: false,
-                message: 'storeName, User Name, Phone No, or Email ID already exists.'
-            };
+            if (existingStore) {
+                return {
+                    statusCode: 400,
+                    success: false,
+                    message: 'storeName, User Name, Phone No, or Email ID already exists.'
+                };
+            }
         }
 
-        // Check if password is provided and hash it
-        if (updatedData.password) {
-            updatedData.password = await bcrypt.hash(updatedData.password, 10);
-        }
-
-        // Find the store by storeId and update
+        // Update store data
         const updatedStore = await Store.findOneAndUpdate(
             { storeId },
             {
-                ...updatedData,
-                storeName: updatedData.storeName.toUpperCase(), // Convert storeName to uppercase
+                ...updateFields,
+                ...(updateFields.storeName && { storeName: updateFields.storeName.toUpperCase() }) // Convert storeName to uppercase if provided
             },
-            { new: true }
+            { new: true } // Return the updated document
         );
 
         if (!updatedStore) {
@@ -105,6 +103,7 @@ class StoreService {
             store: updatedStore
         };
     }
+
 
     async loginUser(userDetails, session, res) {
         try {
