@@ -56,7 +56,7 @@ class StoreService {
         return await newStore.save();
     };
 
-    async updateStore(storeId, updatedData, res) {
+    async updateStore(storeId, updatedData) {
         // Check for uniqueness of userName, phoneNo, or emailID
         const existingStore = await Store.findOne({
             $or: [
@@ -69,10 +69,11 @@ class StoreService {
         });
 
         if (existingStore) {
-            return res.status(400).json({
+            return {
+                statusCode: 400,
                 success: false,
                 message: 'storeName, User Name, Phone No, or Email ID already exists.'
-            });
+            };
         }
 
         // Check if password is provided and hash it
@@ -91,10 +92,11 @@ class StoreService {
         );
 
         if (!updatedStore) {
-            return res.status(404).json({
+            return {
+                statusCode: 404,
                 success: false,
                 message: 'Store not found.'
-            });
+            };
         }
 
         return {

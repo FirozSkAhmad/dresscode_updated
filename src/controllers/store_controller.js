@@ -90,7 +90,7 @@ router.put('/update-store/:storeId', jwtHelperObj.verifyAccessToken, async (req,
         }
 
         // Call the service layer to update the store
-        const serviceResponse = await storeServiceObj.updateStore(storeId, updatedData, res);
+        const serviceResponse = await storeServiceObj.updateStore(storeId, updatedData);
 
         // Check the service response
         if (!serviceResponse.success) {
