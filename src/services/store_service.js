@@ -2483,6 +2483,13 @@ class StoreService {
     }
     async getStoreOverview(storeId) {
         try {
+            // Get the store using storeId
+            const storeDetails = await Store.findOne({ storeId }).session(session);
+
+            if (!storeDetails) {
+                throw new Error("Store not found.");
+            }
+
             // Aggregating the total billed amount, number of active bills, and number of deleted bills
             const result = await Bill.aggregate([
                 { $match: { storeId } }, // Match bills by storeId
