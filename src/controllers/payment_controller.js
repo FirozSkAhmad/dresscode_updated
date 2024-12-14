@@ -138,12 +138,22 @@ router.post('/verifyPayment', jwtHelperObj.verifyAccessToken, async (req, res) =
 
             // After successful payment and order creation, fetch the updated orders for the user
             const userId = order.user._id;
+            const orderId = order.orderId;
             const ordersWithDetails = await userServiceObj.getUserOrdersWithProductDetails(userId);
+            const OrderWithDetails = ordersWithDetails.find(o => o.orderId === orderId);
+
+            // Check if the order was found
+            if (!singleOrderWithDetails) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'No order found with the given orderId'
+                });
+            }
 
             res.status(200).json({
                 success: true,
                 message: Constants.SUCCESS,
-                ordersWithDetails
+                OrderWithDetails
             });
         } else {
             // Delete the order by orderId
