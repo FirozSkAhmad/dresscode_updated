@@ -138,12 +138,13 @@ router.post('/verifyPayment', jwtHelperObj.verifyAccessToken, async (req, res) =
 
             // After successful payment and order creation, fetch the updated orders for the user
             const userId = order.user._id;
+            console.log(order)
             const orderId = order.orderId;
             const ordersWithDetails = await userServiceObj.getUserOrdersWithProductDetails(userId);
             const OrderWithDetails = ordersWithDetails.find(o => o.orderId === orderId);
 
             // Check if the order was found
-            if (!singleOrderWithDetails) {
+            if (!OrderWithDetails) {
                 return res.status(404).json({
                     success: false,
                     message: 'No order found with the given orderId'
