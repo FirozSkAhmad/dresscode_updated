@@ -128,6 +128,8 @@ router.post('/verifyPayment', jwtHelperObj.verifyAccessToken, async (req, res) =
 
             // Save the changes to the database
             await order.save({ session });
+            console.log(order)
+
 
             // Commit the transaction
             await session.commitTransaction();
@@ -138,7 +140,6 @@ router.post('/verifyPayment', jwtHelperObj.verifyAccessToken, async (req, res) =
 
             // After successful payment and order creation, fetch the updated orders for the user
             const userId = order.user._id;
-            console.log(order)
             const orderId = order.orderId;
             const ordersWithDetails = await userServiceObj.getUserOrdersWithProductDetails(userId);
             const OrderWithDetails = ordersWithDetails.find(o => o.orderId === orderId);
