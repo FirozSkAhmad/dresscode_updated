@@ -13,6 +13,8 @@ const EliteModel = require('../utils/Models/eliteModel');
 const TogsModel = require('../utils/Models/togsModel');
 const CouponModel = require('../utils/Models/couponModel.js');
 const nodemailer = require('nodemailer');
+const UserService = require('../services/user_service');
+const userServiceObj = new UserService();
 
 // Mapping from group to Product Model
 const modelMap = {
@@ -134,9 +136,14 @@ router.post('/verifyPayment', jwtHelperObj.verifyAccessToken, async (req, res) =
             // Send confirmation email
             sendOrderConfirmationEmail(order);
 
+            // After successful payment and order creation, fetch the updated orders for the user
+            const userId = order.user._id;
+            const ordersWithDetails = await userServiceObj.getUserOrdersWithProductDetails(userId);
+
             res.status(200).json({
                 success: true,
                 message: Constants.SUCCESS,
+                ordersWithDetails
             });
         } else {
             // Delete the order by orderId
