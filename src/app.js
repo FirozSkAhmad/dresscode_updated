@@ -84,8 +84,8 @@ class App {
 
     // Method to schedule API call
     scheduleShiprocketApiCall() {
-        // Schedule the task to run every 12 hours
-        cron.schedule('0 0,6 * * *', async () => {
+        // Schedule the task to run every 6 hours
+        cron.schedule('0 */6 * * *', async () => {
             try {
                 console.log("Scheduled API call to Shiprocket triggered");
 
