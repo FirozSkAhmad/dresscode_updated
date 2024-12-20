@@ -967,12 +967,17 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
         };
 
         // Configure Axios for the API request to Shiprocket
-        const createOrderResponse = await axios.post(process.env.SHIPROCKET_API_URL + '/v1/external/orders/create/adhoc', requiredData, {
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${process.env.SHIPROCKET_API_TOKEN}`
-            }
-        });
+        let createOrderResponse;
+        try {
+            createOrderResponse = await axios.post(`${process.env.SHIPROCKET_API_URL}/v1/external/orders/create/adhoc`, requiredData, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${process.env.SHIPROCKET_API_TOKEN}`,
+                },
+            });
+        } catch (error) {
+            throw new Error(`Failed to create order in Shiprocket: ${error.response?.data?.message || error.message}`);
+        }
 
         // Data for courier assignment
         const assignCourierData = {
@@ -981,12 +986,17 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
         };
 
         // Second API call to assign a courier
-        const assignCourierResponse = await axios.post(process.env.SHIPROCKET_API_URL + '/v1/external/courier/assign/awb', assignCourierData, {
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${process.env.SHIPROCKET_API_TOKEN}`
-            }
-        });
+        let assignCourierResponse;
+        try {
+            assignCourierResponse = await axios.post(`${process.env.SHIPROCKET_API_URL}/v1/external/courier/assign/awb`, assignCourierData, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${process.env.SHIPROCKET_API_TOKEN}`,
+                },
+            });
+        } catch (error) {
+            throw new Error(`Failed to assign courier in Shiprocket: ${error.response?.data?.message || error.message}`);
+        }
 
         // Prepare data for generating a pickup
         const pickupData = {
@@ -994,12 +1004,18 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
         };
 
         // Third API call to generate a pickup
-        const generatePickupResponse = await axios.post(process.env.SHIPROCKET_API_URL + '/v1/external/courier/generate/pickup', pickupData, {
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${process.env.SHIPROCKET_API_TOKEN}`
-            }
-        });
+        
+        let generatePickupResponse;
+        try {
+            generatePickupResponse = await axios.post(`${process.env.SHIPROCKET_API_URL}/v1/external/courier/generate/pickup`, pickupData, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${process.env.SHIPROCKET_API_TOKEN}`,
+                },
+            });
+        } catch (error) {
+            throw new Error(`Failed to generate pickup in Shiprocket: ${error.response?.data?.message || error.message}`);
+        }
 
         const existingBox = await dimensionsModel.findOne({
             boxLength: data.boxLength,
