@@ -695,7 +695,10 @@ class StoreService {
                 .exec();
 
             if (!assignedInventory) {
-                throw new Error('Assigned inventory not found');
+                return res.status(404).json({
+                    status: 404,
+                    message: "Assigned inventory not found."
+                });
             }
 
             const productsData = assignedInventory.products.map(product => ({
@@ -859,7 +862,10 @@ class StoreService {
                 .exec();
 
             if (raisedInventories.length === 0) {
-                throw new Error('No assigned inventories found for the given storeId.');
+                return res.status(404).json({
+                    status: 404,
+                    message: 'No assigned inventories found for the given storeId.'
+                });
             }
 
             const formattedData = raisedInventories.map(inv => ({
@@ -873,7 +879,7 @@ class StoreService {
 
             return formattedData
         } catch (error) {
-            console.error("Error while retrieving assigned inventories:", error.message);
+            console.error("Error while retrieving raised inventories requests:", error.message);
             throw new Error("Server error");
         }
     }
