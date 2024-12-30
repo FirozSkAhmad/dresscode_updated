@@ -23,7 +23,6 @@ const addressSchema = new mongoose.Schema({
         required: [true, 'E-mail is required'],
         trim: true,
         lowercase: true,
-        unique: true,
         validate: {
             validator: function (v) {
                 return /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(v);
