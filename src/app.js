@@ -28,15 +28,13 @@ class App {
             console.log("PLUGINS loaded");
 
             this.app.use(cors({
-                origin: allowedOrigins.includes('*') // Check if * is in allowedOrigins
-                    ? '*' // Allow all origins if * is present
-                    : function (origin, callback) {
-                        if (allowedOrigins.includes(origin) || !origin) {
-                            callback(null, origin); // Allow the origin if it's in the list or is undefined (e.g., Postman)
-                        } else {
-                            callback(new Error('Not allowed by CORS')); // Reject other origins
-                        }
-                    },
+                origin: function (origin, callback) {
+                    if (allowedOrigins.includes(origin) || !origin) {
+                        callback(null, origin);
+                    } else {
+                        callback(new Error('Not allowed by CORS'));
+                    }
+                },
                 methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], // Allowed HTTP methods
                 allowedHeaders: ['Content-Type', 'Authorization'], // Allowed headers
                 credentials: true, // Allow cookies and authentication headers
