@@ -70,11 +70,11 @@ class OrderService {
                 // Calculate slab discount percentage based on quantity
                 let slabDiscountPercentage = 0;
                 if (quantityOrdered >= 6 && quantityOrdered <= 10) {
-                    slabDiscountPercentage = 5;//5
+                    slabDiscountPercentage = 0;//5
                 } else if (quantityOrdered >= 11 && quantityOrdered <= 20) {
-                    slabDiscountPercentage = 10;//10
+                    slabDiscountPercentage = 0;//10
                 } else if (quantityOrdered >= 21 && quantityOrdered <= 35) {
-                    slabDiscountPercentage = 15;//15
+                    slabDiscountPercentage = 0;//15
                 }
     
                 const totalPrice = productDoc.price * quantityOrdered;

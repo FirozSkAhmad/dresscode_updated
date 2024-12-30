@@ -854,7 +854,8 @@ router.get('/getQuoteDetails/:quoteId', jwtHelperObj.verifyAccessToken, async (r
                 quantityRequired: quote.quantityRequired,
                 imgUrl: quote.imgUrl,
                 logoUrl: quote.logoUrl,
-                logoPosition: quote.logoPosition
+                name: quote.name,
+                logoPosition: quote.logoPosition,
             },
             addressDetails: quote.address
         };
