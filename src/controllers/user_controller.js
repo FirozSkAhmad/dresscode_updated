@@ -452,6 +452,7 @@ router.get('/getOrderDetails/:orderId', jwtHelperObj.verifyAccessToken, async (r
                 quantityOrdered: product.quantityOrdered,
                 price: product.price,
                 logoUrl: product.logoUrl,
+                name: product.name,
                 logoPosition: product.logoPosition,
                 slabDiscountPercentage: product.slabDiscountPercentage,
                 slabDiscountAmount: product.slabDiscountAmount,
@@ -888,6 +889,7 @@ router.post('/order/return', jwtHelperObj.verifyAccessToken, async (req, res) =>
                 quantityOrdered: product.quantityOrdered,
                 price: product.price,
                 logoUrl: product.logoUrl,
+                name: product.name,
                 logoPosition: product.logoPosition,
                 unitDiscount: unitDiscount,
                 imageUrl: product.imgUrl

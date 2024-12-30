@@ -104,6 +104,7 @@ class OrderService {
                     price: productDoc.price,
                     imgUrl: product.imgUrl,
                     logoUrl: product.logoUrl,
+                    name: product.name,
                     logoPosition: product.logoPosition,
                     slabDiscountPercentage,
                     slabDiscountAmount: parseFloat(slabDiscountAmount.toFixed(2)),

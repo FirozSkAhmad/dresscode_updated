@@ -21,6 +21,9 @@ const wishlistItemSchema = new mongoose.Schema({
     logoUrl: {
         type: String, trim: true, default: null
     },
+    name: {
+        type: String, trim: true, default: null
+    },
     logoPosition: {
         type: String, trim: true, default: null
     }
@@ -46,6 +49,9 @@ const cartItemSchema = new mongoose.Schema({
         type: String, trim: true, default: null
     },
     logoUrl: {
+        type: String, trim: true, default: null
+    },
+    name: {
         type: String, trim: true, default: null
     },
     logoPosition: {

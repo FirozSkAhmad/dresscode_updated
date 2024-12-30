@@ -503,6 +503,7 @@ router.get('/getOrderDetails/:orderId', jwtHelperObj.verifyAccessToken, async (r
                 quantityOrdered: product.quantityOrdered,
                 price: product.price,
                 logoUrl: product.logoUrl,
+                name: product.name,
                 logoPosition: product.logoPosition,
                 slabDiscountPercentage: product.slabDiscountPercentage,
                 slabDiscountAmount: product.slabDiscountAmount,
@@ -598,6 +599,7 @@ router.get('/getReturnOrderDetails/:returnOrderId', jwtHelperObj.verifyAccessTok
                 quantityOrdered: product.quantityOrdered,
                 price: product.price,
                 logoUrl: product.logoUrl,
+                name: product.name,
                 logoPosition: product.logoPosition,
                 productDescription: productDescription,
             };
@@ -927,6 +929,7 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
                 quantityOrdered: product.quantityOrdered,
                 price: product.price,
                 logoUrl: product.logoUrl,
+                name: product.name,
                 logoPosition: product.logoPosition,
                 unitDiscount: unitDiscount
             };
