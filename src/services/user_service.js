@@ -3,6 +3,7 @@ const OrderModel = require('../utils/Models/orderModel');
 const HealModel = require('../utils/Models/healModel');
 const EliteModel = require('../utils/Models/eliteModel');
 const TogsModel = require('../utils/Models/togsModel');
+const DresscodeCouponModel = require('../utils/Models/dressCodeModel');
 const mongoose = require('mongoose');
 const JWTHelper = require('../utils/Helpers/jwt_helper')
 const bcrypt = require('bcrypt');
@@ -212,7 +213,7 @@ class UserService {
 
     async getUserCoupons(userId) {
         try {
-            // Find the user by userId and populate the associated coupons
+            // Find the user by userId and populate the associated Trumz coupons
             const user = await UserModel.findById(userId).populate({
                 path: 'coupons', // Assumes `coupons` is an array of coupon references in the User schema
                 select: 'couponCode discountPercentage expiryDate linkedGroup linkedProductId usedDate', // Exclude `status`
@@ -223,15 +224,13 @@ class UserService {
                 throw new Error('User not found');
             }
 
-            // If the user has no associated coupons
-            if (!user.coupons || user.coupons.length === 0) {
-                throw new Error('No coupons found for this user');
-            }
+            // Fetch all Dresscode coupons
+            const dresscodeCoupons = await DresscodeCouponModel.find({});
 
             const currentDate = new Date();
 
-            // Update `coupons` array directly with dynamic `status`
-            user.coupons = user.coupons.map(coupon => {
+            // Process Trumz coupons
+            const trumzCouponsData = user.coupons.map(coupon => {
                 let dynamicStatus;
                 if (coupon.usedDate) {
                     dynamicStatus = 'used';
@@ -243,11 +242,30 @@ class UserService {
 
                 return {
                     ...coupon.toObject(),
-                    status: dynamicStatus // Inject the dynamic `status` into the coupon object
+                    status: dynamicStatus, // Inject the dynamic `status` into the coupon object
+                    couponType: 'trumz' // Add type to differentiate
                 };
             });
 
-            return user.coupons; // Return the updated coupons array
+            // Process Dresscode coupons
+            const dresscodeCouponsData = dresscodeCoupons
+                .filter(coupon => {
+                    // Check if the user has not used this coupon
+                    const hasUsed = coupon.usedBy.some(usage => usage.userId.equals(userId));
+                    return !hasUsed; // Include only coupons not used by the user
+                })
+                .map(coupon => ({
+                    couponCode: coupon.couponCode,
+                    discountPercentage: coupon.discountPercentage,
+                    couponType: 'dresscode', // Add type to differentiate
+                }));
+
+
+            // Return structured output
+            return {
+                trumzCoupons: trumzCouponsData,
+                dresscodeCoupons: dresscodeCouponsData
+            };
         } catch (error) {
             console.error('Error fetching coupons for user:', error.message);
             throw error;
@@ -314,43 +332,69 @@ class UserService {
                     ]
                 }))
             };
-
+    
             // Find the user by userId and populate only "pending" (active) coupons
             const user = await UserModel.findById(userId).populate({
                 path: 'coupons',
                 match: matchConditions,
                 select: 'couponCode discountPercentage status expiryDate linkedGroup linkedProductId' // Optional: Select specific fields
             });
-
+    
             if (!user) {
                 throw new Error('User not found');
             }
-
-            // If the user has no associated active coupons
-            if (!user.coupons || user.coupons.length === 0) {
-                throw new Error('No active coupons found for this user');
-            }
-
-            // Categorize coupons into two categories and add details for individual products
-            const couponsApplicableToAllProducts = [];
-            const couponsApplicableToIndividualProducts = [];
-
+    
+            // Initialize arrays for categorized coupons
+            const couponsApplicableToAllProducts = {
+                trumzCoupons: [],
+                dresscodeCoupons: []
+            };
+            const couponsApplicableToIndividualProducts = {
+                trumzCoupons: [],
+                dresscodeCoupons: []
+            };
+    
+            // Categorize Trumz coupons
             user.coupons.forEach(coupon => {
                 if (coupon.linkedGroup === null && coupon.linkedProductId === null) {
-                    couponsApplicableToAllProducts.push(coupon);
-                } else {
-                    // Add information about the applicable group and productId
-                    const applicableCoupon = {
+                    // Coupon applicable to all products
+                    couponsApplicableToAllProducts.trumzCoupons.push({
                         ...coupon._doc,
+                        couponType: 'trumz' // Add type to differentiate
+                    });
+                } else {
+                    // Coupon applicable to specific products
+                    couponsApplicableToIndividualProducts.trumzCoupons.push({
+                        ...coupon._doc,
+                        couponType: 'trumz', // Add type to differentiate
                         applicableTo: {
                             group: coupon.linkedGroup,
                             productId: coupon.linkedProductId
                         }
-                    };
-                    couponsApplicableToIndividualProducts.push(applicableCoupon);
+                    });
                 }
             });
-
+    
+            // Fetch Dresscode coupons
+            const dresscodeCoupons = await DresscodeCouponModel.find({});
+    
+            // Process Dresscode coupons
+            const dresscodeCouponsData = dresscodeCoupons
+                .filter(coupon => {
+                    // Check if the user has not used this coupon
+                    const hasUsed = coupon.usedBy.some(usage => usage.userId.equals(userId));
+                    return !hasUsed; // Include only coupons not used by the user
+                })
+                .map(coupon => ({
+                    couponCode: coupon.couponCode,
+                    discountPercentage: coupon.discountPercentage,
+                    couponType: 'dresscode', // Add type to differentiate
+                }));
+    
+            // Add Dresscode coupons to the appropriate category
+            // Assuming Dresscode coupons are applicable to all products unless specified otherwise
+            couponsApplicableToAllProducts.dresscodeCoupons.push(...dresscodeCouponsData);
+    
             return {
                 couponsApplicableToAllProducts,
                 couponsApplicableToIndividualProducts
@@ -360,8 +404,6 @@ class UserService {
             throw error;
         }
     }
-
-
 
     async getUserDetails(userId) {
         try {
@@ -632,7 +674,7 @@ class UserService {
 
             // Find the order by orderId within the session
             const order = await OrderModel.findOne({ orderId: orderId })
-                .populate('user', 'name email') // Populate user fields needed for the email
+                .populate('user', 'firstName email') // Populate user fields needed for the email
                 .session(session);
 
             if (!order) {
@@ -702,6 +744,7 @@ class UserService {
 
             // Send cancellation email
             this.sendCancellationEmail(order);
+            this.sendCancellationEmailToAdmin(order);
 
             return { success: true, order: order.toObject() };
 
@@ -754,6 +797,40 @@ class UserService {
         }
     }
 
+    // Function to send cancellation email to admin
+    async sendCancellationEmailToAdmin(order) {
+        try {
+            const transporter = nodemailer.createTransport({
+                service: 'gmail',
+                auth: {
+                    user: process.env.SENDER_EMAIL_ID,
+                    pass: process.env.SENDER_PASSWORD
+                }
+            });
+
+            const adminEmailContent = `
+            <h2>Order Cancellation Notification</h2>
+            <p>Dear Admin,</p>
+            <p>An order with ID <strong>${order.orderId}</strong> has been canceled by the user <strong>${order.user.name}</strong> (${order.user.email}).</p>
+            <p>Please log in to the DressCode Admin Dashboard to review the details of the canceled order:</p>
+            <p><a href="https://dashboard.dress-code.in/login" target="_blank">Click here to access the Warehouse Dashboard</a></p>
+            <br>
+            <p>Thank you,</p>
+            <p>The DressCode Team</p>
+        `;
+
+            await transporter.sendMail({
+                from: process.env.SENDER_EMAIL_ID,
+                to: process.env.ADMIN_EMAIL_ID, // Assuming you have an environment variable for the admin's email
+                subject: "Order Cancellation Notification",
+                html: adminEmailContent
+            });
+
+            console.log("Cancellation email sent to admin successfully.");
+        } catch (error) {
+            console.error("Failed to send cancellation email to admin:", error.message);
+        }
+    }
 
     async getUserCanceledOrdersWithProductDetails(userId) {
         try {

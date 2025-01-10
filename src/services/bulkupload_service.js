@@ -51,7 +51,8 @@ class BulkUploadService {
                 variantSizes: [{
                     size: data.variantSize.trim().toUpperCase(),
                     quantity: parseInt(data.variantQuantity),
-                    sku: `${data.gender.trim().toUpperCase()}-${data.productType.trim().toUpperCase()}-${data.variantColor.trim()}-${data.variantSize.trim()}`
+                    sku: `${data.gender.trim().toUpperCase()}-${data.productType.trim().toUpperCase()}-${data.variantColor.trim()}-${data.variantSize.trim()}`,
+                    hsnCode: data.hsnCode
                 }],
                 imageUrls: data.variantImages ? data.variantImages.split(';').map(url => url.trim()) : []
             }
@@ -168,7 +169,8 @@ class BulkUploadService {
                                     size: item.variant.variantSizes[0].size,
                                     quantityOfUpload: item.variant.variantSizes[0].quantity,
                                     styleCoat: existingSizeEntry.styleCoat,
-                                    sku: item.variant.variantSizes[0].sku
+                                    sku: item.variant.variantSizes[0].sku,
+                                    hsnCode: item.variant.variantSizes[0].hsnCode
                                 });
                             }
                         } else {
@@ -179,6 +181,7 @@ class BulkUploadService {
                                     quantityOfUpload: vs.quantity,
                                     styleCoat: existingSizeEntry.styleCoat,
                                     sku: vs.sku,
+                                    hsnCode: vs.hsnCode,
                                 }))
                             });
                         }
@@ -193,6 +196,7 @@ class BulkUploadService {
                                     quantityOfUpload: vs.quantity,
                                     styleCoat: existingSizeEntry.styleCoat,
                                     sku: vs.sku,
+                                    hsnCode: vs.hsnCode,
                                 }))
                             }]
                         });

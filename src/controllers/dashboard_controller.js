@@ -250,7 +250,10 @@ router.get('/getOverview', jwtHelperObj.verifyAccessToken, async (req, res) => {
 
         // Loop through each order and count orders by group
         orders.forEach(order => {
-            totalOrders += 1;  // Increment total orders count
+            // Check if the order is created (order_created is true)
+            if (order.order_created) {
+                totalOrders += 1;  // Increment total orders count only if order_created is true
+            }
 
             order.products.forEach(product => {
                 if (!stock[product.group]) {
@@ -411,7 +414,8 @@ router.get('/:groupName/getAllActiveProducts', jwtHelperObj.verifyAccessToken, a
                 sizes: variant.variantSizes.map(vs => ({
                     size: vs.size,
                     styleCoat: vs.styleCoat,
-                    quantity: vs.quantity
+                    quantity: vs.quantity,
+                    hsnCode: vs.hsnCode
                 }))
             }))
         }));
@@ -1008,7 +1012,7 @@ router.post('/assignToShipRocket/:orderId', jwtHelperObj.verifyAccessToken, asyn
         };
 
         // Third API call to generate a pickup
-        
+
         let generatePickupResponse;
         try {
             generatePickupResponse = await axios.post(`${process.env.SHIPROCKET_API_URL}/v1/external/courier/generate/pickup`, pickupData, {

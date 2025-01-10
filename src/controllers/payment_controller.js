@@ -12,6 +12,7 @@ const HealModel = require('../utils/Models/healModel');
 const EliteModel = require('../utils/Models/eliteModel');
 const TogsModel = require('../utils/Models/togsModel');
 const CouponModel = require('../utils/Models/couponModel.js');
+const DresscodeCouponModel = require('../utils/Models/dresscodeCouponModel.js');
 const nodemailer = require('nodemailer');
 const UserService = require('../services/user_service');
 const userServiceObj = new UserService();
@@ -72,7 +73,7 @@ router.post('/verifyPayment', jwtHelperObj.verifyAccessToken, async (req, res) =
 
             // Find the order by orderId
             const order = await OrderModel.findOne({ orderId })
-                .populate('user', 'name email') // Populate user fields needed for the email
+                .populate('user', '_id uid name email') // Populate user fields needed for the email
                 .session(session);
 
             if (!order) {
@@ -116,13 +117,30 @@ router.post('/verifyPayment', jwtHelperObj.verifyAccessToken, async (req, res) =
 
             // Check and update the coupon status if a coupon was used
             if (order.couponCode) {
-                const coupon = await CouponModel.findOne({ couponCode: order.couponCode }).session(session);
+                if (order.couponType === 'trumz') {
+                    // Update Trumz coupon status
+                    const trumzCoupon = await CouponModel.findOne({ couponCode: order.couponCode }).session(session);
 
-                if (coupon) {
-                    coupon.status = 'used';
-                    coupon.customerId = order.user; // Assuming order.user is the customerId
-                    coupon.orderId = order._id;
-                    await coupon.save({ session });
+                    if (trumzCoupon) {
+                        trumzCoupon.status = 'used';
+                        trumzCoupon.customerId = order.user._id; // Assuming order.user is the customerId
+                        trumzCoupon.orderId = order._id;
+                        await trumzCoupon.save({ session });
+                    }
+                } else if (order.couponType === 'dresscode') {
+                    // Update Dresscode coupon usage
+                    const dresscodeCoupon = await DresscodeCouponModel.findOne({ couponCode: order.couponCode }).session(session);
+
+                    if (dresscodeCoupon) {
+                        // Add the user and order to the usedBy array
+                        dresscodeCoupon.usedBy.push({
+                            userId: order.user.uid, // Assuming order.user is the userId
+                            orderId: order._id
+                        });
+                        await dresscodeCoupon.save({ session });
+                    }
+                } else {
+                    throw new Error("Invalid coupon type");
                 }
             }
 

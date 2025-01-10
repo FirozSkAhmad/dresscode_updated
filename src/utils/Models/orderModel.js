@@ -84,6 +84,11 @@ const orderSchema = new mongoose.Schema({
         trim: true,
         default: null
     },
+    couponType: {
+        type: String,
+        trim: true,
+        default: null
+    },
     couponDiscountPercentage: {
         type: Number,
         default: 0

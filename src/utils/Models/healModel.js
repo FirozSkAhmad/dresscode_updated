@@ -57,6 +57,11 @@ const variantSchema = new mongoose.Schema({
             type: String,
             trim: true,
             // unique: true
+        },
+        hsnCode: {
+            type: String,
+            trim: true,
+            // unique: true
         }
     }],
     imageUrls: {
