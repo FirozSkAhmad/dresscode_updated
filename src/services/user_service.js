@@ -255,10 +255,11 @@ class UserService {
             // Process Dresscode coupons
             const dresscodeCouponsData = dresscodeCoupons.map(coupon => {
                 let dynamicStatus;
+                let hasUsed;
 
                 if (coupon.isSingleUse) {
                     // For single-use coupons, check if the user has used it
-                    const hasUsed = coupon.usedBy.some(usage => usage.userId.equals(userId));
+                    hasUsed = coupon.usedBy.some(usage => usage.userId.equals(userId));
 
                     if (hasUsed) {
                         dynamicStatus = 'used'; // Coupon has been used by the user
@@ -389,8 +390,6 @@ class UserService {
             // Fetch Dresscode coupons
             const dresscodeCoupons = await DresscodeCouponModel.find({});
 
-            // Process Dresscode coupons
-            // Process Dresscode coupons
             const dresscodeCouponsData = dresscodeCoupons
                 .filter(coupon => {
                     if (coupon.isSingleUse) {
@@ -420,7 +419,8 @@ class UserService {
                         }
                         // isSingleUse is excluded from the response
                     };
-                });
+                })
+                .filter(coupon => coupon.status === 'pending'); // Only include coupons with status 'pending'
 
             // Combine Trumz and Dresscode coupons into a single array
             const allCoupons = [...trumzCouponsData, ...dresscodeCouponsData];
