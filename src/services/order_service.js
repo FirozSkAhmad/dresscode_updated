@@ -51,15 +51,18 @@ class OrderService {
                     couponDiscountPercentage = coupon.discountPercentage;
                 } else if (couponType === 'dresscode') {
                     // Validate Dresscode coupon
-                    coupon = await DresscodeCouponModel.findOne({
-                        couponCode,
-                        expiryDate: { $gt: new Date() }
-                    }).session(session);
+                    const coupon = await DresscodeCouponModel.findOne({ couponCode }).session(session);
 
                     if (!coupon) {
-                        throw new Error("Invalid or expired Dresscode coupon code");
+                        throw new Error("Invalid Dresscode coupon code");
                     }
 
+                    // Manually check if the coupon is expired
+                    const currentDate = new Date();
+                    if (coupon.expiryDate <= currentDate) {
+                        throw new Error("Expired Dresscode coupon code");
+                    }
+                    
                     // Check if the coupon is single-use and already used by the user
                     if (coupon.isSingleUse) {
                         const hasUsed = coupon.usedBy.some(usage => usage.userId.equals(userId));
