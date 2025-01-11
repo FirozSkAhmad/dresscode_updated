@@ -132,10 +132,6 @@ router.post('/verifyPayment', jwtHelperObj.verifyAccessToken, async (req, res) =
                     const dresscodeCoupon = await DresscodeCouponModel.findOne({ couponCode: order.couponCode }).session(session);
 
                     if (dresscodeCoupon) {
-
-                        console.log(order.user)
-                        console.log(order)
-
                         // Add the user and order to the usedBy array
                         dresscodeCoupon.usedBy.push({
                             userId: order.user._id, // Assuming order.user is the userId

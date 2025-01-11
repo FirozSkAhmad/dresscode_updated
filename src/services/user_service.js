@@ -219,16 +219,16 @@ class UserService {
                 select: 'couponCode discountPercentage expiryDate linkedGroup linkedProductId usedDate', // Exclude `status`
                 options: { sort: { expiryDate: 1 } }
             });
-    
+
             if (!user) {
                 throw new Error('User not found');
             }
-    
+
             // Fetch all Dresscode coupons
             const dresscodeCoupons = await DresscodeCouponModel.find({});
-    
+
             const currentDate = new Date();
-    
+
             // Process Trumz coupons
             const trumzCouponsData = user.coupons.map(coupon => {
                 let dynamicStatus;
@@ -239,7 +239,7 @@ class UserService {
                 } else {
                     dynamicStatus = 'pending';
                 }
-    
+
                 return {
                     couponCode: coupon.couponCode,
                     discountPercentage: coupon.discountPercentage,
@@ -251,21 +251,31 @@ class UserService {
                     couponType: 'trumz' // Add type to differentiate
                 };
             });
-    
+
             // Process Dresscode coupons
             const dresscodeCouponsData = dresscodeCoupons.map(coupon => {
-                // Check if the user has used this coupon
-                const hasUsed = coupon.usedBy.some(usage => usage.userId.equals(userId));
                 let dynamicStatus;
-    
-                if (hasUsed) {
-                    dynamicStatus = 'used'; // Coupon has been used by the user
-                } else if (currentDate > coupon.expiryDate) {
-                    dynamicStatus = 'expired'; // Coupon has expired
+
+                if (coupon.isSingleUse) {
+                    // For single-use coupons, check if the user has used it
+                    const hasUsed = coupon.usedBy.some(usage => usage.userId.equals(userId));
+
+                    if (hasUsed) {
+                        dynamicStatus = 'used'; // Coupon has been used by the user
+                    } else if (currentDate > coupon.expiryDate) {
+                        dynamicStatus = 'expired'; // Coupon has expired
+                    } else {
+                        dynamicStatus = 'pending'; // Coupon is still valid and unused
+                    }
                 } else {
-                    dynamicStatus = 'pending'; // Coupon is still valid and unused
+                    // For multi-use coupons, no need to check usage
+                    if (currentDate > coupon.expiryDate) {
+                        dynamicStatus = 'expired'; // Coupon has expired
+                    } else {
+                        dynamicStatus = 'pending'; // Coupon is still valid (can be used multiple times)
+                    }
                 }
-    
+
                 return {
                     couponCode: coupon.couponCode,
                     discountPercentage: coupon.discountPercentage,
@@ -277,10 +287,10 @@ class UserService {
                     couponType: 'dresscode' // Add type to differentiate
                 };
             });
-    
+
             // Combine both Trumz and Dresscode coupons into a single array
             const allCoupons = [...trumzCouponsData, ...dresscodeCouponsData];
-    
+
             // Return the combined array
             return allCoupons;
         } catch (error) {
@@ -349,18 +359,18 @@ class UserService {
                     ]
                 }))
             };
-    
+
             // Find the user by userId and populate only "pending" (active) coupons
             const user = await UserModel.findById(userId).populate({
                 path: 'coupons',
                 match: matchConditions,
                 select: 'couponCode discountPercentage status expiryDate linkedGroup linkedProductId' // Optional: Select specific fields
             });
-    
+
             if (!user) {
                 throw new Error('User not found');
             }
-    
+
             // Process Trumz coupons
             const trumzCouponsData = user.coupons.map(coupon => ({
                 couponCode: coupon.couponCode,
@@ -375,34 +385,46 @@ class UserService {
                     productId: coupon.linkedProductId
                 }
             }));
-    
+
             // Fetch Dresscode coupons
             const dresscodeCoupons = await DresscodeCouponModel.find({});
-    
+
+            // Process Dresscode coupons
             // Process Dresscode coupons
             const dresscodeCouponsData = dresscodeCoupons
                 .filter(coupon => {
-                    // Check if the user has not used this coupon
-                    const hasUsed = coupon.usedBy.some(usage => usage.userId.equals(userId));
-                    return !hasUsed; // Include only coupons not used by the user
-                })
-                .map(coupon => ({
-                    couponCode: coupon.couponCode,
-                    discountPercentage: coupon.discountPercentage,
-                    expiryDate: coupon.expiryDate,
-                    linkedGroup: null, // Dresscode coupons don't have linkedGroup
-                    linkedProductId: null, // Dresscode coupons don't have linkedProductId
-                    status: 'pending', // Dresscode coupons are always pending unless used
-                    couponType: 'dresscode', // Add type to differentiate
-                    applicableTo: {
-                        group: null,
-                        productId: null
+                    if (coupon.isSingleUse) {
+                        // For single-use coupons, check if the user has used it
+                        const hasUsed = coupon.usedBy.some(usage => usage.userId.equals(userId));
+                        return !hasUsed; // Include only if the user has NOT used it
+                    } else {
+                        // For multi-use coupons, always include them
+                        return true;
                     }
-                }));
-    
+                })
+                .map(coupon => {
+                    // Determine the status based on expiry date
+                    const status = (currentDate > coupon.expiryDate) ? 'expired' : 'pending';
+
+                    return {
+                        couponCode: coupon.couponCode,
+                        discountPercentage: coupon.discountPercentage,
+                        expiryDate: coupon.expiryDate,
+                        linkedGroup: null, // Dresscode coupons don't have linkedGroup
+                        linkedProductId: null, // Dresscode coupons don't have linkedProductId
+                        status: status, // Set status based on expiry date
+                        couponType: 'dresscode', // Add type to differentiate
+                        applicableTo: {
+                            group: null,
+                            productId: null
+                        }
+                        // isSingleUse is excluded from the response
+                    };
+                });
+
             // Combine Trumz and Dresscode coupons into a single array
             const allCoupons = [...trumzCouponsData, ...dresscodeCouponsData];
-    
+
             // Return the combined array
             return allCoupons;
         } catch (error) {
