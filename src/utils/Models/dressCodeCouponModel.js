@@ -23,7 +23,8 @@ const dresscodeCouponSchema = new mongoose.Schema({
     },
     usedBy: [{
         userId: {
-            type: String,
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User', // Reference to the User model
             required: true
         },
         orderId: {

@@ -137,7 +137,7 @@ router.post('/verifyPayment', jwtHelperObj.verifyAccessToken, async (req, res) =
 
                         // Add the user and order to the usedBy array
                         dresscodeCoupon.usedBy.push({
-                            userId: order.user.uid, // Assuming order.user is the userId
+                            userId: order.user._id, // Assuming order.user is the userId
                             orderId: order._id
                         });
                         await dresscodeCoupon.save({ session });
@@ -156,6 +156,7 @@ router.post('/verifyPayment', jwtHelperObj.verifyAccessToken, async (req, res) =
 
             // Send confirmation email
             sendOrderConfirmationEmail(order);
+            sendOrderNotificationEmailToAdmin(order);
 
             // After successful payment and order creation, fetch the updated orders for the user
             const userId = order.user._id;
@@ -245,5 +246,41 @@ async function sendOrderConfirmationEmail(order) {
     }
 }
 
+async function sendOrderNotificationEmailToAdmin(order) {
+    try {
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: process.env.SENDER_EMAIL_ID,
+                pass: process.env.SENDER_PASSWORD
+            }
+        });
+
+        // Email content for the admin
+        const emailContent = `
+            <h2>New Order Received</h2>
+            <p>Dear Admin,</p>
+            <p>A new order has been placed by <strong>${order.user.name}</strong> (${order.user.email}).</p>
+            <p>The order ID for this request is: <strong>${order.orderId}</strong>.</p>
+            <p>Please log in to the DressCode Admin Dashboard to review and process this order:</p>
+            <p><a href="https://dashboard.dress-code.in/login" target="_blank">Click here to access the Admin Dashboard</a></p>
+            <br>
+            <p>Thank you,</p>
+            <p>The DressCode Team</p>
+        `;
+
+        // Send email to the admin
+        await transporter.sendMail({
+            from: process.env.SENDER_EMAIL_ID,
+            to: process.env.ADMIN_EMAIL_ID, // Admin's email address from environment variables
+            subject: "New Order Notification",
+            html: emailContent
+        });
+
+        console.log("Order notification email sent to admin successfully.");
+    } catch (error) {
+        console.error("Failed to send order notification email to admin:", error.message);
+    }
+}
 
 module.exports = router;
