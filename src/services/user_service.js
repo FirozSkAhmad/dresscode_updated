@@ -219,16 +219,16 @@ class UserService {
                 select: 'couponCode discountPercentage expiryDate linkedGroup linkedProductId usedDate', // Exclude `status`
                 options: { sort: { expiryDate: 1 } }
             });
-
+    
             if (!user) {
                 throw new Error('User not found');
             }
-
+    
             // Fetch all Dresscode coupons
             const dresscodeCoupons = await DresscodeCouponModel.find({});
-
+    
             const currentDate = new Date();
-
+    
             // Process Trumz coupons
             const trumzCouponsData = user.coupons.map(coupon => {
                 let dynamicStatus;
@@ -239,33 +239,50 @@ class UserService {
                 } else {
                     dynamicStatus = 'pending';
                 }
-
+    
                 return {
-                    ...coupon.toObject(),
-                    status: dynamicStatus, // Inject the dynamic `status` into the coupon object
+                    couponCode: coupon.couponCode,
+                    discountPercentage: coupon.discountPercentage,
+                    expiryDate: coupon.expiryDate,
+                    linkedGroup: coupon.linkedGroup,
+                    linkedProductId: coupon.linkedProductId,
+                    usedDate: coupon.usedDate,
+                    status: dynamicStatus,
                     couponType: 'trumz' // Add type to differentiate
                 };
             });
-
+    
             // Process Dresscode coupons
-            const dresscodeCouponsData = dresscodeCoupons
-                .filter(coupon => {
-                    // Check if the user has not used this coupon
-                    const hasUsed = coupon.usedBy.some(usage => usage.userId.equals(userId));
-                    return !hasUsed; // Include only coupons not used by the user
-                })
-                .map(coupon => ({
+            const dresscodeCouponsData = dresscodeCoupons.map(coupon => {
+                // Check if the user has used this coupon
+                const hasUsed = coupon.usedBy.some(usage => usage.userId.equals(userId));
+                let dynamicStatus;
+    
+                if (hasUsed) {
+                    dynamicStatus = 'used'; // Coupon has been used by the user
+                } else if (currentDate > coupon.expiryDate) {
+                    dynamicStatus = 'expired'; // Coupon has expired
+                } else {
+                    dynamicStatus = 'pending'; // Coupon is still valid and unused
+                }
+    
+                return {
                     couponCode: coupon.couponCode,
                     discountPercentage: coupon.discountPercentage,
-                    couponType: 'dresscode', // Add type to differentiate
-                }));
-
-
-            // Return structured output
-            return {
-                trumzCoupons: trumzCouponsData,
-                dresscodeCoupons: dresscodeCouponsData
-            };
+                    expiryDate: coupon.expiryDate,
+                    linkedGroup: null, // Dresscode coupons don't have linkedGroup, so set to null
+                    linkedProductId: null, // Dresscode coupons don't have linkedProductId, so set to null
+                    usedDate: hasUsed ? coupon.usedBy.find(usage => usage.userId.equals(userId)).usedDate : null, // Set usedDate if the coupon has been used by the user
+                    status: dynamicStatus,
+                    couponType: 'dresscode' // Add type to differentiate
+                };
+            });
+    
+            // Combine both Trumz and Dresscode coupons into a single array
+            const allCoupons = [...trumzCouponsData, ...dresscodeCouponsData];
+    
+            // Return the combined array
+            return allCoupons;
         } catch (error) {
             console.error('Error fetching coupons for user:', error.message);
             throw error;
@@ -344,36 +361,20 @@ class UserService {
                 throw new Error('User not found');
             }
     
-            // Initialize arrays for categorized coupons
-            const couponsApplicableToAllProducts = {
-                trumzCoupons: [],
-                dresscodeCoupons: []
-            };
-            const couponsApplicableToIndividualProducts = {
-                trumzCoupons: [],
-                dresscodeCoupons: []
-            };
-    
-            // Categorize Trumz coupons
-            user.coupons.forEach(coupon => {
-                if (coupon.linkedGroup === null && coupon.linkedProductId === null) {
-                    // Coupon applicable to all products
-                    couponsApplicableToAllProducts.trumzCoupons.push({
-                        ...coupon._doc,
-                        couponType: 'trumz' // Add type to differentiate
-                    });
-                } else {
-                    // Coupon applicable to specific products
-                    couponsApplicableToIndividualProducts.trumzCoupons.push({
-                        ...coupon._doc,
-                        couponType: 'trumz', // Add type to differentiate
-                        applicableTo: {
-                            group: coupon.linkedGroup,
-                            productId: coupon.linkedProductId
-                        }
-                    });
+            // Process Trumz coupons
+            const trumzCouponsData = user.coupons.map(coupon => ({
+                couponCode: coupon.couponCode,
+                discountPercentage: coupon.discountPercentage,
+                expiryDate: coupon.expiryDate,
+                linkedGroup: coupon.linkedGroup,
+                linkedProductId: coupon.linkedProductId,
+                status: coupon.status,
+                couponType: 'trumz', // Add type to differentiate
+                applicableTo: {
+                    group: coupon.linkedGroup,
+                    productId: coupon.linkedProductId
                 }
-            });
+            }));
     
             // Fetch Dresscode coupons
             const dresscodeCoupons = await DresscodeCouponModel.find({});
@@ -388,17 +389,22 @@ class UserService {
                 .map(coupon => ({
                     couponCode: coupon.couponCode,
                     discountPercentage: coupon.discountPercentage,
+                    expiryDate: coupon.expiryDate,
+                    linkedGroup: null, // Dresscode coupons don't have linkedGroup
+                    linkedProductId: null, // Dresscode coupons don't have linkedProductId
+                    status: 'pending', // Dresscode coupons are always pending unless used
                     couponType: 'dresscode', // Add type to differentiate
+                    applicableTo: {
+                        group: null,
+                        productId: null
+                    }
                 }));
     
-            // Add Dresscode coupons to the appropriate category
-            // Assuming Dresscode coupons are applicable to all products unless specified otherwise
-            couponsApplicableToAllProducts.dresscodeCoupons.push(...dresscodeCouponsData);
+            // Combine Trumz and Dresscode coupons into a single array
+            const allCoupons = [...trumzCouponsData, ...dresscodeCouponsData];
     
-            return {
-                couponsApplicableToAllProducts,
-                couponsApplicableToIndividualProducts
-            };
+            // Return the combined array
+            return allCoupons;
         } catch (error) {
             console.error('Error fetching active coupons for user:', error.message);
             throw error;

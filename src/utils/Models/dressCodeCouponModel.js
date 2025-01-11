@@ -30,6 +30,10 @@ const dresscodeCouponSchema = new mongoose.Schema({
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Order', // Reference to the Order model
             required: true
+        },
+        usedDate: {
+            type: Date,
+            default: Date.now // This will be set when the coupon status is changed to 'used'
         }
     }]
 }, { timestamps: true }); // Enable timestamps for createdAt and updatedAt
