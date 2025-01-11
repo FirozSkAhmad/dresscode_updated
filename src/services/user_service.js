@@ -389,7 +389,8 @@ class UserService {
 
             // Fetch Dresscode coupons
             const dresscodeCoupons = await DresscodeCouponModel.find({});
-
+            const currentDate = new Date(); // Define currentDate as the current date and time
+            
             const dresscodeCouponsData = dresscodeCoupons
                 .filter(coupon => {
                     if (coupon.isSingleUse) {
