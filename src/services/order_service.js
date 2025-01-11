@@ -11,6 +11,7 @@ const JWTHelper = require('../utils/Helpers/jwt_helper')
 const bcrypt = require('bcrypt');
 const colorCodes = require('../utils/Helpers/data');
 const Razorpay = require('razorpay')
+const nodemailer = require('nodemailer');
 const modelMap = {
     "HEAL": HealModel,
     "ELITE": EliteModel,
@@ -248,8 +249,8 @@ class OrderService {
             const response = savedQuote.toObject(); // Convert Mongoose document to a plain object
             response.productType = product.productType; // Add productType to the response
 
-            await this.sendQuoteConfirmationEmail(user, quoteDetails);
-            await this.sendQuoteNotificationEmailToAdmin(user, quoteDetails);
+            this.sendQuoteConfirmationEmail(user, quoteDetails);
+            this.sendQuoteNotificationEmailToAdmin(user, quoteDetails);
 
             return response;
         } catch (err) {
