@@ -62,7 +62,7 @@ class OrderService {
                     if (coupon.expiryDate <= currentDate) {
                         throw new Error("Expired Dresscode coupon code");
                     }
-                    
+
                     // Check if the coupon is single-use and already used by the user
                     if (coupon.isSingleUse) {
                         const hasUsed = coupon.usedBy.some(usage => usage.userId.equals(userId));
@@ -244,10 +244,14 @@ class OrderService {
             user.quotes.push(savedQuote._id);
             await user.save();
 
+            // Add productType to the savedQuote response
+            const response = savedQuote.toObject(); // Convert Mongoose document to a plain object
+            response.productType = product.productType; // Add productType to the response
+
             this.sendQuoteConfirmationEmail(user, quoteDetails);
             this.sendQuoteNotificationEmailToAdmin(user, quoteDetails);
 
-            return savedQuote;
+            return response;
         } catch (err) {
             console.error("Error creating quote:", err.message);
             throw err;
