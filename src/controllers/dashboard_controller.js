@@ -253,20 +253,21 @@ router.get('/getOverview', jwtHelperObj.verifyAccessToken, async (req, res) => {
             // Check if the order is created (order_created is true)
             if (order.order_created) {
                 totalOrders += 1;  // Increment total orders count only if order_created is true
+
+                order.products.forEach(product => {
+                    if (!stock[product.group]) {
+                        stock[product.group] = { amount: 0, quantity: 0, orders: 0, canceledOrders: 0 };
+                    }
+                    stock[product.group].orders += 1;  // Increment the order count for the group
+
+                    // Check if the order is canceled
+                    if (order.dateOfCanceled) {
+                        totalCanceledOrders += 1;
+                        stock[product.group].canceledOrders += 1;  // Increment canceled orders count
+                    }
+                });
             }
 
-            order.products.forEach(product => {
-                if (!stock[product.group]) {
-                    stock[product.group] = { amount: 0, quantity: 0, orders: 0, canceledOrders: 0 };
-                }
-                stock[product.group].orders += 1;  // Increment the order count for the group
-
-                // Check if the order is canceled
-                if (order.dateOfCanceled) {
-                    totalCanceledOrders += 1;
-                    stock[product.group].canceledOrders += 1;  // Increment canceled orders count
-                }
-            });
         });
 
         // Include the total amount, quantity, and orders in the stock object
