@@ -211,12 +211,11 @@ router.post('/:userId/cart-active-coupons', jwtHelperObj.verifyAccessToken, asyn
 
     try {
         // Call the service function to get categorized user active coupons
-        const categorizedCoupons = await userServiceObj.getCartActiveCoupons(userId, filters);
+        const coupons = await userServiceObj.getCartActiveCoupons(userId, filters);
 
         res.status(200).json({
             message: 'Active coupons retrieved successfully',
-            couponsApplicableToAllProducts: categorizedCoupons.couponsApplicableToAllProducts,
-            couponsApplicableToIndividualProducts: categorizedCoupons.couponsApplicableToIndividualProducts
+            coupons
         });
     } catch (error) {
         console.error('Error fetching active coupons for user:', error.message);

@@ -1643,8 +1643,7 @@ class StoreService {
 
     async getBills() {
         try {
-            // Find all deleted bills for the given storeId and return only the required fields
-            const deletedBills = await Bill.find(
+            const Bills = await Bill.find(
                 { isDeleted: false }, // Query to find bills that are marked as deleted
                 {
                     billId: 1,
@@ -1652,7 +1651,8 @@ class StoreService {
                     deletedDate: 1,
                     TotalAmount: 1,
                     discountPercentage: 1,
-                    priceAfterDiscount: 1
+                    priceAfterDiscount: 1,
+                    editStatus: 1
                 } // Projection to return only specific fields
             ).sort({ dateOfBill: -1 });;
 
@@ -1673,13 +1673,14 @@ class StoreService {
             }, {});
 
             // Step 5: Map through the deletedBills and append the storeName
-            const result = deletedBills.map(bill => ({
+            const result = Bills.map(bill => ({
                 billId: bill.billId,
                 dateOfBill: bill.dateOfBill,
                 deletedDate: bill.deletedDate,
                 TotalAmount: bill.TotalAmount,
                 discountPercentage: bill.discountPercentage,
                 priceAfterDiscount: bill.priceAfterDiscount,
+                editStatus: bill.editStatus,
                 storeId: bill.storeId,
                 storeName: storeMap[bill.storeId] || 'Unknown Store' // Default to 'Unknown Store' if not found
             }));
