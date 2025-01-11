@@ -249,8 +249,8 @@ class OrderService {
             const response = savedQuote.toObject(); // Convert Mongoose document to a plain object
             response.productType = product.productType; // Add productType to the response
 
-            this.sendQuoteConfirmationEmail(user, quoteDetails);
-            this.sendQuoteNotificationEmailToAdmin(user, quoteDetails);
+            this.sendQuoteConfirmationEmail(user, savedQuote);
+            this.sendQuoteNotificationEmailToAdmin(user, savedQuote);
 
             return response;
         } catch (err) {
