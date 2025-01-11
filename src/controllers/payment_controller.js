@@ -73,7 +73,7 @@ router.post('/verifyPayment', jwtHelperObj.verifyAccessToken, async (req, res) =
 
             // Find the order by orderId
             const order = await OrderModel.findOne({ orderId })
-                .populate('user', '_id uid name email') // Populate user fields needed for the email
+                .populate('user', 'uid name email') // Populate user fields needed for the email
                 .session(session);
 
             if (!order) {
@@ -134,6 +134,7 @@ router.post('/verifyPayment', jwtHelperObj.verifyAccessToken, async (req, res) =
                     if (dresscodeCoupon) {
 
                         console.log(order.user)
+                        console.log(order)
 
                         // Add the user and order to the usedBy array
                         dresscodeCoupon.usedBy.push({
