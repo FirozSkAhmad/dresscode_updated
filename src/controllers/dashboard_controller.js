@@ -433,18 +433,35 @@ router.get('/:groupName/getAllActiveProducts', jwtHelperObj.verifyAccessToken, a
 
 router.get('/getOrders', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
-        // Find orders where deliveryStatus is not "Canceled"
-        const orders = await OrderModel.find({ deliveryStatus: { $ne: 'Canceled' }, order_created: { $ne: false } }, 'orderId dateOfOrder status -_id').sort({ dateOfOrder: -1 }).exec();
+        // Find orders where deliveryStatus is not "Canceled" and order_created is true
+        const orders = await OrderModel.find(
+            { deliveryStatus: { $ne: 'Canceled' }, order_created: { $ne: false } },
+            'orderId dateOfOrder status products -_id' // Include products to extract groups
+        ).sort({ dateOfOrder: -1 }).exec();
+
+        // Process orders to extract groups
+        const processedOrders = orders.map(order => {
+            // Extract unique group names from the products array
+            const groups = [...new Set(order.products.map(product => product.group))];
+            
+            return {
+                orderId: order.orderId,
+                dateOfOrder: order.dateOfOrder,
+                status: order.status,
+                groups, // Include groups as an array of strings
+            };
+        });
 
         res.status(200).send({
             message: "Orders retrieved successfully",
-            orders: orders
+            orders: processedOrders
         });
     } catch (error) {
         console.error("Failed to retrieve orders:", error);
         res.status(500).send({ message: "Failed to retrieve orders", error: error.message });
     }
 });
+
 
 
 router.get('/getReturnOders', jwtHelperObj.verifyAccessToken, async (req, res) => {
