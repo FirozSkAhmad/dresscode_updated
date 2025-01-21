@@ -433,23 +433,32 @@ router.get('/:groupName/getAllActiveProducts', jwtHelperObj.verifyAccessToken, a
 
 router.get('/getOrders', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
+        // Extract groups from query params and split by comma
+        const { groups } = req.query;
+        const allowedGroups = ['ELITE', 'HEAL', 'TOGS']; // Define allowed groups
+        const filterGroups = groups ? groups.split(',').filter(group => allowedGroups.includes(group)) : null;
+
         // Find orders where deliveryStatus is not "Canceled" and order_created is true
         const orders = await OrderModel.find(
             { deliveryStatus: { $ne: 'Canceled' }, order_created: { $ne: false } },
             'orderId dateOfOrder status products -_id' // Include products to extract groups
         ).sort({ dateOfOrder: -1 }).exec();
 
-        // Process orders to extract groups
+        // Process orders to extract groups and filter dynamically
         const processedOrders = orders.map(order => {
             // Extract unique group names from the products array
-            const groups = [...new Set(order.products.map(product => product.group))];
+            const groupsInOrder = [...new Set(order.products.map(product => product.group))];
             
+            // Include groups in the order object
             return {
                 orderId: order.orderId,
                 dateOfOrder: order.dateOfOrder,
                 status: order.status,
-                groups, // Include groups as an array of strings
+                groups: groupsInOrder,
             };
+        }).filter(order => {
+            // If groups filter is provided, only include matching orders
+            return !filterGroups || filterGroups.some(group => order.groups.includes(group));
         });
 
         res.status(200).send({
@@ -461,6 +470,7 @@ router.get('/getOrders', jwtHelperObj.verifyAccessToken, async (req, res) => {
         res.status(500).send({ message: "Failed to retrieve orders", error: error.message });
     }
 });
+
 
 
 
