@@ -457,8 +457,8 @@ router.get('/getOrders', jwtHelperObj.verifyAccessToken, async (req, res) => {
                 groups: groupsInOrder,
             };
         }).filter(order => {
-            // If groups filter is provided, only include matching orders
-            return !filterGroups || filterGroups.some(group => order.groups.includes(group));
+            // If groups filter is provided, only include orders with an exact match for all groups
+            return !filterGroups || filterGroups.every(group => order.groups.includes(group));
         });
 
         res.status(200).send({
@@ -470,9 +470,6 @@ router.get('/getOrders', jwtHelperObj.verifyAccessToken, async (req, res) => {
         res.status(500).send({ message: "Failed to retrieve orders", error: error.message });
     }
 });
-
-
-
 
 router.get('/getReturnOders', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
