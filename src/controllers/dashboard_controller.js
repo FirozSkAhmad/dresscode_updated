@@ -448,6 +448,7 @@ router.get('/:groupName/getAllActiveProducts', jwtHelperObj.verifyAccessToken, a
 
 router.get('/getOrders', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
+
         // Extract groups from query params and split by comma
         const { groups } = req.query;
         const allowedGroups = ['ELITE', 'HEAL', 'TOGS']; // Define allowed groups
@@ -682,20 +683,20 @@ router.get('/getReturnOrderDetails/:returnOrderId', jwtHelperObj.verifyAccessTok
     }
 });
 
-router.get('/getOders', jwtHelperObj.verifyAccessToken, async (req, res) => {
-    try {
-        // Find orders where deliveryStatus is not "Canceled"
-        const orders = await OrderModel.find({ deliveryStatus: { $ne: 'Canceled' }, order_created: { $ne: false } }, 'orderId dateOfOrder status -_id').sort({ dateOfOrder: -1 }).exec();
+// router.get('/getOders', jwtHelperObj.verifyAccessToken, async (req, res) => {
+//     try {
+//         // Find orders where deliveryStatus is not "Canceled"
+//         const orders = await OrderModel.find({ deliveryStatus: { $ne: 'Canceled' }, order_created: { $ne: false } }, 'orderId dateOfOrder status -_id').sort({ dateOfOrder: -1 }).exec();
 
-        res.status(200).send({
-            message: "Orders retrieved successfully",
-            orders: orders
-        });
-    } catch (error) {
-        console.error("Failed to retrieve orders:", error);
-        res.status(500).send({ message: "Failed to retrieve orders", error: error.message });
-    }
-});
+//         res.status(200).send({
+//             message: "Orders retrieved successfully",
+//             orders: orders
+//         });
+//     } catch (error) {
+//         console.error("Failed to retrieve orders:", error);
+//         res.status(500).send({ message: "Failed to retrieve orders", error: error.message });
+//     }
+// });
 
 router.get('/getCanceledOrders', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
