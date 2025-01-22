@@ -767,6 +767,29 @@ router.get('/get-all-deleted-bills', jwtHelperObj.verifyAccessToken, async (req,
     }
 });
 
+router.get('/get-bills', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+
+        // Extract the role type from the JWT token added to req by the middleware
+        const roleType = req.aud.split(":")[1];
+        if (roleType !== "WAREHOUSE MANAGER") {
+            return res.status(401).json({
+                status: 401,
+                message: "Unauthorized access. Only WAREHOUSE MANAGER can get all bills."
+            });
+        }
+
+        const result = await storeServiceObj.getBills();
+        res.json({
+            message: 'Bills fetched successfully',
+            Bills: result
+        });
+    } catch (err) {
+        console.error("Error while retrieving all bills:", err.message);
+        next(err);
+    }
+});
+
 router.get('/get-bills/:storeId', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
         const { storeId } = req.params;
@@ -796,29 +819,6 @@ router.get('/get-bills/:storeId', jwtHelperObj.verifyAccessToken, async (req, re
         });
     } catch (err) {
         console.error("Error while retrieving bills:", err.message);
-        next(err);
-    }
-});
-
-router.get('/get-bills', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
-    try {
-
-        // Extract the role type from the JWT token added to req by the middleware
-        const roleType = req.aud.split(":")[1];
-        if (roleType !== "WAREHOUSE MANAGER") {
-            return res.status(401).json({
-                status: 401,
-                message: "Unauthorized access. Only WAREHOUSE MANAGER can get all bills."
-            });
-        }
-
-        const result = await storeServiceObj.getBills();
-        res.json({
-            message: 'Bills fetched successfully',
-            Bills: result
-        });
-    } catch (err) {
-        console.error("Error while retrieving all bills:", err.message);
         next(err);
     }
 });

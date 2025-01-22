@@ -1279,7 +1279,7 @@ class StoreService {
                 }))
             }));
 
-            return {productsData}
+            return productsData
         } catch (error) {
             console.error("Error while retrieving products:", error.message);
             throw new Error("Server error.");
@@ -1652,16 +1652,17 @@ class StoreService {
                     TotalAmount: 1,
                     discountPercentage: 1,
                     priceAfterDiscount: 1,
-                    editStatus: 1
+                    editStatus: 1,
+                    storeId: 1
                 } // Projection to return only specific fields
             ).sort({ dateOfBill: -1 });;
 
-            if (!deletedBills.length) {
+            if (!Bills.length) {
                 return [];
             }
 
-            // Step 2: Get unique storeIds from deletedBills
-            const storeIds = [...new Set(deletedBills.map(bill => bill.storeId))];
+            // Step 2: Get unique storeIds from Bills
+            const storeIds = [...new Set(Bills.map(bill => bill.storeId))];
 
             // Step 3: Fetch store names for the retrieved storeIds
             const stores = await Store.find({ storeId: { $in: storeIds } }, { storeId: 1, storeName: 1 });
@@ -1769,56 +1770,6 @@ class StoreService {
 
         } catch (error) {
             console.error('Error fetching bill details:', error.message);
-            throw new Error(error.message);
-        }
-    }
-
-    async getBills() {
-        try {
-            // Find all deleted bills for the given storeId and return only the required fields
-            const deletedBills = await Bill.find(
-                { isDeleted: false }, // Query to find bills that are marked as deleted
-                {
-                    billId: 1,
-                    dateOfBill: 1,
-                    deletedDate: 1,
-                    TotalAmount: 1,
-                    discountPercentage: 1,
-                    priceAfterDiscount: 1
-                } // Projection to return only specific fields
-            );
-
-            if (!deletedBills.length) {
-                return [];
-            }
-
-            // Step 2: Get unique storeIds from deletedBills
-            const storeIds = [...new Set(deletedBills.map(bill => bill.storeId))];
-
-            // Step 3: Fetch store names for the retrieved storeIds
-            const stores = await Store.find({ storeId: { $in: storeIds } }, { storeId: 1, storeName: 1 });
-
-            // Step 4: Create a storeId-to-storeName map for quick lookup
-            const storeMap = stores.reduce((map, store) => {
-                map[store.storeId] = store.storeName;
-                return map;
-            }, {});
-
-            // Step 5: Map through the deletedBills and append the storeName
-            const result = deletedBills.map(bill => ({
-                billId: bill.billId,
-                dateOfBill: bill.dateOfBill,
-                deletedDate: bill.deletedDate,
-                TotalAmount: bill.TotalAmount,
-                discountPercentage: bill.discountPercentage,
-                priceAfterDiscount: bill.priceAfterDiscount,
-                storeId: bill.storeId,
-                storeName: storeMap[bill.storeId] || 'Unknown Store' // Default to 'Unknown Store' if not found
-            }));
-
-            return result;
-        } catch (error) {
-            console.error('Error fetching deleted bills:', error.message);
             throw new Error(error.message);
         }
     }

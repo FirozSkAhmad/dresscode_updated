@@ -23,6 +23,7 @@ require('dotenv').config();  // Make sure to require dotenv if you need access t
 const DashboardService = require('../services/dashboard_service');
 const dashboardServiceObj = new DashboardService();
 const nodemailer = require('nodemailer');
+const Bill = require('../utils/Models/billingModel');
 
 const modelMap = {
     "HEAL": HealModel,
@@ -193,24 +194,24 @@ router.get('/getOverview', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
         // Fetch all upload histories for stock overview
         const uploadHistories = await UploadedHistoryModel.find({});
-
+        
         // Initialize a stock object to hold the group-wise and total stock quantity, amount, and order counts
         let stock = {};
         let totalAmount = 0;
         let totalQuantity = 0;
-        let totalOrders = 0;
+        let totalOnlineOrders = 0;
         let totalCanceledOrders = 0;
 
         // Loop through each upload history and calculate group-wise stock quantity and amount
         for (const history of uploadHistories) {
-            const productsDetails = await Promise.all(history.products.map(async (product) => {
+            await Promise.all(history.products.map(async (product) => {
                 const ProductModel = modelMap[product.group];
                 if (!ProductModel) {
                     throw new Error(`No model found for group: ${product.group}`);
                 }
                 // Retrieve the product details based on productId
                 const productDetails = await ProductModel.findOne({ productId: product.productId })
-                    .select('price');  // Only select the price field
+                    .select('price'); // Only select the price field
 
                 if (!productDetails) {
                     throw new Error(`No product details found for productId: ${product.productId}`);
@@ -224,7 +225,7 @@ router.get('/getOverview', jwtHelperObj.verifyAccessToken, async (req, res) => {
                 product.variants.forEach(variant => {
                     variant.variantSizes.forEach(size => {
                         const quantity = size.quantityOfUpload;
-                        const amount = quantity * productDetails.price;  // Multiply quantity by price
+                        const amount = quantity * productDetails.price; // Multiply quantity by price
 
                         groupTotalAmount += amount;
                         groupTotalQuantity += quantity;
@@ -233,46 +234,58 @@ router.get('/getOverview', jwtHelperObj.verifyAccessToken, async (req, res) => {
 
                 // Update the stock for the group (amount, quantity)
                 if (!stock[product.group]) {
-                    stock[product.group] = { amount: 0, quantity: 0, orders: 0, canceledOrders: 0 };
+                    stock[product.group] = {
+                        amount: 0, quantity: 0, onlineOrders: 0, canceledOrders: 0, offlineOrders: "N/A"
+                    };
                 }
                 stock[product.group].amount += groupTotalAmount;
                 stock[product.group].quantity += groupTotalQuantity;
 
-                totalAmount += groupTotalAmount;  // Add to total stock amount
-                totalQuantity += groupTotalQuantity;  // Add to total stock quantity
-
-                return { ...product.toObject(), productDetails };
+                totalAmount += groupTotalAmount; // Add to total stock amount
+                totalQuantity += groupTotalQuantity; // Add to total stock quantity
             }));
         }
 
         // Fetch all orders for order overview
         const orders = await OrderModel.find({});
 
-        // Loop through each order and count orders by group
+        // Loop through each order and count onlineOrders by group
         orders.forEach(order => {
-            // Check if the order is created (order_created is true)
             if (order.order_created) {
-                totalOrders += 1;  // Increment total orders count only if order_created is true
+                totalOnlineOrders += 1; // Increment total online orders count
 
                 order.products.forEach(product => {
                     if (!stock[product.group]) {
-                        stock[product.group] = { amount: 0, quantity: 0, orders: 0, canceledOrders: 0 };
+                        stock[product.group] = {
+                            amount: 0, quantity: 0, onlineOrders: 0, canceledOrders: 0, offlineOrders: "N/A"
+                        };
                     }
-                    stock[product.group].orders += 1;  // Increment the order count for the group
+                    stock[product.group].onlineOrders += 1; // Increment the online order count for the group
 
                     // Check if the order is canceled
                     if (order.dateOfCanceled) {
                         totalCanceledOrders += 1;
-                        stock[product.group].canceledOrders += 1;  // Increment canceled orders count
+                        stock[product.group].canceledOrders += 1; // Increment canceled orders count
                     }
                 });
             }
-
         });
+
+        // Fetch active bills for offline orders
+        const togsOfflineBills = await Bill.countDocuments({ isDeleted: false, 'products.group': 'TOGS' });
+
+        // Assign offline orders for TOGS
+        if (stock['TOGS']) {
+            stock['TOGS'].offlineOrders = togsOfflineBills;
+        }
 
         // Include the total amount, quantity, and orders in the stock object
         stock.total = {
-            amount: totalAmount, quantity: totalQuantity, orders: totalOrders, canceledOrders: totalCanceledOrders
+            amount: totalAmount,
+            quantity: totalQuantity,
+            onlineOrders: totalOnlineOrders,
+            offlineOrders: togsOfflineBills, // Only TOGS offline bills
+            canceledOrders: totalCanceledOrders,
         };
 
         // Send the response
@@ -282,6 +295,8 @@ router.get('/getOverview', jwtHelperObj.verifyAccessToken, async (req, res) => {
         res.status(500).send({ message: "Failed to fetch overview details", error: error.message });
     }
 });
+
+
 
 // DELETE endpoint to logically delete a Variant
 router.delete('/removeVariant', jwtHelperObj.verifyAccessToken, async (req, res) => {
@@ -448,7 +463,7 @@ router.get('/getOrders', jwtHelperObj.verifyAccessToken, async (req, res) => {
         const processedOrders = orders.map(order => {
             // Extract unique group names from the products array
             const groupsInOrder = [...new Set(order.products.map(product => product.group))];
-            
+
             // Include groups in the order object
             return {
                 orderId: order.orderId,
