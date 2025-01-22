@@ -1279,7 +1279,7 @@ class StoreService {
                 }))
             }));
 
-            return {productsData}
+            return productsData
         } catch (error) {
             console.error("Error while retrieving products:", error.message);
             throw new Error("Server error.");
