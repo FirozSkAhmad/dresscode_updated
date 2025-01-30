@@ -152,7 +152,7 @@ router.get('/getAllSchoolNames', async (req, res, next) => {
 
 router.get('/getProductsByGroup', async (req, res, next) => {
     try {
-        const { groupName, color, size } = req.query
+        let { groupName, color, size } = req.query;
 
         // Convert query parameter values to uppercase
         groupName = groupName?.toUpperCase();
@@ -161,11 +161,12 @@ router.get('/getProductsByGroup', async (req, res, next) => {
 
         const EComServiceObj = new EComService();
         const result = await EComServiceObj.getProductsByGroup(groupName, color, size);
-        res.status(200).send(result)
+        res.status(200).send(result);
     } catch (err) {
         next(err);
     }
 });
+
 
 router.get('/getProductsByGroupAndSchoolName', async (req, res, next) => {
     try {
