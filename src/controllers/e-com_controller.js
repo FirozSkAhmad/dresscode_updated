@@ -153,6 +153,12 @@ router.get('/getAllSchoolNames', async (req, res, next) => {
 router.get('/getProductsByGroup', async (req, res, next) => {
     try {
         const { groupName, color, size } = req.query
+
+        // Convert query parameter values to uppercase
+        groupName = groupName?.toUpperCase();
+        color = color?.toUpperCase();
+        size = size?.toUpperCase();
+
         const EComServiceObj = new EComService();
         const result = await EComServiceObj.getProductsByGroup(groupName, color, size);
         res.status(200).send(result)
@@ -198,13 +204,20 @@ router.get('/getAvaSizesByColor', async (req, res, next) => {
 
 router.get('/getProductDetailsWithSpecificVariant', async (req, res, next) => {
     try {
-        const { groupName, productId, size, color } = req.query
+        let { groupName, productId, size, color } = req.query;
+
+        // Convert all query parameters except productId to uppercase
+        groupName = groupName?.toUpperCase();
+        size = size?.toUpperCase();
+        color = color?.toUpperCase();
+
         const EComServiceObj = new EComService();
         const result = await EComServiceObj.getProductDetailsWithSpecificVariant(groupName, productId, size, color);
-        res.status(200).send(result)
+        res.status(200).send(result);
     } catch (err) {
         next(err);
     }
 });
+
 
 module.exports = router;
