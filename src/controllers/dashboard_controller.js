@@ -33,7 +33,7 @@ const modelMap = {
     "TOGS": TogsModel,
 };
 
-router.get('/get-contacts', async (req, res) => {
+router.get('/get-contacts', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
         // Fetch all contacts from the database
         const contacts = await Contact.find();
@@ -53,7 +53,7 @@ router.get('/get-contacts', async (req, res) => {
 });
 
 // GET route to download contact data as CSV
-router.get('/download-contacts', async (req, res) => {
+router.get('/download-contacts', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
         // Fetch all contacts from the database
         const contacts = await Contact.find();
