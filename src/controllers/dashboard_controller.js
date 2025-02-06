@@ -24,12 +24,71 @@ const DashboardService = require('../services/dashboard_service');
 const dashboardServiceObj = new DashboardService();
 const nodemailer = require('nodemailer');
 const Bill = require('../utils/Models/billingModel');
+const Contact = require('../utils/Models/contactModel');
+const { Parser } = require('json2csv'); // Import json2csv
 
 const modelMap = {
     "HEAL": HealModel,
     "ELITE": EliteModel,
     "TOGS": TogsModel,
 };
+
+router.get('/get-contacts', async (req, res) => {
+    try {
+        // Fetch all contacts from the database
+        const contacts = await Contact.find();
+
+        // Send the contacts as a response
+        res.status(200).json({
+            message: 'Contacts retrieved successfully',
+            data: contacts
+        });
+    } catch (error) {
+        // Handle errors
+        res.status(500).json({
+            message: 'An error occurred while fetching contacts',
+            error: error.message
+        });
+    }
+});
+
+// GET route to download contact data as CSV
+router.get('/download-contacts', async (req, res) => {
+    try {
+        // Fetch all contacts from the database
+        const contacts = await Contact.find();
+
+        // Define the fields for the CSV
+        const fields = [
+            'name',
+            'email',
+            'mobile',
+            'category',
+            'message',
+            'organization',
+            'date',
+        ];
+
+        // Create a JSON2CSV parser
+        const json2csvParser = new Parser({ fields });
+
+        // Convert JSON data to CSV
+        const csv = json2csvParser.parse(contacts);
+
+        // Set headers for file download
+        res.header('Content-Type', 'text/csv');
+        res.attachment('contacts.csv'); // Set the file name
+
+        // Send the CSV file as a response
+        res.send(csv);
+    } catch (error) {
+        // Handle errors
+        res.status(500).json({
+            message: 'An error occurred while generating the CSV file',
+            error: error.message
+        });
+    }
+});
 
 router.post('/createDashboardUser', async (req, res) => {
     const session = await mongoose.startSession(); // Start a new session for the transaction
@@ -194,7 +253,7 @@ router.get('/getOverview', jwtHelperObj.verifyAccessToken, async (req, res) => {
     try {
         // Fetch all upload histories for stock overview
         const uploadHistories = await UploadedHistoryModel.find({});
-        
+
         // Initialize a stock object to hold the group-wise and total stock quantity, amount, and order counts
         let stock = {};
         let totalAmount = 0;
